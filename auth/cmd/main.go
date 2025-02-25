@@ -18,7 +18,7 @@ func main() {
 	)
 
 	database.InitializeDB(connectionString)
-	defer database.Close()
+	defer database.DBClose()
 
 	http.HandleFunc("/api/v1/auth/login", handler.HandleLogin)
 	http.ListenAndServe(":8080", nil)
