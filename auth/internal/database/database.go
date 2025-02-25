@@ -115,7 +115,7 @@ func ComparePassUserDB(email string, password string) (bool, error) {
 	return true, nil
 }
 
-func Close() {
+func DBClose() {
 	if DB != nil {
 		DB.Close()
 		log.Println("Connection to the database closed.")
