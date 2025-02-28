@@ -12,7 +12,7 @@ func LoadConfigFromEnv() Config {
 
 	port, ok := os.LookupEnv("PORT")
 	if ok {
-		config.Port = port
+		config.Port = ":" + port
 	} else {
 		config.Port = ":8080"
 	}
