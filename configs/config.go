@@ -14,7 +14,7 @@ func LoadConfigFromEnv() Config {
 	if ok {
 		config.Port = port
 	} else {
-		config.Port = "8080"
+		config.Port = ":8080"
 	}
 
 	return config
