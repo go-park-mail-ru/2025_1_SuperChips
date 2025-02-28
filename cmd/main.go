@@ -8,15 +8,21 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/handler"
 )
 
 func main() {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/v1/health", handler.HealthCheckHandler)
+	mux.HandleFunc("GET /health", handler.HealthCheckHandler)
+
+	config := configs.Config{
+		Port: ":8080",
+	}
 
 	server := http.Server{
-		Addr: ":8080",
+		Addr: config.Port,
 		Handler: mux,
 	}
 
