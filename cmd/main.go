@@ -27,7 +27,7 @@ func main() {
 	errorChan := make(chan error, 1)
 
 	go func() {
-		log.Println("Server listening on :8080")
+		log.Printf("Server listening on :%s", config.Port)
 		err := server.ListenAndServe()
 		if err != nil && err != http.ErrServerClosed {
 			errorChan <- err
