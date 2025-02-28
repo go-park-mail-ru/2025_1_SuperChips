@@ -17,9 +17,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", handler.HealthCheckHandler)
 
-	config := configs.Config{
-		Port: ":8080",
-	}
+	config := configs.LoadConfigFromEnv()
 
 	server := http.Server{
 		Addr: config.Port,
