@@ -1,4 +1,7 @@
 GO := go
+NAME := main.exe
 
-main : cmd/main.go
-	$(GO) build $<
+build : cmd/main.go
+	$(GO) build -o $(NAME) $<
+
+.PHONY : build
