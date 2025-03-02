@@ -7,9 +7,9 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN go build -v -o main.exe ./cmd/main.go
+RUN go build -v -o main ./cmd/main.go
 
 ENV PORT=8080
 EXPOSE $PORT
 
-ENTRYPOINT ["./main.exe"]
+ENTRYPOINT ["./main"]
