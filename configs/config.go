@@ -27,3 +27,4 @@ func LoadConfigFromEnv() Config {
 
 	return config
 }
+
