@@ -177,3 +177,4 @@ func GetUserId(email string) uint64 {
 
 	return user.Id
 }
+
