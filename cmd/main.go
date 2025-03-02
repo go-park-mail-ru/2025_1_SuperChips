@@ -16,7 +16,10 @@ import (
 func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", handler.HealthCheckHandler)
-
+	mux.HandleFunc("POST /api/v1/auth/login", handler.LoginHandler)
+	mux.HandleFunc("POST /api/v1/auth/registration", handler.RegistrationHandler)
+	mux.HandleFunc("POST /api/v1/auth/logout", handler.LogoutHandler)
+	mux.HandleFunc("GET /api/v1/auth/user", handler.UserDataHandler)
 
 	config := configs.LoadConfigFromEnv()
 
@@ -28,7 +31,7 @@ func main() {
 	errorChan := make(chan error, 1)
 
 	go func() {
-		log.Printf("Server listening on :%s", config.Port)
+		log.Printf("Server listening on port %s", config.Port)
 		err := server.ListenAndServe()
 		if err != nil && err != http.ErrServerClosed {
 			errorChan <- err

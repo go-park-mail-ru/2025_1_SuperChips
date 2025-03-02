@@ -2,19 +2,26 @@ package user
 
 import (
 	"errors"
-	"fmt"
 	"time"
+	"unicode"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/security"
 )
 
 type User struct {
-	id       uint64    `json:"-"`
-	username string    `json:username`
-	password string    `json:"-"`
-	email    string    `json:email`
-	avatar   string    `json:avatar,omitempty`
-	birthday time.Time `json:birthday`
+	Id       uint64    `json:"-"`
+	Username string    `json:"username"`
+	Password string    `json:"password"`
+	Email    string    `json:"email"`
+	Avatar   string    `json:"avatar,omitempty"`
+	Birthday time.Time `json:"birthday"`
+}
+
+type PublicUser struct {
+	Username string    `json:"username"`
+	Email    string    `json:"email"`
+	Avatar   string    `json:"avatar,omitempty"`
+	Birthday time.Time `json:"birthday"`
 }
 
 var (
@@ -26,14 +33,16 @@ var (
 	ErrUsernameAlreadyTaken = errors.New("the username is already used")
 	ErrInvalidCredentials   = errors.New("invalid credentials")
 	ErrPasswordTooLong      = errors.New("password is too long")
+	ErrInternalError        = errors.New("internal error")
+	ErrUserNotFound         = errors.New("user not found")
 )
 
-var users []User = make([]User, 1)
-var id uint64 = 0
+var users []User = make([]User, 0)
+var id uint64 = 1
 
 func containsUsername(username string) bool {
 	for _, v := range users {
-		if v.username == username {
+		if v.Username == username {
 			return true
 		}
 	}
@@ -43,7 +52,7 @@ func containsUsername(username string) bool {
 
 func containsEmail(email string) bool {
 	for _, v := range users {
-		if v.email == email {
+		if v.Email == email {
 			return true
 		}
 	}
@@ -53,7 +62,17 @@ func containsEmail(email string) bool {
 
 func findUserByMail(email string) (User, bool) {
 	for _, v := range users {
-		if v.email == email {
+		if v.Email == email {
+			return v, true
+		}
+	}
+
+	return User{}, false
+}
+
+func findUserById(id int) (User, bool) {
+	for _, v := range users {
+		if v.Id == uint64(id) {
 			return v, true
 		}
 	}
@@ -62,23 +81,23 @@ func findUserByMail(email string) (User, bool) {
 }
 
 func (u User) ValidateUser() error {
-	if len(u.email) > 32 || len(u.email) < 4 {
+	if len(u.Email) > 64 || len(u.Email) < 3 {
 		return ErrInvalidEmail
 	}
 
-	if len(u.username) > 32 || len(u.username) < 2 {
+	if len(u.Username) > 32 || len(u.Username) < 2 {
 		return ErrInvalidUsername
 	}
 
-	if u.password == "" {
+	if u.Password == "" {
 		return ErrNoPassword
 	}
 
-	if len(u.password) > 64 {
+	if len(u.Password) > 64 {
 		return ErrPasswordTooLong
 	}
 
-	if u.birthday.IsZero() {
+	if u.Birthday.After(time.Now()) || time.Since(u.Birthday) > 150*365*24*time.Hour {
 		return ErrInvalidBirthday
 	}
 
@@ -90,23 +109,23 @@ func AddUser(user User) error {
 		return err
 	}
 
-	if containsEmail(user.email) {
+	if containsEmail(user.Email) {
 		return ErrEmailAlreadyTaken
 	}
 
-	if containsUsername(user.username) {
+	if containsUsername(user.Username) {
 		return ErrUsernameAlreadyTaken
 	}
 
-	user.id = id
+	user.Id = id
 	id++
 
-	hashPassword, err := security.HashPassword(user.password)
+	hashPassword, err := security.HashPassword(user.Password)
 	if err != nil {
-		return fmt.Errorf("internal error: %w", err)
+		return ErrInternalError
 	}
 
-	user.password = hashPassword
+	user.Password = hashPassword
 	users = append(users, user)
 
 	return nil
@@ -118,9 +137,25 @@ func LoginUser(email, password string) error {
 		return ErrInvalidCredentials
 	}
 
-	if !security.CheckPassword(password, user.password) {
+	if !security.CheckPassword(password, user.Password) {
 		return ErrInvalidCredentials
 	}
 
 	return nil
+}
+
+func GetUserInfo(id int) (PublicUser, error) {
+	user, found := findUserById(id)
+	if !found {
+		return PublicUser{}, ErrUserNotFound
+	}
+
+	publicUser := PublicUser{
+		Username: user.Username,
+		Email:    user.Email,
+		Birthday: user.Birthday,
+		Avatar:   user.Avatar,
+	}
+
+	return publicUser, nil
 }
