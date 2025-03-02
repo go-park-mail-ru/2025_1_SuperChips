@@ -17,6 +17,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", handler.HealthCheckHandler)
 
+
 	config := configs.LoadConfigFromEnv()
 
 	server := http.Server{
