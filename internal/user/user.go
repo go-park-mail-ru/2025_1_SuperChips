@@ -3,9 +3,8 @@ package user
 import (
 	"errors"
 	"time"
-	"unicode"
-
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/security"
+	"regexp"
 )
 
 type User struct {
@@ -39,6 +38,12 @@ var (
 
 var users []User = make([]User, 0)
 var id uint64 = 1
+
+func isValidEmail(email string) bool {
+    var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
+
+    return emailRegex.MatchString(email)
+}
 
 func containsUsername(username string) bool {
 	for _, v := range users {
@@ -82,6 +87,10 @@ func findUserById(id int) (User, bool) {
 
 func (u User) ValidateUser() error {
 	if len(u.Email) > 64 || len(u.Email) < 3 {
+		return ErrInvalidEmail
+	}
+
+	if !isValidEmail(u.Email) {
 		return ErrInvalidEmail
 	}
 
@@ -144,8 +153,8 @@ func LoginUser(email, password string) error {
 	return nil
 }
 
-func GetUserInfo(id int) (PublicUser, error) {
-	user, found := findUserById(id)
+func GetUserPublicInfo(email string) (PublicUser, error) {
+	user, found := findUserByMail(email)
 	if !found {
 		return PublicUser{}, ErrUserNotFound
 	}
@@ -158,4 +167,13 @@ func GetUserInfo(id int) (PublicUser, error) {
 	}
 
 	return publicUser, nil
+}
+
+func GetUserId(email string) uint64 {
+	user, found := findUserByMail(email)
+	if !found {
+		return 0
+	}
+
+	return user.Id
 }

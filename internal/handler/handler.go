@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
-	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/cookie"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/user"
 )
 
@@ -14,7 +15,6 @@ type loginData struct {
 	Email    string `json:"email"`
 }
 
-var JWT_SECRET []byte = configs.Config.JWTSecret
 
 func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
@@ -39,7 +39,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	errorMap := make(map[string]string)
 	errorMap["error"] = "OK"
 
-	if err := user.LoginUser(data.Email, data.Password); err != nil {		
+	if err := user.LoginUser(data.Email, data.Password); err != nil {
 		errorMap["error"] = err.Error()
 		w.WriteHeader(http.StatusForbidden)
 		if err := json.NewEncoder(w).Encode(errorMap); err != nil {
@@ -48,8 +48,11 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// здесь будет работа с куками
-	// ...
+	if err := cookie.CookieSetJWT(w, data.Email); err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
 	if err := json.NewEncoder(w).Encode(errorMap); err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
@@ -87,24 +90,50 @@ func RegistrationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// работа с куками здесь
-	// или можно не авторизовывать пользователя после регистрации,
-	// а просить войти через /api/v1/auth/login
-	// ...
-
-	w.WriteHeader(http.StatusOK)
-
 	if err := json.NewEncoder(w).Encode(errorMap); err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }
 
-// TODO
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
+    expiredCookie := &http.Cookie{
+        Name:     "auth_token",
+        Value:    "",
+        Path:     "/",
+        HttpOnly: true,
+        Secure:   false,
+        SameSite: http.SameSiteStrictMode,
+        Expires:  time.Now().Add(-time.Hour * 24 * 365),
+    }
+
+    http.SetCookie(w, expiredCookie)
+
+    w.WriteHeader(http.StatusOK)
 }
 
-// TODO
 func UserDataHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
+	token, err := r.Cookie("auth_token")
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	claims, err := cookie.ParseJWTToken(token.Value)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	userData, err := user.GetUserPublicInfo(claims.Email)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("content-type", "application/json")
+
+	if err := json.NewEncoder(w).Encode(userData); err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
 }
