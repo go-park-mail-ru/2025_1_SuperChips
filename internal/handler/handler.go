@@ -6,15 +6,27 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/auth"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/cookie"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/user"
 )
+
+type errorAnswer struct {
+	Error string `json:"error"`
+}
 
 type loginData struct {
 	Password string `json:"password"`
 	Email    string `json:"email"`
 }
 
+func serverGenerateAnswer[T any](w http.ResponseWriter, body T) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if err := json.NewEncoder(w).Encode(body); err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
 
 func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
@@ -34,29 +46,23 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("content-type", "application/json")
-
-	errorMap := make(map[string]string)
-	errorMap["error"] = "OK"
+	errorResp := errorAnswer{
+		Error: "OK",
+	}
 
 	if err := user.LoginUser(data.Email, data.Password); err != nil {
-		errorMap["error"] = err.Error()
+		errorResp.Error = err.Error()
 		w.WriteHeader(http.StatusForbidden)
-		if err := json.NewEncoder(w).Encode(errorMap); err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		}
+		serverGenerateAnswer(w, errorResp)
 		return
 	}
 
-	if err := cookie.CookieSetJWT(w, data.Email); err != nil {
+	if err := cookie.CookieAddJWT(w, data.Email); err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	if err := json.NewEncoder(w).Encode(errorMap); err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
+	serverGenerateAnswer(w, errorResp)
 }
 
 func RegistrationHandler(w http.ResponseWriter, r *http.Request) {
@@ -67,58 +73,50 @@ func RegistrationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("content-type", "application/json")
-
-	errorMap := make(map[string]string)
-	errorMap["error"] = "OK"
+	errorResp := errorAnswer{
+		Error: "OK",
+	}
 
 	if err := user.AddUser(userData); err != nil {
-		errorMap["error"] = err.Error()
-		w.WriteHeader(http.StatusBadRequest)
+		errorResp.Error = err.Error()
 
-		if err == user.ErrEmailAlreadyTaken || err == user.ErrUsernameAlreadyTaken {
+		switch err {
+		case user.ErrEmailAlreadyTaken, user.ErrUsernameAlreadyTaken:
 			w.WriteHeader(http.StatusConflict)
-		}
-		if err == user.ErrInternalError {
+		case user.ErrInternalError:
 			w.WriteHeader(http.StatusInternalServerError)
+		default:
+			w.WriteHeader(http.StatusBadRequest)
 		}
-
-		if err := json.NewEncoder(w).Encode(errorMap); err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		}
-
-		return
 	}
-
-	if err := json.NewEncoder(w).Encode(errorMap); err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
+	
+	serverGenerateAnswer(w, errorResp)
 }
 
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {
-    expiredCookie := &http.Cookie{
-        Name:     "auth_token",
-        Value:    "",
-        Path:     "/",
-        HttpOnly: true,
-        Secure:   false,
-        SameSite: http.SameSiteStrictMode,
-        Expires:  time.Now().Add(-time.Hour * 24 * 365),
-    }
+	expiredCookie := &http.Cookie{
+		Name:     auth.AuthToken,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteStrictMode,
+		Expires:  time.Now().Add(-time.Hour * 24 * 365),
+	}
 
-    http.SetCookie(w, expiredCookie)
+	http.SetCookie(w, expiredCookie)
 
-    w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusOK)
 }
 
 func UserDataHandler(w http.ResponseWriter, r *http.Request) {
-	token, err := r.Cookie("auth_token")
+	token, err := r.Cookie(auth.AuthToken)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 
-	claims, err := cookie.ParseJWTToken(token.Value)
+	claims, err := auth.ParseJWTToken(token.Value)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
@@ -130,11 +128,6 @@ func UserDataHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("content-type", "application/json")
-
-	if err := json.NewEncoder(w).Encode(userData); err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
+	serverGenerateAnswer(w, userData)
 }
 

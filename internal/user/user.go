@@ -2,9 +2,9 @@ package user
 
 import (
 	"errors"
-	"time"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/security"
 	"regexp"
+	"time"
 )
 
 type User struct {
@@ -36,17 +36,24 @@ var (
 	ErrUserNotFound         = errors.New("user not found")
 )
 
-var users []User = make([]User, 0)
-var id uint64 = 1
-
-func isValidEmail(email string) bool {
-    var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
-
-    return emailRegex.MatchString(email)
+type userStorage struct {
+	users []User
+	id    uint64
 }
 
-func containsUsername(username string) bool {
-	for _, v := range users {
+var userBase = userStorage{
+	users: make([]User, 0),
+	id:    1,
+}
+
+func isValidEmail(email string) bool {
+	var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
+
+	return emailRegex.MatchString(email)
+}
+
+func (u userStorage) containsUsername(username string) bool {
+	for _, v := range u.users {
 		if v.Username == username {
 			return true
 		}
@@ -55,8 +62,8 @@ func containsUsername(username string) bool {
 	return false
 }
 
-func containsEmail(email string) bool {
-	for _, v := range users {
+func (u userStorage) containsEmail(email string) bool {
+	for _, v := range u.users {
 		if v.Email == email {
 			return true
 		}
@@ -65,8 +72,8 @@ func containsEmail(email string) bool {
 	return false
 }
 
-func findUserByMail(email string) (User, bool) {
-	for _, v := range users {
+func (u userStorage) findUserByMail(email string) (User, bool) {
+	for _, v := range u.users {
 		if v.Email == email {
 			return v, true
 		}
@@ -75,14 +82,8 @@ func findUserByMail(email string) (User, bool) {
 	return User{}, false
 }
 
-func findUserById(id int) (User, bool) {
-	for _, v := range users {
-		if v.Id == uint64(id) {
-			return v, true
-		}
-	}
-
-	return User{}, false
+func (u *userStorage) addUserToBase(user User) {
+	userBase.users = append(userBase.users, user)
 }
 
 func (u User) ValidateUser() error {
@@ -118,16 +119,16 @@ func AddUser(user User) error {
 		return err
 	}
 
-	if containsEmail(user.Email) {
+	if userBase.containsEmail(user.Email) {
 		return ErrEmailAlreadyTaken
 	}
 
-	if containsUsername(user.Username) {
+	if userBase.containsUsername(user.Username) {
 		return ErrUsernameAlreadyTaken
 	}
 
-	user.Id = id
-	id++
+	user.Id = userBase.id
+	userBase.id++
 
 	hashPassword, err := security.HashPassword(user.Password)
 	if err != nil {
@@ -135,18 +136,18 @@ func AddUser(user User) error {
 	}
 
 	user.Password = hashPassword
-	users = append(users, user)
+	userBase.addUserToBase(user)
 
 	return nil
 }
 
 func LoginUser(email, password string) error {
-	user, found := findUserByMail(email)
+	user, found := userBase.findUserByMail(email)
 	if !found {
 		return ErrInvalidCredentials
 	}
 
-	if !security.CheckPassword(password, user.Password) {
+	if !security.ComparePassword(password, user.Password) {
 		return ErrInvalidCredentials
 	}
 
@@ -154,7 +155,7 @@ func LoginUser(email, password string) error {
 }
 
 func GetUserPublicInfo(email string) (PublicUser, error) {
-	user, found := findUserByMail(email)
+	user, found := userBase.findUserByMail(email)
 	if !found {
 		return PublicUser{}, ErrUserNotFound
 	}
@@ -170,7 +171,7 @@ func GetUserPublicInfo(email string) (PublicUser, error) {
 }
 
 func GetUserId(email string) uint64 {
-	user, found := findUserByMail(email)
+	user, found := userBase.findUserByMail(email)
 	if !found {
 		return 0
 	}

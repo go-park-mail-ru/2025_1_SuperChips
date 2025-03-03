@@ -18,9 +18,9 @@ func LoadConfigFromEnv() Config {
 		config.Port = ":8080"
 	}
 
-	JWTSecret, ok := os.LookupEnv("JWT_SECRET")
+	jwtSecret, ok := os.LookupEnv("JWT_SECRET")
 	if ok {
-		config.JWTSecret = []byte(JWTSecret)
+		config.JWTSecret = []byte(jwtSecret)
 	} else {
 		config.JWTSecret = []byte("default_key")
 	}
