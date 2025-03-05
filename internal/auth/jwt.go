@@ -11,6 +11,8 @@ import (
 	"github.com/google/uuid"
 )
 
+// в будущем: сделать UserVersion для
+// простой инвалидации токенов в случае надобности
 type Claims struct {
 	UserID int
 	Email  string
@@ -20,59 +22,58 @@ type Claims struct {
 const AuthToken = "auth_token"
 
 var (
-    ErrInvalidUser = errors.New("invalid user")
-    ErrSigningJWT  = errors.New("failed to sign JWT")
+	ErrInvalidUser      = errors.New("invalid user")
+	ErrSigningJWT       = errors.New("failed to sign JWT")
 	ErrorCookieCreation = errors.New("error creating a jwt cookie")
-	ErrorJWTParse = errors.New("error parsing jwt token")
-	ErrorExpiredToken = errors.New("expired token")
+	ErrorJWTParse       = errors.New("error parsing jwt token")
+	ErrorExpiredToken   = errors.New("expired token")
 )
 
 func CreateJWT(email string, expirationTime time.Duration) (string, error) {
-    userID := user.GetUserId(email)
-    if userID == 0 {
-        return "", ErrInvalidUser
-    }
+	userID := user.GetUserId(email)
+	if userID == 0 {
+		return "", ErrInvalidUser
+	}
 
-    config := configs.LoadConfigFromEnv()
+	config := configs.LoadConfigFromEnv()
 
-    expiration := time.Now().Add(expirationTime)
-    claims := &Claims{
-        UserID: int(userID),
-        Email:  email,
-        RegisteredClaims: jwt.RegisteredClaims{
-            ExpiresAt: jwt.NewNumericDate(expiration),
-            Issuer:    "flow",
-            ID:        uuid.New().String(),
-        },
-    }
+	expiration := time.Now().Add(expirationTime)
+	claims := &Claims{
+		UserID: int(userID),
+		Email:  email,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expiration),
+			Issuer:    "flow",
+			ID:        uuid.New().String(),
+		},
+	}
 
-    token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-    tokenString, err := token.SignedString(config.JWTSecret)
-    if err != nil {
-        return "", ErrSigningJWT
-    }
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString(config.JWTSecret)
+	if err != nil {
+		return "", ErrSigningJWT
+	}
 
-    return tokenString, nil
+	return tokenString, nil
 }
 
 func ParseJWTToken(tokenString string) (*Claims, error) {
-    config := configs.LoadConfigFromEnv()
-    token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-        if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-            return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-        }
-        return config.JWTSecret, nil
-    })
+	config := configs.LoadConfigFromEnv()
+	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return config.JWTSecret, nil
+	})
 
-    if err != nil || !token.Valid {
-        return nil, ErrorExpiredToken
-    }
+	if err != nil || !token.Valid {
+		return nil, ErrorExpiredToken
+	}
 
-    claims, ok := token.Claims.(*Claims)
-    if !ok {
-        return nil, ErrorJWTParse
-    }
+	claims, ok := token.Claims.(*Claims)
+	if !ok {
+		return nil, ErrorJWTParse
+	}
 
-    return claims, nil
+	return claims, nil
 }
-

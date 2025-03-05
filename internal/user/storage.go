@@ -1,5 +1,7 @@
 package user
 
+import "sync"
+
 type userRepository interface {
 	containsUsername(username string) bool
 	containsEmail(email string) bool
@@ -58,6 +60,10 @@ func (u mapUserStorage) findUserByMail(email string) (User, bool) {
 }
 
 func (u *mapUserStorage) addUserToBase(user User) {
+	m := sync.RWMutex{}
+
+	m.Lock()
 	u.users[user.Email] = user
+	m.Unlock()
 }
 
