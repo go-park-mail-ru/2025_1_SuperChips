@@ -103,7 +103,7 @@ func (u User) ValidateUser() error {
 		return ErrNoPassword
 	}
 
-	if len(u.Password) > 64 {
+	if len(u.Password) > 96 {
 		return ErrPasswordTooLong
 	}
 

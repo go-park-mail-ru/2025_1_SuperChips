@@ -17,3 +17,13 @@ func SetAuthCookie(w http.ResponseWriter, tokenString string, expirationTime tim
     })
 }
 
+func CookieAddJWT(w http.ResponseWriter, email string) error {
+    tokenString, err := CreateJWT(email, 15*time.Minute)
+    if err != nil {
+        return err
+    }
+
+    SetAuthCookie(w, tokenString, 15*time.Minute)
+
+    return nil
+}

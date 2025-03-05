@@ -1,6 +1,10 @@
 package configs
 
-import "os"
+import (
+	"os"
+	"crypto/rand"
+)
+
 
 type Config struct {
 	Port      string
@@ -22,7 +26,7 @@ func LoadConfigFromEnv() Config {
 	if ok {
 		config.JWTSecret = []byte(jwtSecret)
 	} else {
-		config.JWTSecret = []byte("default_key")
+		config.JWTSecret = []byte(rand.Text())
 	}
 
 	return config

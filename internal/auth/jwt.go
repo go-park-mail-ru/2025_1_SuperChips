@@ -27,13 +27,13 @@ var (
 	ErrorExpiredToken = errors.New("expired token")
 )
 
-var Config configs.Config = configs.LoadConfigFromEnv()
-
 func CreateJWT(email string, expirationTime time.Duration) (string, error) {
     userID := user.GetUserId(email)
     if userID == 0 {
         return "", ErrInvalidUser
     }
+
+    config := configs.LoadConfigFromEnv()
 
     expiration := time.Now().Add(expirationTime)
     claims := &Claims{
@@ -47,7 +47,7 @@ func CreateJWT(email string, expirationTime time.Duration) (string, error) {
     }
 
     token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-    tokenString, err := token.SignedString(Config.JWTSecret)
+    tokenString, err := token.SignedString(config.JWTSecret)
     if err != nil {
         return "", ErrSigningJWT
     }
@@ -56,11 +56,12 @@ func CreateJWT(email string, expirationTime time.Duration) (string, error) {
 }
 
 func ParseJWTToken(tokenString string) (*Claims, error) {
+    config := configs.LoadConfigFromEnv()
     token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
         if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
             return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
         }
-        return Config.JWTSecret, nil
+        return config.JWTSecret, nil
     })
 
     if err != nil || !token.Valid {

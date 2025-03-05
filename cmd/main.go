@@ -56,6 +56,6 @@ func main() {
 		log.Printf("Graceful shutdown unsuccessful: %v", err)
 	}
 	
-	log.Println("Server was gracefully shut down.")
+	log.Println("Server has been gracefully shut down.")
 }
 
