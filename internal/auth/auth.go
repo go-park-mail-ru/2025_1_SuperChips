@@ -5,7 +5,13 @@ import (
 	"time"
 )
 
-func SetAuthCookie(w http.ResponseWriter, tokenString string, expirationTime time.Duration) {
+func SetCookieJWT(w http.ResponseWriter, email string) error {
+    expirationTime := time.Minute * 15
+    tokenString, err := CreateJWT(email, expirationTime)
+    if err != nil {
+        return err
+    }
+
     http.SetCookie(w, &http.Cookie{
         Name:     AuthToken,
         Value:    tokenString,
@@ -15,15 +21,6 @@ func SetAuthCookie(w http.ResponseWriter, tokenString string, expirationTime tim
         SameSite: http.SameSiteLaxMode,
         Expires:  time.Now().Add(expirationTime),
     })
-}
-
-func CookieAddJWT(w http.ResponseWriter, email string) error {
-    tokenString, err := CreateJWT(email, 15*time.Minute)
-    if err != nil {
-        return err
-    }
-
-    SetAuthCookie(w, tokenString, 15*time.Minute)
 
     return nil
 }

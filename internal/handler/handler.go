@@ -10,13 +10,14 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/user"
 )
 
-type errorAnswer struct {
-	Error string `json:"error"`
-}
-
 type loginData struct {
 	Password string `json:"password"`
 	Email    string `json:"email"`
+}
+
+type serverResponse struct {
+	Error      string           `json:"error,omitempty"`
+	PublicData *user.PublicUser `json:",omitempty"`
 }
 
 func handleError(w http.ResponseWriter, err error) {
@@ -34,16 +35,16 @@ func handleError(w http.ResponseWriter, err error) {
 	}
 }
 
-
-func serverGenerateAnswer(w http.ResponseWriter, body interface{}) {
+func serverGenerateJSONResponse(w http.ResponseWriter, body interface{}, statusCode int) {
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
 
 	if err := json.NewEncoder(w).Encode(body); err != nil {
 		handleError(w, err)
 	}
 }
 
-// здесь кмк без дженерика никак, так как *interface{} у меня не сработал
+// здесь кмк без дженерика тяжеловато будет, так как *interface{} у меня не сработал
 func decodeData[T any](w http.ResponseWriter, body io.ReadCloser, placeholder *T) error {
 	if err := json.NewDecoder(body).Decode(placeholder); err != nil {
 		handleError(w, err)
@@ -70,23 +71,22 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	errorResp := errorAnswer{
+	errorResp := serverResponse{
 		Error: "OK",
 	}
 
 	if err := user.LoginUser(data.Email, data.Password); err != nil {
 		errorResp.Error = err.Error()
-		w.WriteHeader(http.StatusForbidden)
-		serverGenerateAnswer(w, errorResp)
+		serverGenerateJSONResponse(w, errorResp, http.StatusForbidden)
 		return
 	}
 
-	if err := auth.CookieAddJWT(w, data.Email); err != nil {
+	if err := auth.SetCookieJWT(w, data.Email); err != nil {
 		handleError(w, err)
 		return
 	}
 
-	serverGenerateAnswer(w, errorResp)
+	serverGenerateJSONResponse(w, errorResp, http.StatusOK)
 }
 
 func RegistrationHandler(w http.ResponseWriter, r *http.Request) {
@@ -95,16 +95,22 @@ func RegistrationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	errorResp := errorAnswer{
+	errorResp := serverResponse{
 		Error: "OK",
 	}
 
+	statusCode := http.StatusOK
+
 	if err := user.AddUser(userData); err != nil {
 		errorResp.Error = err.Error()
-		w.WriteHeader(http.StatusBadRequest)
+		if err == user.ErrEmailAlreadyTaken || err == user.ErrUsernameAlreadyTaken {
+			statusCode = http.StatusConflict
+		} else {
+			statusCode = http.StatusBadRequest
+		}
 	}
-	
-	serverGenerateAnswer(w, errorResp)
+
+	serverGenerateJSONResponse(w, errorResp, statusCode)
 }
 
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {
@@ -137,11 +143,14 @@ func UserDataHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userData, err := user.GetUserPublicInfo(claims.Email)
+	response := serverResponse{
+		PublicData: &userData,
+	}
+
 	if err != nil {
 		handleError(w, err)
 		return
 	}
 
-	serverGenerateAnswer(w, userData)
+	serverGenerateJSONResponse(w, response, http.StatusOK)
 }
-

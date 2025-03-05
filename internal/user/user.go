@@ -36,54 +36,14 @@ var (
 	ErrUserNotFound         = errors.New("user not found")
 )
 
-type userStorage struct {
-	users []User
-	id    uint64
-}
 
-var userBase = userStorage{
-	users: make([]User, 0),
-	id:    1,
-}
+var userBase = initUserStorage(&mapUserStorage{})
+var id uint64 = 1
 
 func isValidEmail(email string) bool {
 	var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
 
 	return emailRegex.MatchString(email)
-}
-
-func (u userStorage) containsUsername(username string) bool {
-	for _, v := range u.users {
-		if v.Username == username {
-			return true
-		}
-	}
-
-	return false
-}
-
-func (u userStorage) containsEmail(email string) bool {
-	for _, v := range u.users {
-		if v.Email == email {
-			return true
-		}
-	}
-
-	return false
-}
-
-func (u userStorage) findUserByMail(email string) (User, bool) {
-	for _, v := range u.users {
-		if v.Email == email {
-			return v, true
-		}
-	}
-
-	return User{}, false
-}
-
-func (u *userStorage) addUserToBase(user User) {
-	userBase.users = append(userBase.users, user)
 }
 
 func (u User) ValidateUser() error {
@@ -119,16 +79,16 @@ func AddUser(user User) error {
 		return err
 	}
 
-	if userBase.containsEmail(user.Email) {
+	if userBase.repo.containsEmail(user.Email) {
 		return ErrEmailAlreadyTaken
 	}
 
-	if userBase.containsUsername(user.Username) {
+	if userBase.repo.containsUsername(user.Username) {
 		return ErrUsernameAlreadyTaken
 	}
 
-	user.Id = userBase.id
-	userBase.id++
+	user.Id = id
+	id++
 
 	hashPassword, err := security.HashPassword(user.Password)
 	if err != nil {
@@ -136,13 +96,13 @@ func AddUser(user User) error {
 	}
 
 	user.Password = hashPassword
-	userBase.addUserToBase(user)
+	userBase.repo.addUserToBase(user)
 
 	return nil
 }
 
 func LoginUser(email, password string) error {
-	user, found := userBase.findUserByMail(email)
+	user, found := userBase.repo.findUserByMail(email)
 	if !found {
 		return ErrInvalidCredentials
 	}
@@ -155,7 +115,7 @@ func LoginUser(email, password string) error {
 }
 
 func GetUserPublicInfo(email string) (PublicUser, error) {
-	user, found := userBase.findUserByMail(email)
+	user, found := userBase.repo.findUserByMail(email)
 	if !found {
 		return PublicUser{}, ErrUserNotFound
 	}
@@ -171,7 +131,7 @@ func GetUserPublicInfo(email string) (PublicUser, error) {
 }
 
 func GetUserId(email string) uint64 {
-	user, found := userBase.findUserByMail(email)
+	user, found := userBase.repo.findUserByMail(email)
 	if !found {
 		return 0
 	}
