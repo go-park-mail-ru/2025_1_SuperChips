@@ -2,10 +2,28 @@ package user
 
 import (
 	"errors"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/security"
+	"fmt"
 	"regexp"
 	"time"
 )
+
+type StatusError interface {
+	error
+	StatusCode() int
+}
+
+type statusError struct {
+	code int
+	msg  string
+}
+
+func (e *statusError) Error() string {
+	return e.msg
+}
+
+func (e *statusError) StatusCode() int {
+	return e.code
+}
 
 type User struct {
 	Id       uint64    `json:"-"`
@@ -24,6 +42,14 @@ type PublicUser struct {
 }
 
 var (
+	ErrForbidden  = &statusError{code: 403, msg: "invalid credentials"}
+	ErrValidation = &statusError{code: 400, msg: "validation failed"}
+	ErrConflict   = &statusError{code: 409, msg: "resource conflict"}
+	ErrNotFound   = &statusError{code: 404, msg: "resource not found"}
+	ErrInternal   = &statusError{code: 500, msg: "internal server error"}
+)
+
+var (
 	ErrInvalidEmail         = errors.New("invalid email")
 	ErrInvalidUsername      = errors.New("invalid username")
 	ErrNoPassword           = errors.New("no password")
@@ -36,9 +62,9 @@ var (
 	ErrUserNotFound         = errors.New("user not found")
 )
 
-
-var userBase = initUserStorage(&mapUserStorage{})
-var id uint64 = 1
+func wrapError(base error, err error) error {
+	return fmt.Errorf("%w: %w", base, err)
+}
 
 func isValidEmail(email string) bool {
 	var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
@@ -48,94 +74,29 @@ func isValidEmail(email string) bool {
 
 func (u User) ValidateUser() error {
 	if len(u.Email) > 64 || len(u.Email) < 3 {
-		return ErrInvalidEmail
+		return wrapError(ErrValidation, ErrInvalidEmail)
 	}
 
 	if !isValidEmail(u.Email) {
-		return ErrInvalidEmail
+		return wrapError(ErrValidation, ErrInvalidEmail)
 	}
 
 	if len(u.Username) > 32 || len(u.Username) < 2 {
-		return ErrInvalidUsername
+		return wrapError(ErrValidation, ErrInvalidUsername)
 	}
 
 	if u.Password == "" {
-		return ErrNoPassword
+		return wrapError(ErrValidation, ErrNoPassword)
 	}
 
 	if len(u.Password) > 96 {
-		return ErrPasswordTooLong
+		return wrapError(ErrValidation, ErrPasswordTooLong)
 	}
 
 	if u.Birthday.After(time.Now()) || time.Since(u.Birthday) > 150*365*24*time.Hour {
-		return ErrInvalidBirthday
+		return wrapError(ErrValidation, ErrInvalidBirthday)
 	}
 
 	return nil
-}
-
-func AddUser(user User) error {
-	if err := user.ValidateUser(); err != nil {
-		return err
-	}
-
-	if userBase.repo.containsEmail(user.Email) {
-		return ErrEmailAlreadyTaken
-	}
-
-	if userBase.repo.containsUsername(user.Username) {
-		return ErrUsernameAlreadyTaken
-	}
-
-	user.Id = id
-	id++
-
-	hashPassword, err := security.HashPassword(user.Password)
-	if err != nil {
-		return ErrInternalError
-	}
-
-	user.Password = hashPassword
-	userBase.repo.addUserToBase(user)
-
-	return nil
-}
-
-func LoginUser(email, password string) error {
-	user, found := userBase.repo.findUserByMail(email)
-	if !found {
-		return ErrInvalidCredentials
-	}
-
-	if !security.ComparePassword(password, user.Password) {
-		return ErrInvalidCredentials
-	}
-
-	return nil
-}
-
-func GetUserPublicInfo(email string) (PublicUser, error) {
-	user, found := userBase.repo.findUserByMail(email)
-	if !found {
-		return PublicUser{}, ErrUserNotFound
-	}
-
-	publicUser := PublicUser{
-		Username: user.Username,
-		Email:    user.Email,
-		Birthday: user.Birthday,
-		Avatar:   user.Avatar,
-	}
-
-	return publicUser, nil
-}
-
-func GetUserId(email string) uint64 {
-	user, found := userBase.repo.findUserByMail(email)
-	if !found {
-		return 0
-	}
-
-	return user.Id
 }
 

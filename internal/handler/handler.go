@@ -2,13 +2,21 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
 
+	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/auth"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/user"
 )
+
+type AppHandler struct {
+	Config  configs.Config
+	Storage user.MapUserStorage
+}
 
 type loginData struct {
 	Password string `json:"password"`
@@ -16,23 +24,30 @@ type loginData struct {
 }
 
 type serverResponse struct {
-	Error      string           `json:"error,omitempty"`
-	PublicData *user.PublicUser `json:",omitempty"`
+	Description string      `json:"description,omitempty"`
+	Data        interface{} `json:"data,omitempty"`
 }
 
+var ErrBadRequest = fmt.Errorf("bad request")
+
 func handleError(w http.ResponseWriter, err error) {
-	switch err {
-	case user.ErrEmailAlreadyTaken, user.ErrUsernameAlreadyTaken:
-		http.Error(w, http.StatusText(http.StatusConflict), http.StatusConflict)
-	case user.ErrInvalidBirthday, user.ErrInvalidCredentials, user.ErrInvalidEmail, user.ErrInvalidUsername, user.ErrNoPassword, user.ErrPasswordTooLong:
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-	case http.ErrNoCookie, auth.ErrorExpiredToken:
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-	case user.ErrUserNotFound:
-		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-	default:
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	var authErr user.StatusError
+	if errors.As(err, &authErr) {
+		http.Error(w, http.StatusText(authErr.StatusCode()), authErr.StatusCode())
+		return
 	}
+
+	if errors.Is(err, http.ErrNoCookie) {
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		return
+	}
+
+	if errors.Is(err, ErrBadRequest) {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 }
 
 func serverGenerateJSONResponse(w http.ResponseWriter, body interface{}, statusCode int) {
@@ -44,17 +59,18 @@ func serverGenerateJSONResponse(w http.ResponseWriter, body interface{}, statusC
 	}
 }
 
-// здесь кмк без дженерика тяжеловато будет, так как *interface{} у меня не сработал
 func decodeData[T any](w http.ResponseWriter, body io.ReadCloser, placeholder *T) error {
+	defer body.Close()
+
 	if err := json.NewDecoder(body).Decode(placeholder); err != nil {
-		handleError(w, err)
+		handleError(w, fmt.Errorf("%w: %s", ErrBadRequest, err.Error()))
 		return err
 	}
 
 	return nil
 }
 
-func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
+func (app AppHandler) HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
 
@@ -65,23 +81,25 @@ func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func LoginHandler(w http.ResponseWriter, r *http.Request) {
+func (app AppHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	data := loginData{}
 	if err := decodeData(w, r.Body, &data); err != nil {
 		return
 	}
 
 	errorResp := serverResponse{
-		Error: "OK",
+		Description: "OK",
 	}
 
-	if err := user.LoginUser(data.Email, data.Password); err != nil {
-		errorResp.Error = err.Error()
+	if err := app.Storage.LoginUser(data.Email, data.Password); err != nil {
+		errorResp.Description = "invalid credentials"
 		serverGenerateJSONResponse(w, errorResp, http.StatusForbidden)
 		return
 	}
 
-	if err := auth.SetCookieJWT(w, data.Email); err != nil {
+	id := app.Storage.GetUserId(data.Email)
+
+	if err := auth.SetCookieJWT(w, app.Config, data.Email, id); err != nil {
 		handleError(w, err)
 		return
 	}
@@ -89,31 +107,36 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	serverGenerateJSONResponse(w, errorResp, http.StatusOK)
 }
 
-func RegistrationHandler(w http.ResponseWriter, r *http.Request) {
+func (app AppHandler) RegistrationHandler(w http.ResponseWriter, r *http.Request) {
 	userData := user.User{}
 	if err := decodeData(w, r.Body, &userData); err != nil {
 		return
 	}
 
 	errorResp := serverResponse{
-		Error: "OK",
+		Description: "OK",
 	}
 
 	statusCode := http.StatusOK
 
-	if err := user.AddUser(userData); err != nil {
-		errorResp.Error = err.Error()
-		if err == user.ErrEmailAlreadyTaken || err == user.ErrUsernameAlreadyTaken {
+	if err := app.Storage.AddUser(userData); err != nil {
+		switch {
+		case errors.Is(err, user.ErrConflict):
 			statusCode = http.StatusConflict
-		} else {
+			errorResp.Description = err.Error()
+		case errors.Is(err, user.ErrValidation):
 			statusCode = http.StatusBadRequest
+			errorResp.Description = err.Error()
+		default:
+			handleError(w, err)
+			return
 		}
 	}
 
 	serverGenerateJSONResponse(w, errorResp, statusCode)
 }
 
-func LogoutHandler(w http.ResponseWriter, r *http.Request) {
+func (app AppHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	expiredCookie := &http.Cookie{
 		Name:     auth.AuthToken,
 		Value:    "",
@@ -129,28 +152,28 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func UserDataHandler(w http.ResponseWriter, r *http.Request) {
+func (app AppHandler) UserDataHandler(w http.ResponseWriter, r *http.Request) {
 	token, err := r.Cookie(auth.AuthToken)
 	if err != nil {
 		handleError(w, err)
 		return
 	}
 
-	claims, err := auth.ParseJWTToken(token.Value)
+	claims, err := auth.ParseJWTToken(token.Value, app.Config)
 	if err != nil {
 		handleError(w, err)
 		return
 	}
 
-	userData, err := user.GetUserPublicInfo(claims.Email)
+	userData, err := app.Storage.GetUserPublicInfo(claims.Email)
+	if err != nil {
+		handleError(w, err)
+		return
+	}
 	response := serverResponse{
-		PublicData: &userData,
-	}
-
-	if err != nil {
-		handleError(w, err)
-		return
+		Data: &userData,
 	}
 
 	serverGenerateJSONResponse(w, response, http.StatusOK)
 }
+

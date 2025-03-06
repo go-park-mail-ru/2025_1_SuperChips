@@ -3,11 +3,12 @@ package auth
 import (
 	"net/http"
 	"time"
+
+	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 )
 
-func SetCookieJWT(w http.ResponseWriter, email string) error {
-    expirationTime := time.Minute * 15
-    tokenString, err := CreateJWT(email, expirationTime)
+func SetCookieJWT(w http.ResponseWriter, config configs.Config, email string, userID uint64) error {
+    tokenString, err := CreateJWT(config, userID, email)
     if err != nil {
         return err
     }
@@ -17,10 +18,11 @@ func SetCookieJWT(w http.ResponseWriter, email string) error {
         Value:    tokenString,
         Path:     "/",
         HttpOnly: true,
-        Secure:   false,
+        Secure:   config.CookieSecure,
         SameSite: http.SameSiteLaxMode,
-        Expires:  time.Now().Add(expirationTime),
+        Expires:  time.Now().Add(config.ExpirationTime),
     })
 
     return nil
 }
+

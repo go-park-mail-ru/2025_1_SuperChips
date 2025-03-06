@@ -11,17 +11,30 @@ import (
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/handler"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/user"
 )
 
 func main() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /health", handler.HealthCheckHandler)
-	mux.HandleFunc("POST /api/v1/auth/login", handler.LoginHandler)
-	mux.HandleFunc("POST /api/v1/auth/registration", handler.RegistrationHandler)
-	mux.HandleFunc("POST /api/v1/auth/logout", handler.LogoutHandler)
-	mux.HandleFunc("GET /api/v1/auth/user", handler.UserDataHandler)
 
-	config := configs.LoadConfigFromEnv()
+	config, err := configs.LoadConfigFromEnv()
+	if err != nil {
+		log.Fatalf("Cannot launch due to config error: %s", err)
+	}	
+
+	storage := user.MapUserStorage{}
+	storage.Initialize()
+
+	app := handler.AppHandler{
+		Config: config,
+		Storage: storage,
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /health", app.HealthCheckHandler)
+	mux.HandleFunc("POST /api/v1/auth/login", app.LoginHandler)
+	mux.HandleFunc("POST /api/v1/auth/registration", app.RegistrationHandler)
+	mux.HandleFunc("POST /api/v1/auth/logout", app.LogoutHandler)
+	mux.HandleFunc("GET /api/v1/auth/user", app.UserDataHandler)
 
 	server := http.Server{
 		Addr: config.Port,

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/user"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
@@ -29,15 +28,12 @@ var (
 	ErrorExpiredToken   = errors.New("expired token")
 )
 
-func CreateJWT(email string, expirationTime time.Duration) (string, error) {
-	userID := user.GetUserId(email)
+func CreateJWT(config configs.Config, userID uint64, email string) (string, error) {
 	if userID == 0 {
 		return "", ErrInvalidUser
 	}
 
-	config := configs.LoadConfigFromEnv()
-
-	expiration := time.Now().Add(expirationTime)
+	expiration := time.Now().Add(config.ExpirationTime)
 	claims := &Claims{
 		UserID: int(userID),
 		Email:  email,
@@ -57,14 +53,13 @@ func CreateJWT(email string, expirationTime time.Duration) (string, error) {
 	return tokenString, nil
 }
 
-func ParseJWTToken(tokenString string) (*Claims, error) {
-	config := configs.LoadConfigFromEnv()
+func ParseJWTToken(tokenString string, config configs.Config) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		return config.JWTSecret, nil
-	})
+	})  
 
 	if err != nil || !token.Valid {
 		return nil, ErrorExpiredToken
@@ -77,3 +72,4 @@ func ParseJWTToken(tokenString string) (*Claims, error) {
 
 	return claims, nil
 }
+

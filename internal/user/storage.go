@@ -1,35 +1,22 @@
 package user
 
-import "sync"
+import (
+	"sync"
 
-type userRepository interface {
-	containsUsername(username string) bool
-	containsEmail(email string) bool
-	findUserByMail(email string) (User, bool)
-	addUserToBase(user User)
-	initialize()
-}
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/security"
+)
 
-type userStorage struct {
-	repo userRepository
-}
-
-type mapUserStorage struct {
+type MapUserStorage struct {
 	users map[string]User
+	id    uint
 }
 
-func initUserStorage(repo userRepository) userStorage {
-	repo.initialize()
-	return userStorage{
-		repo: repo,
-	}
-}
-
-func (u *mapUserStorage) initialize() {
+func (u *MapUserStorage) Initialize() {
 	u.users = make(map[string]User, 0)
+	u.id = 1
 }
 
-func (u mapUserStorage) containsUsername(username string) bool {
+func (u MapUserStorage) containsUsername(username string) bool {
 	for _, v := range u.users {
 		if v.Username == username {
 			return true
@@ -39,7 +26,7 @@ func (u mapUserStorage) containsUsername(username string) bool {
 	return false
 }
 
-func (u mapUserStorage) containsEmail(email string) bool {
+func (u MapUserStorage) containsEmail(email string) bool {
 	for _, v := range u.users {
 		if v.Email == email {
 			return true
@@ -49,7 +36,7 @@ func (u mapUserStorage) containsEmail(email string) bool {
 	return false
 }
 
-func (u mapUserStorage) findUserByMail(email string) (User, bool) {
+func (u MapUserStorage) findUserByMail(email string) (User, bool) {
 	for _, v := range u.users {
 		if v.Email == email {
 			return v, true
@@ -59,11 +46,76 @@ func (u mapUserStorage) findUserByMail(email string) (User, bool) {
 	return User{}, false
 }
 
-func (u *mapUserStorage) addUserToBase(user User) {
+func (u *MapUserStorage) addUserToBase(user User) {
 	m := sync.RWMutex{}
 
 	m.Lock()
 	u.users[user.Email] = user
 	m.Unlock()
+}
+
+func (storage *MapUserStorage) AddUser(user User) error {
+	if err := user.ValidateUser(); err != nil {
+		return err
+	}
+
+	if storage.containsEmail(user.Email) {
+		return wrapError(ErrConflict, ErrEmailAlreadyTaken)
+	}
+
+	if storage.containsUsername(user.Username) {
+		return wrapError(ErrConflict, ErrUsernameAlreadyTaken)
+	}
+
+	user.Id = uint64(storage.id)
+	storage.id++
+
+	hashPassword, err := security.HashPassword(user.Password)
+	if err != nil {
+		return wrapError(ErrInternal, nil)
+	}
+
+	user.Password = hashPassword
+	storage.addUserToBase(user)
+
+	return nil
+}
+
+func (storage MapUserStorage) LoginUser(email, password string) error {
+	user, found := storage.findUserByMail(email)
+	if !found {
+		return wrapError(ErrForbidden, ErrInvalidCredentials)
+	}
+
+	if !security.ComparePassword(password, user.Password) {
+		return wrapError(ErrForbidden, ErrInvalidCredentials)
+	}
+
+	return nil
+}
+
+func (storage MapUserStorage) GetUserPublicInfo(email string) (PublicUser, error) {
+	user, found := storage.findUserByMail(email)
+	if !found {
+		return PublicUser{}, wrapError(ErrNotFound, ErrUserNotFound)
+	}
+
+	publicUser := PublicUser{
+		Username: user.Username,
+		Email:    user.Email,
+		Birthday: user.Birthday,
+		Avatar:   user.Avatar,
+	}
+
+	return publicUser, nil
+}
+
+func (storage MapUserStorage) GetUserId(email string) uint64 {
+	user, found := storage.findUserByMail(email)
+	if !found {
+		return 0
+	}
+
+	return user.Id
 }
 
