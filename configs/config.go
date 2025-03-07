@@ -14,10 +14,12 @@ type Config struct {
 	JWTSecret      []byte
 	ExpirationTime time.Duration
 	CookieSecure   bool
+	Environment    string
 }
 
 var (
 	errMissingJWT = errors.New("missing jwt token key")
+	errNoEnv      = errors.New("missing env variable")
 )
 
 func printConfig(cfg Config) {
@@ -26,6 +28,7 @@ func printConfig(cfg Config) {
 	fmt.Printf("Port: %s\n", cfg.Port)
 	fmt.Printf("ExpirationTime: %s\n", cfg.ExpirationTime.String())
 	fmt.Printf("CookieSecure: %t\n", cfg.CookieSecure)
+	fmt.Printf("Env: %s\n", cfg.Environment)
 	fmt.Println("-----------------------------------------------")
 }
 
@@ -74,8 +77,22 @@ func LoadConfigFromEnv() (Config, error) {
 		log.Println("env variable cookieSecure not give, setting default value (false)")
 	}
 
+	env, ok := os.LookupEnv("ENVIRONMENT")
+	if ok {
+		envLower := strings.ToLower(env)
+		if envLower == "prod" {
+			config.Environment = envLower
+		} else if envLower == "test" {
+			config.Environment = envLower
+		} else {
+			log.Println("could not parse environment variable")
+			return config, errNoEnv
+		}
+	} else {
+		return config, errNoEnv
+	}
+
 	printConfig(config)
 
 	return config, nil
 }
-

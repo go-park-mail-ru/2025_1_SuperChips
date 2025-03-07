@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
@@ -30,6 +31,32 @@ type serverResponse struct {
 
 var ErrBadRequest = fmt.Errorf("bad request")
 
+func CorsMiddleware(next func (http.ResponseWriter, *http.Request), cfg configs.Config) http.HandlerFunc {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+
+		if cfg.Environment == "prod" {
+			allowedOrigins := []string{
+				"http://localhost:8080",
+			}
+
+			if slices.Contains(allowedOrigins, origin) {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+			} else {
+				w.WriteHeader(http.StatusForbidden)
+				return
+			}
+		} else {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+		}
+
+        w.Header().Set("Access-Control-Allow-Methods", "GET, POST")
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+        next(w, r)
+    })
+}
 func handleError(w http.ResponseWriter, err error) {
 	var authErr user.StatusError
 	if errors.As(err, &authErr) {

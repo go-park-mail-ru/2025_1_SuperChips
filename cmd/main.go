@@ -15,7 +15,6 @@ import (
 )
 
 func main() {
-
 	config, err := configs.LoadConfigFromEnv()
 	if err != nil {
 		log.Fatalf("Cannot launch due to config error: %s", err)
@@ -30,11 +29,11 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /health", app.HealthCheckHandler)
-	mux.HandleFunc("POST /api/v1/auth/login", app.LoginHandler)
-	mux.HandleFunc("POST /api/v1/auth/registration", app.RegistrationHandler)
-	mux.HandleFunc("POST /api/v1/auth/logout", app.LogoutHandler)
-	mux.HandleFunc("GET /api/v1/auth/user", app.UserDataHandler)
+	mux.HandleFunc("GET /health", handler.CorsMiddleware(app.HealthCheckHandler, config))
+	mux.HandleFunc("POST /api/v1/auth/login", handler.CorsMiddleware(app.LoginHandler, config))
+	mux.HandleFunc("POST /api/v1/auth/registration", handler.CorsMiddleware(app.RegistrationHandler, config))
+	mux.HandleFunc("POST /api/v1/auth/logout", handler.CorsMiddleware(app.LogoutHandler, config))
+	mux.HandleFunc("GET /api/v1/auth/user", handler.CorsMiddleware(app.UserDataHandler, config))
 
 	server := http.Server{
 		Addr: config.Port,

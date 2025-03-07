@@ -1,0 +1,8 @@
+version: '3.8'
+services:
+  app:
+    build: .
+    environment:
+      - JWT_SECRET=${JWT_SECRET}x
+    ports:
+      - "${PORT}:${PORT}"
