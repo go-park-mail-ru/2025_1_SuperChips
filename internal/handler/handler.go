@@ -43,6 +43,7 @@ func CorsMiddleware(next func (http.ResponseWriter, *http.Request), cfg configs.
 			if slices.Contains(allowedOrigins, origin) {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 			} else {
+				w.Header().Set("Access-Control-Allow-Origin", "http://localhost:8080")
 				w.WriteHeader(http.StatusForbidden)
 				return
 			}
