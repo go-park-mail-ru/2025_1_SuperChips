@@ -14,4 +14,5 @@ ENV ENVIRONMENT=prod
 
 EXPOSE $PORT
 
+
 ENTRYPOINT ["./main"]
