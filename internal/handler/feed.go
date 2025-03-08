@@ -16,7 +16,7 @@ func parsePageQueryParam(pageStr string) int {
 func (app AppHandler) FeedHandler(w http.ResponseWriter, r *http.Request) {
 	imageFiles := app.PinStorage.Pins
 
-    pageSize := 10
+    pageSize := 15
     page := parsePageQueryParam(r.URL.Query().Get("page"))
 	if page == 0 {
 
