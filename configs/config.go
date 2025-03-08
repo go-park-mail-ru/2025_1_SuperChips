@@ -14,6 +14,7 @@ type Config struct {
 	ExpirationTime time.Duration
 	CookieSecure   bool
 	Environment    string
+	IpAddress      string
 }
 
 var (
@@ -28,6 +29,7 @@ func printConfig(cfg Config) {
 	log.Printf("ExpirationTime: %s\n", cfg.ExpirationTime.String())
 	log.Printf("CookieSecure: %t\n", cfg.CookieSecure)
 	log.Printf("Env: %s\n", cfg.Environment)
+	log.Printf("IP: %s\n", cfg.IpAddress)
 	log.Println("-----------------------------------------------")
 }
 
@@ -89,6 +91,14 @@ func LoadConfigFromEnv() (Config, error) {
 		}
 	} else {
 		return config, errNoEnv
+	}
+
+	ipAddress, ok := os.LookupEnv("IP")
+	if ok {
+		config.IpAddress = ipAddress
+	} else {
+		log.Println("env variable IpAddress not given, setting default value (localhost)")
+		config.IpAddress = "localhost"
 	}
 
 	printConfig(config)

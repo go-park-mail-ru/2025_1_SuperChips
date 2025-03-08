@@ -5,25 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 )
-
-type StatusError interface {
-	error
-	StatusCode() int
-}
-
-type statusError struct {
-	code int
-	msg  string
-}
-
-func (e *statusError) Error() string {
-	return e.msg
-}
-
-func (e *statusError) StatusCode() int {
-	return e.code
-}
 
 func isImageFile(filename string) bool {
     ext := strings.ToLower(filepath.Ext(filename))
@@ -39,7 +23,7 @@ type PinSlice struct {
 	Pins []PinData
 }
 
-func (p *PinSlice) Initialize() {
+func (p *PinSlice) Initialize(cfg configs.Config) {
 	baseDir := "./static/img"
 
 	files, err := os.ReadDir(baseDir)
@@ -53,7 +37,7 @@ func (p *PinSlice) Initialize() {
         if !file.IsDir() && isImageFile(file.Name()) {
             p.Pins = append(p.Pins, PinData{
 				Header: fmt.Sprintf("Header %d", id),
-				Image: file.Name(),
+				Image: fmt.Sprintf("http://%s%s/static/img/%s", cfg.IpAddress, cfg.Port, file.Name()),
 				Author: fmt.Sprintf("Author %d", -id),
 			})
 			id++
