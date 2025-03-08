@@ -64,7 +64,7 @@ func CorsMiddleware(next http.HandlerFunc, cfg configs.Config, allowedMethods []
 			return
 		}
 
-		allowedOrigins := []string{"http://localhost:8080", "http://146.185.208.105:8000"}
+		allowedOrigins := []string{"http://localhost:8080", "http://146.185.208.105:8000", "http://localhost:8000"}
         if cfg.Environment == "prod" {
             origin := r.Header.Get("Origin")
             if slices.Contains(allowedOrigins, origin) {

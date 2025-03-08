@@ -18,9 +18,6 @@ func (app AppHandler) FeedHandler(w http.ResponseWriter, r *http.Request) {
 
     pageSize := 15
     page := parsePageQueryParam(r.URL.Query().Get("page"))
-	if page == 0 {
-
-	}
 
     totalPages := (len(imageFiles) + pageSize - 1) / pageSize
 
