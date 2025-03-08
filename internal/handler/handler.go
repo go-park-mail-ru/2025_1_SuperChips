@@ -37,9 +37,10 @@ func CorsMiddleware(next http.HandlerFunc, cfg configs.Config) http.HandlerFunc 
         w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-CSRF-Token")
         w.Header().Set("Access-Control-Allow-Credentials", "true")
 
+		allowedOrigins := []string{"http://localhost:8080", "http://146.185.208.105:8000"}
+
         if r.Method == "OPTIONS" {
             if cfg.Environment == "prod" {
-                allowedOrigins := []string{"http://localhost:8080"}
                 origin := r.Header.Get("Origin")
                 if slices.Contains(allowedOrigins, origin) {
                     w.Header().Set("Access-Control-Allow-Origin", origin)
@@ -55,7 +56,6 @@ func CorsMiddleware(next http.HandlerFunc, cfg configs.Config) http.HandlerFunc 
         }
 
         if cfg.Environment == "prod" {
-            allowedOrigins := []string{"http://localhost:8080"}
             origin := r.Header.Get("Origin")
             if slices.Contains(allowedOrigins, origin) {
                 w.Header().Set("Access-Control-Allow-Origin", origin)
