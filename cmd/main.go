@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/feed"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/handler"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/user"
 )
@@ -20,19 +21,29 @@ func main() {
 		log.Fatalf("Cannot launch due to config error: %s", err)
 	}	
 
-	storage := user.MapUserStorage{}
-	storage.Initialize()
+	userStorage := user.MapUserStorage{}
+	userStorage.Initialize()
+
+	pinStorage := feed.PinSlice{}
+	pinStorage.Initialize()
 
 	app := handler.AppHandler{
 		Config: config,
-		Storage: storage,
+		UserStorage: userStorage,
+		PinStorage: pinStorage,
 	}
 
 	allowedGetOptions := []string{http.MethodGet, http.MethodOptions}
 	allowedPostOptions := []string{http.MethodPost, http.MethodOptions}
 
+	fs := http.FileServer(http.Dir("./static/"))
+
 	mux := http.NewServeMux()
+
+	mux.Handle("GET /static/", http.StripPrefix("/static/", fs))
+
 	mux.HandleFunc("/health", handler.CorsMiddleware(app.HealthCheckHandler, config, allowedGetOptions))
+	mux.HandleFunc("/api/v1/feed", handler.CorsMiddleware(app.FeedHandler, config, allowedGetOptions))
 	mux.HandleFunc("/api/v1/auth/login", handler.CorsMiddleware(app.LoginHandler, config, allowedPostOptions))
 	mux.HandleFunc("/api/v1/auth/registration", handler.CorsMiddleware(app.RegistrationHandler, config, allowedPostOptions))
 	mux.HandleFunc("/api/v1/auth/logout", handler.CorsMiddleware(app.LogoutHandler, config, allowedPostOptions))

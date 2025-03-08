@@ -12,12 +12,14 @@ import (
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/auth"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/feed"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/user"
 )
 
 type AppHandler struct {
 	Config  configs.Config
-	Storage user.MapUserStorage
+	UserStorage user.MapUserStorage
+	PinStorage feed.PinSlice
 }
 
 type loginData struct {

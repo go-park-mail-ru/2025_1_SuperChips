@@ -30,13 +30,13 @@ func (app AppHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		Description: "OK",
 	}
 
-	if err := app.Storage.LoginUser(data.Email, data.Password); err != nil {
+	if err := app.UserStorage.LoginUser(data.Email, data.Password); err != nil {
 		response.Description = "invalid credentials"
 		serverGenerateJSONResponse(w, response, http.StatusForbidden)
 		return
 	}
 
-	id := app.Storage.GetUserId(data.Email)
+	id := app.UserStorage.GetUserId(data.Email)
 
 	if err := setCookieJWT(w, app.Config, data.Email, id); err != nil {
 		handleError(w, err)
@@ -58,7 +58,7 @@ func (app AppHandler) RegistrationHandler(w http.ResponseWriter, r *http.Request
 
 	statusCode := http.StatusOK
 
-	if err := app.Storage.AddUser(userData); err != nil {
+	if err := app.UserStorage.AddUser(userData); err != nil {
 		switch {
 		case errors.Is(err, user.ErrConflict):
 			statusCode = http.StatusConflict
@@ -117,7 +117,7 @@ func (app AppHandler) UserDataHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userData, err := app.Storage.GetUserPublicInfo(claims.Email)
+	userData, err := app.UserStorage.GetUserPublicInfo(claims.Email)
 	if err != nil {
 		handleError(w, err)
 		return
