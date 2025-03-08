@@ -7,24 +7,6 @@ import (
 	"time"
 )
 
-type StatusError interface {
-	error
-	StatusCode() int
-}
-
-type statusError struct {
-	code int
-	msg  string
-}
-
-func (e *statusError) Error() string {
-	return e.msg
-}
-
-func (e *statusError) StatusCode() int {
-	return e.code
-}
-
 type User struct {
 	Id       uint64    `json:"-"`
 	Username string    `json:"username"`

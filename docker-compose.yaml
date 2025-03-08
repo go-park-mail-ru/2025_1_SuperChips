@@ -1,6 +1,7 @@
 version: '3.8'
 services:
-  app:
+  backend:
+    container_name: flow_backend
     build: .
     environment:
       - JWT_SECRET=${JWT_SECRET}x

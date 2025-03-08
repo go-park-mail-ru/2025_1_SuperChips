@@ -6,6 +6,25 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/security"
 )
 
+type StatusError interface {
+	error
+	StatusCode() int
+}
+
+type statusError struct {
+	code int
+	msg  string
+}
+
+func (e *statusError) Error() string {
+	return e.msg
+}
+
+func (e *statusError) StatusCode() int {
+	return e.code
+}
+
+
 type MapUserStorage struct {
 	users map[string]User
 	id    uint

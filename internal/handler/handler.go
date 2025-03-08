@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
@@ -31,64 +32,92 @@ type serverResponse struct {
 
 var ErrBadRequest = fmt.Errorf("bad request")
 
-func CorsMiddleware(next http.HandlerFunc, cfg configs.Config) http.HandlerFunc {
+func setCookieJWT(w http.ResponseWriter, config configs.Config, email string, userID uint64) error {
+    tokenString, err := auth.CreateJWT(config, userID, email)
+    if err != nil {
+        return err
+    }
+
+    http.SetCookie(w, &http.Cookie{
+        Name:     auth.AuthToken,
+        Value:    tokenString,
+        Path:     "/",
+        HttpOnly: true,
+        Secure:   config.CookieSecure,
+        SameSite: http.SameSiteLaxMode,
+        Expires:  time.Now().Add(config.ExpirationTime),
+    })
+
+    return nil
+}
+
+func CorsMiddleware(next http.HandlerFunc, cfg configs.Config, allowedMethods []string) http.HandlerFunc {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS")
+        w.Header().Set("Access-Control-Allow-Methods", strings.Join(allowedMethods, ", "))
         w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-CSRF-Token")
         w.Header().Set("Access-Control-Allow-Credentials", "true")
 
+		if !slices.Contains(allowedMethods, r.Method) {
+			handleHttpError(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+			return
+		}
+
 		allowedOrigins := []string{"http://localhost:8080", "http://146.185.208.105:8000"}
-
-        if r.Method == "OPTIONS" {
-            if cfg.Environment == "prod" {
-                origin := r.Header.Get("Origin")
-                if slices.Contains(allowedOrigins, origin) {
-                    w.Header().Set("Access-Control-Allow-Origin", origin)
-                } else {
-                    http.Error(w, "Forbidden", http.StatusForbidden)
-                    return
-                }
-            } else {
-                w.Header().Set("Access-Control-Allow-Origin", "*")
-            }
-            w.WriteHeader(http.StatusOK)
-            return
-        }
-
         if cfg.Environment == "prod" {
             origin := r.Header.Get("Origin")
             if slices.Contains(allowedOrigins, origin) {
                 w.Header().Set("Access-Control-Allow-Origin", origin)
             } else {
-                http.Error(w, "Forbidden", http.StatusForbidden)
+				handleHttpError(w, "Forbidden", http.StatusForbidden)
                 return
             }
         } else {
             w.Header().Set("Access-Control-Allow-Origin", "*")
         }
 
+		if r.Method == http.MethodOptions {
+            w.WriteHeader(http.StatusOK)
+            return
+		}
+
         next.ServeHTTP(w, r)
     })
 }
 
+func handleHttpError(w http.ResponseWriter, errorDesc string, statusCode int) {
+	errorResp := serverResponse{
+		Description: errorDesc,
+	}
+
+	serverGenerateJSONResponse(w, errorResp, statusCode)
+}
+
 func handleError(w http.ResponseWriter, err error) {
 	var authErr user.StatusError
+
+	errorResp := serverResponse{
+		Description: http.StatusText(http.StatusInternalServerError),
+	}
+
 	if errors.As(err, &authErr) {
-		http.Error(w, http.StatusText(authErr.StatusCode()), authErr.StatusCode())
+		errorResp.Description = http.StatusText(authErr.StatusCode())
+		serverGenerateJSONResponse(w, errorResp, authErr.StatusCode())
 		return
 	}
 
 	if errors.Is(err, http.ErrNoCookie) {
-		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		errorResp.Description = http.StatusText(http.StatusForbidden)
+		serverGenerateJSONResponse(w, errorResp, http.StatusForbidden)
 		return
 	}
 
 	if errors.Is(err, ErrBadRequest) {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		errorResp.Description = http.StatusText(http.StatusBadRequest)
+		serverGenerateJSONResponse(w, errorResp, http.StatusBadRequest)
 		return
 	}
 
-	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	serverGenerateJSONResponse(w, errorResp, http.StatusInternalServerError)
 }
 
 func serverGenerateJSONResponse(w http.ResponseWriter, body interface{}, statusCode int) {
@@ -109,112 +138,5 @@ func decodeData[T any](w http.ResponseWriter, body io.ReadCloser, placeholder *T
 	}
 
 	return nil
-}
-
-func (app AppHandler) HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusOK)
-
-	_, err := w.Write([]byte("server is up"))
-	if err != nil {
-		handleError(w, err)
-		return
-	}
-}
-
-func (app AppHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
-	data := loginData{}
-	if err := decodeData(w, r.Body, &data); err != nil {
-		return
-	}
-
-	errorResp := serverResponse{
-		Description: "OK",
-	}
-
-	if err := app.Storage.LoginUser(data.Email, data.Password); err != nil {
-		errorResp.Description = "invalid credentials"
-		serverGenerateJSONResponse(w, errorResp, http.StatusForbidden)
-		return
-	}
-
-	id := app.Storage.GetUserId(data.Email)
-
-	if err := auth.SetCookieJWT(w, app.Config, data.Email, id); err != nil {
-		handleError(w, err)
-		return
-	}
-
-	serverGenerateJSONResponse(w, errorResp, http.StatusOK)
-}
-
-func (app AppHandler) RegistrationHandler(w http.ResponseWriter, r *http.Request) {
-	userData := user.User{}
-	if err := decodeData(w, r.Body, &userData); err != nil {
-		return
-	}
-
-	errorResp := serverResponse{
-		Description: "OK",
-	}
-
-	statusCode := http.StatusOK
-
-	if err := app.Storage.AddUser(userData); err != nil {
-		switch {
-		case errors.Is(err, user.ErrConflict):
-			statusCode = http.StatusConflict
-			errorResp.Description = err.Error()
-		case errors.Is(err, user.ErrValidation):
-			statusCode = http.StatusBadRequest
-			errorResp.Description = err.Error()
-		default:
-			handleError(w, err)
-			return
-		}
-	}
-
-	serverGenerateJSONResponse(w, errorResp, statusCode)
-}
-
-func (app AppHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
-	expiredCookie := &http.Cookie{
-		Name:     auth.AuthToken,
-		Value:    "",
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   false,
-		SameSite: http.SameSiteStrictMode,
-		Expires:  time.Now().Add(-time.Hour * 24 * 365),
-	}
-
-	http.SetCookie(w, expiredCookie)
-
-	w.WriteHeader(http.StatusOK)
-}
-
-func (app AppHandler) UserDataHandler(w http.ResponseWriter, r *http.Request) {
-	token, err := r.Cookie(auth.AuthToken)
-	if err != nil {
-		handleError(w, err)
-		return
-	}
-
-	claims, err := auth.ParseJWTToken(token.Value, app.Config)
-	if err != nil {
-		handleError(w, err)
-		return
-	}
-
-	userData, err := app.Storage.GetUserPublicInfo(claims.Email)
-	if err != nil {
-		handleError(w, err)
-		return
-	}
-	response := serverResponse{
-		Data: &userData,
-	}
-
-	serverGenerateJSONResponse(w, response, http.StatusOK)
 }
 

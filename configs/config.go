@@ -2,7 +2,6 @@ package configs
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -23,13 +22,13 @@ var (
 )
 
 func printConfig(cfg Config) {
-	fmt.Println("-----------------------------------------------")
-	fmt.Println("Resulting config: ")
-	fmt.Printf("Port: %s\n", cfg.Port)
-	fmt.Printf("ExpirationTime: %s\n", cfg.ExpirationTime.String())
-	fmt.Printf("CookieSecure: %t\n", cfg.CookieSecure)
-	fmt.Printf("Env: %s\n", cfg.Environment)
-	fmt.Println("-----------------------------------------------")
+	log.Println("-----------------------------------------------")
+	log.Println("Resulting config: ")
+	log.Printf("Port: %s\n", cfg.Port)
+	log.Printf("ExpirationTime: %s\n", cfg.ExpirationTime.String())
+	log.Printf("CookieSecure: %t\n", cfg.CookieSecure)
+	log.Printf("Env: %s\n", cfg.Environment)
+	log.Println("-----------------------------------------------")
 }
 
 func LoadConfigFromEnv() (Config, error) {
@@ -74,7 +73,7 @@ func LoadConfigFromEnv() (Config, error) {
 			log.Println("Error parsing cookieSecure, assuming false")
 		}
 	} else {
-		log.Println("env variable cookieSecure not give, setting default value (false)")
+		log.Println("env variable cookieSecure not given, setting default value (false)")
 	}
 
 	env, ok := os.LookupEnv("ENVIRONMENT")

@@ -28,12 +28,15 @@ func main() {
 		Storage: storage,
 	}
 
+	allowedGetOptions := []string{http.MethodGet, http.MethodOptions}
+	allowedPostOptions := []string{http.MethodPost, http.MethodOptions}
+
 	mux := http.NewServeMux()
-	mux.HandleFunc("/health", handler.CorsMiddleware(app.HealthCheckHandler, config))
-	mux.HandleFunc("/api/v1/auth/login", handler.CorsMiddleware(app.LoginHandler, config))
-	mux.HandleFunc("/api/v1/auth/registration", handler.CorsMiddleware(app.RegistrationHandler, config))
-	mux.HandleFunc("/api/v1/auth/logout", handler.CorsMiddleware(app.LogoutHandler, config))
-	mux.HandleFunc("/api/v1/auth/user", handler.CorsMiddleware(app.UserDataHandler, config))
+	mux.HandleFunc("/health", handler.CorsMiddleware(app.HealthCheckHandler, config, allowedGetOptions))
+	mux.HandleFunc("/api/v1/auth/login", handler.CorsMiddleware(app.LoginHandler, config, allowedPostOptions))
+	mux.HandleFunc("/api/v1/auth/registration", handler.CorsMiddleware(app.RegistrationHandler, config, allowedPostOptions))
+	mux.HandleFunc("/api/v1/auth/logout", handler.CorsMiddleware(app.LogoutHandler, config, allowedPostOptions))
+	mux.HandleFunc("/api/v1/auth/user", handler.CorsMiddleware(app.UserDataHandler, config, allowedGetOptions))
 
 	server := http.Server{
 		Addr: config.Port,
