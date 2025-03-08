@@ -31,34 +31,43 @@ type serverResponse struct {
 
 var ErrBadRequest = fmt.Errorf("bad request")
 
-func CorsMiddleware(next func (http.ResponseWriter, *http.Request), cfg configs.Config) http.HandlerFunc {
+func CorsMiddleware(next http.HandlerFunc, cfg configs.Config) http.HandlerFunc {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		origin := r.Header.Get("Origin")
-
-		if cfg.Environment == "prod" {
-			allowedOrigins := []string{
-				"http://localhost:8080",
-			}
-
-			if slices.Contains(allowedOrigins, origin) {
-				w.Header().Set("Access-Control-Allow-Origin", origin)
-			} else {
-				w.Header().Set("Access-Control-Allow-Origin", "http://localhost:8080")
-				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS")
-				w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-CSRF-Token")
-				w.Header().Set("Access-Control-Allow-Credentials", "true")
-				w.WriteHeader(http.StatusForbidden)
-				return
-			}
-		} else {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-		}
-
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS")
+        w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS")
         w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-CSRF-Token")
         w.Header().Set("Access-Control-Allow-Credentials", "true")
 
-        next(w, r)
+        if r.Method == "OPTIONS" {
+            if cfg.Environment == "prod" {
+                allowedOrigins := []string{"http://localhost:8080"}
+                origin := r.Header.Get("Origin")
+                if slices.Contains(allowedOrigins, origin) {
+                    w.Header().Set("Access-Control-Allow-Origin", origin)
+                } else {
+                    http.Error(w, "Forbidden", http.StatusForbidden)
+                    return
+                }
+            } else {
+                w.Header().Set("Access-Control-Allow-Origin", "*")
+            }
+            w.WriteHeader(http.StatusOK)
+            return
+        }
+
+        if cfg.Environment == "prod" {
+            allowedOrigins := []string{"http://localhost:8080"}
+            origin := r.Header.Get("Origin")
+            if slices.Contains(allowedOrigins, origin) {
+                w.Header().Set("Access-Control-Allow-Origin", origin)
+            } else {
+                http.Error(w, "Forbidden", http.StatusForbidden)
+                return
+            }
+        } else {
+            w.Header().Set("Access-Control-Allow-Origin", "*")
+        }
+
+        next.ServeHTTP(w, r)
     })
 }
 

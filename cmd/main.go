@@ -29,11 +29,11 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /health", handler.CorsMiddleware(app.HealthCheckHandler, config))
-	mux.HandleFunc("POST /api/v1/auth/login", handler.CorsMiddleware(app.LoginHandler, config))
-	mux.HandleFunc("POST /api/v1/auth/registration", handler.CorsMiddleware(app.RegistrationHandler, config))
-	mux.HandleFunc("POST /api/v1/auth/logout", handler.CorsMiddleware(app.LogoutHandler, config))
-	mux.HandleFunc("GET /api/v1/auth/user", handler.CorsMiddleware(app.UserDataHandler, config))
+	mux.HandleFunc("/health", handler.CorsMiddleware(app.HealthCheckHandler, config))
+	mux.HandleFunc("/api/v1/auth/login", handler.CorsMiddleware(app.LoginHandler, config))
+	mux.HandleFunc("/api/v1/auth/registration", handler.CorsMiddleware(app.RegistrationHandler, config))
+	mux.HandleFunc("/api/v1/auth/logout", handler.CorsMiddleware(app.LogoutHandler, config))
+	mux.HandleFunc("/api/v1/auth/user", handler.CorsMiddleware(app.UserDataHandler, config))
 
 	server := http.Server{
 		Addr: config.Port,
