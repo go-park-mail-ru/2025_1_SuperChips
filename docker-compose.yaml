@@ -4,6 +4,7 @@ services:
     container_name: flow_backend
     build: .
     environment:
-      - JWT_SECRET=${JWT_SECRET}x
+      - JWT_SECRET=${JWT_SECRET}
+      - IP=${IP}
     ports:
       - "${PORT}:${PORT}"
