@@ -22,7 +22,7 @@ func (app AppHandler) FeedHandler(w http.ResponseWriter, r *http.Request) {
     totalPages := (len(imageFiles) + pageSize - 1) / pageSize
 
     if page < 1 || page > totalPages {
-		handleHttpError(w, "Invalid page number", http.StatusBadRequest)
+		handleHttpError(w, "Page not found", http.StatusNotFound)
         return
     }
 

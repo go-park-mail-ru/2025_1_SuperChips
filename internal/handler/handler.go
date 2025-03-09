@@ -19,7 +19,7 @@ import (
 type AppHandler struct {
 	Config  configs.Config
 	UserStorage user.MapUserStorage
-	PinStorage feed.PinSlice
+	PinStorage feed.PinStorage
 }
 
 type loginData struct {

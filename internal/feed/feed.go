@@ -6,4 +6,3 @@ type PinData struct {
 	Author string `json:"author"`
 }
 
-

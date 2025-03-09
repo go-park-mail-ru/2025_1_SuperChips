@@ -19,11 +19,11 @@ func isImageFile(filename string) bool {
     }
 }
 
-type PinSlice struct {
+type PinStorage struct {
 	Pins []PinData
 }
 
-func (p *PinSlice) Initialize(cfg configs.Config) {
+func (p *PinStorage) Initialize(cfg configs.Config) {
 	baseDir := "./static/img"
 
 	files, err := os.ReadDir(baseDir)
