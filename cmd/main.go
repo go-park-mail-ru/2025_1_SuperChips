@@ -21,11 +21,8 @@ func main() {
 		log.Fatalf("Cannot launch due to config error: %s", err)
 	}	
 
-	userStorage := user.MapUserStorage{}
-	userStorage.Initialize()
-
-	pinStorage := feed.PinStorage{}
-	pinStorage.Initialize(config)
+	userStorage := user.NewMapUserStorage()
+	pinStorage := feed.NewPinStorage(config)
 
 	app := handler.AppHandler{
 		Config: config,

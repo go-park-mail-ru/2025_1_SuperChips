@@ -5,20 +5,34 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/auth"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/user"
 )
 
-func (app AppHandler) HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusOK)
-
-	_, err := w.Write([]byte("server is up"))
-	if err != nil {
-		handleError(w, err)
-		return
-	}
+func setCookie(w http.ResponseWriter, config configs.Config, name string, value string, httpOnly bool) {
+    http.SetCookie(w, &http.Cookie{
+        Name:     auth.AuthToken,
+        Value:    value,
+        Path:     "/",
+        HttpOnly: httpOnly,
+        Secure:   config.CookieSecure,
+        SameSite: http.SameSiteLaxMode,
+        Expires:  time.Now().Add(config.ExpirationTime),
+    })
 }
+
+func setCookieJWT(w http.ResponseWriter, config configs.Config, email string, userID uint64) error {
+    tokenString, err := auth.CreateJWT(config, userID, email)
+    if err != nil {
+        return err
+    }
+
+    setCookie(w, config, auth.AuthToken, tokenString, true)
+
+    return nil
+}
+
 
 func (app AppHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	data := loginData{}
@@ -56,13 +70,10 @@ func (app AppHandler) RegistrationHandler(w http.ResponseWriter, r *http.Request
 		Description: "OK",
 	}
 
-	statusCode := http.StatusOK
+	statusCode := http.StatusCreated
 
-	if err := app.UserStorage.AddUser(userData); err != nil {
+	if err := userData.ValidateUser(); err != nil {
 		switch {
-		case errors.Is(err, user.ErrConflict):
-			statusCode = http.StatusConflict
-			response.Description = "This email or username is already used"
 		case errors.Is(err, user.ErrValidation):
 			statusCode = http.StatusBadRequest
 			switch {
@@ -79,6 +90,14 @@ func (app AppHandler) RegistrationHandler(w http.ResponseWriter, r *http.Request
 			default:
 				response.Description = "Bad request"
 			}
+		}
+	}
+
+	if err := app.UserStorage.AddUser(userData); err != nil {
+		switch {
+		case errors.Is(err, user.ErrConflict):
+			statusCode = http.StatusConflict
+			response.Description = "This email or username is already used"
 		default:
 			handleError(w, err)
 			return
@@ -89,19 +108,16 @@ func (app AppHandler) RegistrationHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (app AppHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
-	expiredCookie := &http.Cookie{
-		Name:     auth.AuthToken,
-		Value:    "",
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   false,
-		SameSite: http.SameSiteStrictMode,
-		Expires:  time.Now().Add(-time.Hour * 24 * 365),
+	changedConfig := app.Config
+	changedConfig.ExpirationTime = -time.Hour * 24 * 365
+
+	setCookie(w, changedConfig, auth.AuthToken, "", true)
+
+	response := serverResponse{
+		Description: "logged out",
 	}
 
-	http.SetCookie(w, expiredCookie)
-
-	w.WriteHeader(http.StatusOK)
+	serverGenerateJSONResponse(w, response, http.StatusOK)
 }
 
 func (app AppHandler) UserDataHandler(w http.ResponseWriter, r *http.Request) {
@@ -113,6 +129,11 @@ func (app AppHandler) UserDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	claims, err := auth.ParseJWTToken(token.Value, app.Config)
 	if err != nil {
+		if errors.Is(err, auth.ErrorExpiredToken) {
+			handleHttpError(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			return
+		}
+
 		handleError(w, err)
 		return
 	}

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"regexp"
 	"time"
+
+	statusError "github.com/go-park-mail-ru/2025_1_SuperChips/internal/error"
 )
 
 type User struct {
@@ -24,11 +26,11 @@ type PublicUser struct {
 }
 
 var (
-	ErrForbidden  = &statusError{code: 403, msg: "invalid credentials"}
-	ErrValidation = &statusError{code: 400, msg: "validation failed"}
-	ErrConflict   = &statusError{code: 409, msg: "resource conflict"}
-	ErrNotFound   = &statusError{code: 404, msg: "resource not found"}
-	ErrInternal   = &statusError{code: 500, msg: "internal server error"}
+	ErrForbidden  = &statusError.StatusCodeError{Code: 403, Msg: "invalid credentials"}
+	ErrValidation = &statusError.StatusCodeError{Code: 400, Msg: "validation failed"}
+	ErrConflict   = &statusError.StatusCodeError{Code: 409, Msg: "resource conflict"}
+	ErrNotFound   = &statusError.StatusCodeError{Code: 404, Msg: "resource not found"}
+	ErrInternal   = &statusError.StatusCodeError{Code: 500, Msg: "internal server error"}
 )
 
 var (

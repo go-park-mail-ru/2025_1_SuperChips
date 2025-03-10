@@ -6,31 +6,20 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/security"
 )
 
-type StatusError interface {
-	error
-	StatusCode() int
-}
-
-type statusError struct {
-	code int
-	msg  string
-}
-
-func (e *statusError) Error() string {
-	return e.msg
-}
-
-func (e *statusError) StatusCode() int {
-	return e.code
-}
-
 
 type MapUserStorage struct {
 	users map[string]User
 	id    uint
 }
 
-func (u *MapUserStorage) Initialize() {
+func NewMapUserStorage() MapUserStorage {
+	newMap := MapUserStorage{}
+	newMap.initialize()
+
+	return newMap
+}
+
+func (u *MapUserStorage) initialize() {
 	u.users = make(map[string]User, 0)
 	u.id = 1
 }

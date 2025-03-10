@@ -14,25 +14,19 @@ func parsePageQueryParam(pageStr string) int {
 }
 
 func (app AppHandler) FeedHandler(w http.ResponseWriter, r *http.Request) {
-	imageFiles := app.PinStorage.Pins
-
-    pageSize := 20
+    pageSize := app.Config.PageSize
     page := parsePageQueryParam(r.URL.Query().Get("page"))
 
-    totalPages := (len(imageFiles) + pageSize - 1) / pageSize
-
-    if page < 1 || page > totalPages {
-		handleHttpError(w, "Page not found", http.StatusNotFound)
+    if page < 1 {
+		handleHttpError(w, "bad request", http.StatusBadRequest)
         return
     }
 
-    startIndex := (page - 1) * pageSize
-    endIndex := startIndex + pageSize
-    if endIndex > len(imageFiles) {
-        endIndex = len(imageFiles)
+    pagedImages := app.PinStorage.GetPinPage(page, pageSize)
+    if len(pagedImages) == 0 {
+        handleHttpError(w, "page not found", http.StatusNotFound)
+        return
     }
-
-    pagedImages := imageFiles[startIndex:endIndex]
 
     response := serverResponse{
 		Data: pagedImages,

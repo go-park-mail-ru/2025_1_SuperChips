@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -15,6 +16,8 @@ type Config struct {
 	CookieSecure   bool
 	Environment    string
 	IpAddress      string
+	ImageBaseDir   string
+	PageSize       int
 }
 
 var (
@@ -30,6 +33,8 @@ func printConfig(cfg Config) {
 	log.Printf("CookieSecure: %t\n", cfg.CookieSecure)
 	log.Printf("Env: %s\n", cfg.Environment)
 	log.Printf("IP: %s\n", cfg.IpAddress)
+	log.Printf("Image dir: %s\n", cfg.ImageBaseDir)
+	log.Printf("PageSize: %d\n", cfg.PageSize)
 	log.Println("-----------------------------------------------")
 }
 
@@ -99,6 +104,27 @@ func LoadConfigFromEnv() (Config, error) {
 	} else {
 		log.Println("env variable IpAddress not given, setting default value (localhost)")
 		config.IpAddress = "localhost"
+	}
+
+	imgDir, ok := os.LookupEnv("IMG_DIR")
+	if ok {
+		config.ImageBaseDir = imgDir
+	} else {
+		log.Println("env variable ImageBaseDir not given, setting default value (./static/img)")
+		config.ImageBaseDir = "./static/img"
+	}
+
+	config.PageSize = 20
+	pageSize, ok := os.LookupEnv("PAGE_SIZE")
+	if ok {
+		pageSizeInt, err := strconv.Atoi(pageSize)
+		if err != nil {
+			log.Println("error parsing env variable pageSize, assuming 20")
+		} else {
+			config.PageSize = pageSizeInt
+		}
+	} else {
+		log.Println("env variable pageSize not given, setting defaul value (20)")
 	}
 
 	printConfig(config)

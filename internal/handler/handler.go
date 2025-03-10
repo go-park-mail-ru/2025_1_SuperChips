@@ -8,12 +8,11 @@ import (
 	"net/http"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/auth"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/feed"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/user"
+	statusError "github.com/go-park-mail-ru/2025_1_SuperChips/internal/error"
 )
 
 type AppHandler struct {
@@ -34,23 +33,12 @@ type serverResponse struct {
 
 var ErrBadRequest = fmt.Errorf("bad request")
 
-func setCookieJWT(w http.ResponseWriter, config configs.Config, email string, userID uint64) error {
-    tokenString, err := auth.CreateJWT(config, userID, email)
-    if err != nil {
-        return err
-    }
+func (app AppHandler) HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
+	response := serverResponse{
+		Description: "server is up",
+	}
 
-    http.SetCookie(w, &http.Cookie{
-        Name:     auth.AuthToken,
-        Value:    tokenString,
-        Path:     "/",
-        HttpOnly: true,
-        Secure:   config.CookieSecure,
-        SameSite: http.SameSiteLaxMode,
-        Expires:  time.Now().Add(config.ExpirationTime),
-    })
-
-    return nil
+	serverGenerateJSONResponse(w, response, http.StatusOK)
 }
 
 func CorsMiddleware(next http.HandlerFunc, cfg configs.Config, allowedMethods []string) http.HandlerFunc {
@@ -95,7 +83,7 @@ func handleHttpError(w http.ResponseWriter, errorDesc string, statusCode int) {
 }
 
 func handleError(w http.ResponseWriter, err error) {
-	var authErr user.StatusError
+	var authErr statusError.StatusError
 
 	errorResp := serverResponse{
 		Description: http.StatusText(http.StatusInternalServerError),
@@ -131,7 +119,7 @@ func serverGenerateJSONResponse(w http.ResponseWriter, body interface{}, statusC
 	}
 }
 
-func decodeData[T any](w http.ResponseWriter, body io.ReadCloser, placeholder *T) error {
+func decodeData(w http.ResponseWriter, body io.ReadCloser, placeholder any) error {
 	defer body.Close()
 
 	if err := json.NewDecoder(body).Decode(placeholder); err != nil {
