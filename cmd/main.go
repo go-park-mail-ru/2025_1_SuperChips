@@ -15,6 +15,9 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/user"
 )
 
+// @title flow API
+// @version 1.0
+// @description API for Flow.
 func main() {
 	config, err := configs.LoadConfigFromEnv()
 	if err != nil {

@@ -9,24 +9,6 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 )
 
-func isImageFile(filename string) bool {
-    ext := strings.ToLower(filepath.Ext(filename))
-
-    pattern := "*.jpg;*.jpeg;*.png;*.gif;*.bmp;*.tiff;*.webp"
-
-    for _, p := range strings.Split(pattern, ";") {
-        match, err := filepath.Match(p, ext)
-        if err != nil {
-            continue
-        }
-        if match {
-            return true
-        }
-    }
-
-    return false
-}
-
 type PinStorage struct {
 	Pins []PinData
 }
@@ -80,3 +62,22 @@ func (p *PinStorage) initialize(cfg configs.Config) {
     }
 
 }
+
+func isImageFile(filename string) bool {
+    ext := strings.ToLower(filepath.Ext(filename))
+
+    pattern := "*.jpg;*.jpeg;*.png;*.gif;*.bmp;*.tiff;*.webp"
+
+    for _, p := range strings.Split(pattern, ";") {
+        match, err := filepath.Match(p, ext)
+        if err != nil {
+            continue
+        }
+        if match {
+            return true
+        }
+    }
+
+    return false
+}
+

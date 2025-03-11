@@ -5,14 +5,16 @@ import (
 	"strconv"
 )
 
-func parsePageQueryParam(pageStr string) int {
-    page, err := strconv.Atoi(pageStr)
-    if err != nil || page < 1 {
-        return 1
-    }
-    return page
-}
-
+// FeedHandler godoc
+// @Summary Get Pins
+// @Description Returns a pageSized number of pins
+// @Accept json
+// @Produce json
+// @Param page path int true "requested page" example("?page=3")
+// @Success 200 string serverResponse.Data "OK"
+// @Failure 404 string serverResponse.Description "page not found"
+// @Failure 400 string serverResponse.Description "bad request"
+// @Router /api/v1/feed [get]
 func (app AppHandler) FeedHandler(w http.ResponseWriter, r *http.Request) {
     pageSize := app.Config.PageSize
     page := parsePageQueryParam(r.URL.Query().Get("page"))
@@ -33,5 +35,13 @@ func (app AppHandler) FeedHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	serverGenerateJSONResponse(w, response, http.StatusOK)
+}
+
+func parsePageQueryParam(pageStr string) int {
+    page, err := strconv.Atoi(pageStr)
+    if err != nil || page < 1 {
+        return 1
+    }
+    return page
 }
 

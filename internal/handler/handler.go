@@ -21,11 +21,6 @@ type AppHandler struct {
 	PinStorage feed.PinStorage
 }
 
-type loginData struct {
-	Password string `json:"password"`
-	Email    string `json:"email"`
-}
-
 type serverResponse struct {
 	Description string      `json:"description,omitempty"`
 	Data        interface{} `json:"data,omitempty"`
@@ -33,6 +28,12 @@ type serverResponse struct {
 
 var ErrBadRequest = fmt.Errorf("bad request")
 
+// HealthCheckHandler godoc
+// @Summary Check server status
+// @Description Returns server status
+// @Produce json
+// @Success 200 string serverResponse.Description
+// @Router /health [get]
 func (app AppHandler) HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	response := serverResponse{
 		Description: "server is up",

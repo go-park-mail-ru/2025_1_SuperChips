@@ -19,49 +19,6 @@ func NewMapUserStorage() MapUserStorage {
 	return newMap
 }
 
-func (u *MapUserStorage) initialize() {
-	u.users = make(map[string]User, 0)
-	u.id = 1
-}
-
-func (u MapUserStorage) containsUsername(username string) bool {
-	for _, v := range u.users {
-		if v.Username == username {
-			return true
-		}
-	}
-
-	return false
-}
-
-func (u MapUserStorage) containsEmail(email string) bool {
-	for _, v := range u.users {
-		if v.Email == email {
-			return true
-		}
-	}
-
-	return false
-}
-
-func (u MapUserStorage) findUserByMail(email string) (User, bool) {
-	for _, v := range u.users {
-		if v.Email == email {
-			return v, true
-		}
-	}
-
-	return User{}, false
-}
-
-func (u *MapUserStorage) addUserToBase(user User) {
-	m := sync.RWMutex{}
-
-	m.Lock()
-	u.users[user.Email] = user
-	m.Unlock()
-}
-
 func (storage *MapUserStorage) AddUser(user User) error {
 	if err := user.ValidateUser(); err != nil {
 		return err
@@ -125,5 +82,49 @@ func (storage MapUserStorage) GetUserId(email string) uint64 {
 	}
 
 	return user.Id
+}
+
+
+func (u *MapUserStorage) initialize() {
+	u.users = make(map[string]User, 0)
+	u.id = 1
+}
+
+func (u MapUserStorage) containsUsername(username string) bool {
+	for _, v := range u.users {
+		if v.Username == username {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (u MapUserStorage) containsEmail(email string) bool {
+	for _, v := range u.users {
+		if v.Email == email {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (u MapUserStorage) findUserByMail(email string) (User, bool) {
+	for _, v := range u.users {
+		if v.Email == email {
+			return v, true
+		}
+	}
+
+	return User{}, false
+}
+
+func (u *MapUserStorage) addUserToBase(user User) {
+	m := sync.RWMutex{}
+
+	m.Lock()
+	u.users[user.Email] = user
+	m.Unlock()
 }
 
