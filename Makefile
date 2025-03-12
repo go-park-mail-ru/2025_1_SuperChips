@@ -6,7 +6,7 @@ TESTED_DIRS := ./internal/auth/... ./internal/feed/... ./internal/handler/... ./
 build : cmd/main.go
 	$(GO) build -o $(NAME) $<
 
-.PHONY : build
+.PHONY : build test
 
 test:
 	go test $(TESTED_DIRS) -coverprofile=$(COVERAGE_FILE)
