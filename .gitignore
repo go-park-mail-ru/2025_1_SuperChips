@@ -1,2 +1,4 @@
 # на случай, если тут что-то важное:)
 config.cfg
+variables.env
+static/img/*

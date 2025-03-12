@@ -10,14 +10,44 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/feed"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/handler"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/user"
 )
 
+// @title flow API
+// @version 1.0
+// @description API for Flow.
 func main() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /health", handler.HealthCheckHandler)
+	config, err := configs.LoadConfigFromEnv()
+	if err != nil {
+		log.Fatalf("Cannot launch due to config error: %s", err)
+	}	
 
-	config := configs.LoadConfigFromEnv()
+	userStorage := user.NewMapUserStorage()
+	pinStorage := feed.NewPinStorage(config)
+
+	app := handler.AppHandler{
+		Config: config,
+		UserStorage: userStorage,
+		PinStorage: pinStorage,
+	}
+
+	allowedGetOptions := []string{http.MethodGet, http.MethodOptions}
+	allowedPostOptions := []string{http.MethodPost, http.MethodOptions}
+
+	fs := http.FileServer(http.Dir("./static/"))
+
+	mux := http.NewServeMux()
+
+	mux.Handle("GET /static/", http.StripPrefix("/static/", fs))
+
+	mux.HandleFunc("/health", handler.CorsMiddleware(app.HealthCheckHandler, config, allowedGetOptions))
+	mux.HandleFunc("/api/v1/feed", handler.CorsMiddleware(app.FeedHandler, config, allowedGetOptions))
+	mux.HandleFunc("/api/v1/auth/login", handler.CorsMiddleware(app.LoginHandler, config, allowedPostOptions))
+	mux.HandleFunc("/api/v1/auth/registration", handler.CorsMiddleware(app.RegistrationHandler, config, allowedPostOptions))
+	mux.HandleFunc("/api/v1/auth/logout", handler.CorsMiddleware(app.LogoutHandler, config, allowedPostOptions))
+	mux.HandleFunc("/api/v1/auth/user", handler.CorsMiddleware(app.UserDataHandler, config, allowedGetOptions))
 
 	server := http.Server{
 		Addr: config.Port,
@@ -27,7 +57,7 @@ func main() {
 	errorChan := make(chan error, 1)
 
 	go func() {
-		log.Printf("Server listening on :%s", config.Port)
+		log.Printf("Server listening on port %s", config.Port)
 		err := server.ListenAndServe()
 		if err != nil && err != http.ErrServerClosed {
 			errorChan <- err
@@ -52,5 +82,6 @@ func main() {
 		log.Printf("Graceful shutdown unsuccessful: %v", err)
 	}
 	
-	log.Println("Server was gracefully shut down.")
+	log.Println("Server has been gracefully shut down.")
 }
+
