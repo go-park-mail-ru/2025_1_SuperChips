@@ -211,3 +211,88 @@ func TestLoginHandler(t *testing.T) {
 		}
 	}
 }
+
+func TestRegistrationHandler(t *testing.T) {
+	type TestCase struct {
+		RequestBody string
+		Response    string
+		StatusCode  int
+	}
+
+	cases := []TestCase{
+		// Сценарий: некорректное тело запроса.
+		{
+			RequestBody: `{bibi}`,
+			Response:    `{"description":"Bad Request"}`,
+			StatusCode:  http.StatusBadRequest,
+		},
+		// Сценарий: отсутствует имя пользователя.
+		{
+			RequestBody: `{"email": "void@example.com", "password": "void1"}`,
+			Response:    `{"description":"Invalid username"}`,
+			StatusCode:  http.StatusBadRequest,
+		},
+		// Сценарий: отсутствует дата рождения.
+		{
+			RequestBody: `{"email": "test1@example.com", "password": "pass1", "username": "test1"}`,
+			Response:    `{"description":"Invalid birthday"}`,
+			StatusCode:  http.StatusBadRequest,
+		},
+		// Сценарий: некорректная дата рождения.
+		{
+			RequestBody: `{"email": "test@example.com", "password": "password123", "birthday": "invalid-date"}`,
+			Response:    `{"description":"Bad Request"}`,
+			StatusCode:  http.StatusBadRequest,
+		},
+	}
+
+	mockNewUserStorage := func() user.MapUserStorage {
+		strg := user.NewMapUserStorage()
+		user1 := user.User{
+			Username: "test1",
+			Password: "pass1",
+			Email:    "test1@example.com",
+			Birthday: time.Date(2005, time.April, 4, 0, 0, 0, 0, time.UTC),
+		}
+		user2 := user.User{
+			Username: "test2",
+			Password: "pass2",
+			Email:    "test2@example.com",
+			Birthday: time.Date(2005, time.April, 4, 0, 0, 0, 0, time.UTC),
+		}
+		user_broken := user.User{
+			Username: "test3",
+			Password: "pass3",
+			Email:    "test3@example.com",
+			Birthday: time.Date(2005, time.April, 4, 0, 0, 0, 0, time.UTC),
+		}
+		strg.AddUser(user1)
+		strg.AddUser(user2)
+		strg.AddUser(user_broken)
+		strg.SetUserID(0, "test3@example.com")
+		return strg
+	}
+
+	app := handler.AppHandler{}
+	app.UserStorage = mockNewUserStorage()
+
+	for num, c := range cases {
+		url := "http://localhost:8080/api/v1/auth/registration"
+		req := httptest.NewRequest("POST", url, strings.NewReader(c.RequestBody))
+		w := httptest.NewRecorder()
+
+		app.RegistrationHandler(w, req)
+
+		if w.Code != c.StatusCode {
+			printDifference(t, num, "StatusCode", w.Code, c.StatusCode)
+		}
+
+		resp := w.Result()
+		body, _ := io.ReadAll(resp.Body)
+		bodyStr := strings.Trim(string(body), " \n")
+
+		if bodyStr != c.Response {
+			printDifference(t, num, "Response", bodyStr, c.Response)
+		}
+	}
+}
