@@ -1,0 +1,173 @@
+info:
+  contact: {}
+  description: API for Flow.
+  title: flow API
+  version: "1.0"
+paths:
+  /api/v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Tries to log the user in
+      parameters:
+      - description: user email
+        example: '"user@mail.ru"'
+        in: body
+        name: email
+        required: true
+        schema:
+          type: string
+      - description: user password
+        example: '"abcdefgh1234"'
+        in: body
+        name: password
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "403":
+          description: invalid credentials
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Log in user
+  /api/v1/auth/logout:
+    post:
+      description: Logouts user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: logged out
+          schema:
+            type: string
+      summary: Logout user
+  /api/v1/auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Tries to register the user
+      parameters:
+      - description: user email
+        example: '"admin@mail.ru"'
+        in: body
+        name: email
+        required: true
+        schema:
+          type: string
+      - description: user username
+        example: '"mailrudabest"'
+        in: body
+        name: username
+        required: true
+        schema:
+          type: string
+      - description: user date of birth RFC
+        example: '"1990-12-31T23:59:60Z"'
+        in: body
+        name: birthday
+        required: true
+        schema:
+          type: string
+      - description: user password
+        example: '"unbreakable_password"'
+        in: body
+        name: password
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "409":
+          description: Conflict
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Register user
+  /api/v1/auth/user:
+    get:
+      description: Tries to get current user's data
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: body
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Get user data
+  /api/v1/feed:
+    get:
+      consumes:
+      - application/json
+      description: Returns a pageSized number of pins
+      parameters:
+      - description: requested page
+        in: path
+        name: page
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: bad request
+          schema:
+            type: string
+        "404":
+          description: page not found
+          schema:
+            type: string
+      summary: Get Pins
+  /health:
+    get:
+      description: Returns server status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Check server status
+swagger: "2.0"
