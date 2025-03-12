@@ -3,16 +3,29 @@ package handler_test
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/feed"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/handler"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/user"
 )
+
+var cfg configs.Config
+
+func init() {
+	config, err := configs.LoadConfigFromEnv()
+	if err != nil {
+		log.Fatalf("Error while loading config for test: %s", err)
+	}
+
+	cfg = config
+}
 
 func printDifference(t *testing.T, num int, name string, got any, exp any) {
 	t.Errorf("[%d] wrong %v", num, name)
@@ -88,7 +101,7 @@ func TestFeedHandler(t *testing.T) {
 	}
 
 	mockNewPinStorage := func() feed.PinStorage {
-		p := feed.PinStorage{}
+		p := feed.NewPinSliceStorage(cfg)
 		p.Pins = append(p.Pins, feed.PinData{
 			Header: fmt.Sprintf("Header %d", 1),
 			Image:  fmt.Sprintf("http://localhost:8080/static/img/%s", "image1.png"),
@@ -161,7 +174,7 @@ func TestLoginHandler(t *testing.T) {
 		},
 	}
 
-	mockNewUserStorage := func() user.MapUserStorage {
+	mockNewUserStorage := func() *user.MapUserStorage {
 		strg := user.NewMapUserStorage()
 		user1 := user.User{
 			Username: "test1",
@@ -246,7 +259,7 @@ func TestRegistrationHandler(t *testing.T) {
 		},
 	}
 
-	mockNewUserStorage := func() user.MapUserStorage {
+	mockNewUserStorage := func() *user.MapUserStorage {
 		strg := user.NewMapUserStorage()
 		user1 := user.User{
 			Username: "test1",

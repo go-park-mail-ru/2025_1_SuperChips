@@ -25,7 +25,7 @@ func main() {
 	}	
 
 	userStorage := user.NewMapUserStorage()
-	pinStorage := feed.NewPinStorage(config)
+	pinStorage := feed.NewPinSliceStorage(config)
 
 	app := handler.AppHandler{
 		Config: config,

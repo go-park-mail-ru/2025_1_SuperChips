@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/auth"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/errs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/user"
 )
 
@@ -38,7 +39,7 @@ func (app AppHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := app.UserStorage.LoginUser(data.Email, data.Password); err != nil {
 		response.Description = "invalid credentials"
-		serverGenerateJSONResponse(w, response, http.StatusForbidden)
+		serverGenerateJSONResponse(w, response, http.StatusUnauthorized)
 		return
 	}
 
@@ -82,7 +83,7 @@ func (app AppHandler) RegistrationHandler(w http.ResponseWriter, r *http.Request
 
 	if err := userData.ValidateUser(); err != nil {
 		switch {
-		case errors.Is(err, user.ErrValidation):
+		case errors.Is(err, errs.ErrValidation):
 			statusCode = http.StatusBadRequest
 			switch {
 			case errors.Is(err, user.ErrInvalidBirthday):
@@ -109,7 +110,7 @@ func (app AppHandler) RegistrationHandler(w http.ResponseWriter, r *http.Request
 
 	if err := app.UserStorage.AddUser(userData); err != nil {
 		switch {
-		case errors.Is(err, user.ErrConflict):
+		case errors.Is(err, errs.ErrConflict):
 			statusCode = http.StatusConflict
 			response.Description = "This email or username is already used"
 		default:

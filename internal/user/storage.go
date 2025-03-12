@@ -3,20 +3,27 @@ package user
 import (
 	"sync"
 
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/errs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/security"
 )
 
+type UserStorage interface {
+	AddUser(user User) error
+	LoginUser(email, password string) error
+	GetUserPublicInfo(email string) (PublicUser, error)
+	GetUserId(email string) uint64
+}
 
 type MapUserStorage struct {
 	users map[string]User
 	id    uint
 }
 
-func NewMapUserStorage() MapUserStorage {
+func NewMapUserStorage() *MapUserStorage {
 	newMap := MapUserStorage{}
 	newMap.initialize()
 
-	return newMap
+	return &newMap
 }
 
 func (storage *MapUserStorage) AddUser(user User) error {
@@ -25,11 +32,11 @@ func (storage *MapUserStorage) AddUser(user User) error {
 	}
 
 	if storage.containsEmail(user.Email) {
-		return wrapError(ErrConflict, ErrEmailAlreadyTaken)
+		return wrapError(errs.ErrConflict, ErrEmailAlreadyTaken)
 	}
 
 	if storage.containsUsername(user.Username) {
-		return wrapError(ErrConflict, ErrUsernameAlreadyTaken)
+		return wrapError(errs.ErrConflict, ErrUsernameAlreadyTaken)
 	}
 
 	user.Id = uint64(storage.id)
@@ -37,7 +44,7 @@ func (storage *MapUserStorage) AddUser(user User) error {
 
 	hashPassword, err := security.HashPassword(user.Password)
 	if err != nil {
-		return wrapError(ErrInternal, nil)
+		return wrapError(errs.ErrInternal, nil)
 	}
 
 	user.Password = hashPassword
@@ -46,23 +53,23 @@ func (storage *MapUserStorage) AddUser(user User) error {
 	return nil
 }
 
-func (storage MapUserStorage) LoginUser(email, password string) error {
+func (storage *MapUserStorage) LoginUser(email, password string) error {
 	user, found := storage.findUserByMail(email)
 	if !found {
-		return wrapError(ErrForbidden, ErrInvalidCredentials)
+		return wrapError(errs.ErrForbidden, ErrInvalidCredentials)
 	}
 
 	if !security.ComparePassword(password, user.Password) {
-		return wrapError(ErrForbidden, ErrInvalidCredentials)
+		return wrapError(errs.ErrForbidden, ErrInvalidCredentials)
 	}
 
 	return nil
 }
 
-func (storage MapUserStorage) GetUserPublicInfo(email string) (PublicUser, error) {
+func (storage *MapUserStorage) GetUserPublicInfo(email string) (PublicUser, error) {
 	user, found := storage.findUserByMail(email)
 	if !found {
-		return PublicUser{}, wrapError(ErrNotFound, ErrUserNotFound)
+		return PublicUser{}, wrapError(errs.ErrNotFound, ErrUserNotFound)
 	}
 
 	publicUser := PublicUser{
@@ -75,7 +82,7 @@ func (storage MapUserStorage) GetUserPublicInfo(email string) (PublicUser, error
 	return publicUser, nil
 }
 
-func (storage MapUserStorage) GetUserId(email string) uint64 {
+func (storage *MapUserStorage) GetUserId(email string) uint64 {
 	user, found := storage.findUserByMail(email)
 	if !found {
 		return 0
@@ -83,7 +90,6 @@ func (storage MapUserStorage) GetUserId(email string) uint64 {
 
 	return user.Id
 }
-
 
 func (u *MapUserStorage) initialize() {
 	u.users = make(map[string]User, 0)
@@ -127,4 +133,3 @@ func (u *MapUserStorage) addUserToBase(user User) {
 	u.users[user.Email] = user
 	m.Unlock()
 }
-

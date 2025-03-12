@@ -23,7 +23,6 @@ const AuthToken = "auth_token"
 var (
 	ErrInvalidUser      = errors.New("invalid user")
 	ErrSigningJWT       = errors.New("failed to sign JWT")
-	ErrorCookieCreation = errors.New("error creating a jwt cookie")
 	ErrorJWTParse       = errors.New("error parsing jwt token")
 	ErrorExpiredToken   = errors.New("expired token")
 )

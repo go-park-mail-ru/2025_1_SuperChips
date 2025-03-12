@@ -12,12 +12,12 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/feed"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/user"
-	statusError "github.com/go-park-mail-ru/2025_1_SuperChips/internal/error"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/errs"
 )
 
 type AppHandler struct {
 	Config  configs.Config
-	UserStorage user.MapUserStorage
+	UserStorage user.UserStorage
 	PinStorage feed.PinStorage
 }
 
@@ -84,7 +84,7 @@ func handleHttpError(w http.ResponseWriter, errorDesc string, statusCode int) {
 }
 
 func handleError(w http.ResponseWriter, err error) {
-	var authErr statusError.StatusError
+	var authErr errs.StatusError
 
 	errorResp := serverResponse{
 		Description: http.StatusText(http.StatusInternalServerError),

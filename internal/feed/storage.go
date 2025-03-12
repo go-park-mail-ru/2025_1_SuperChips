@@ -9,22 +9,28 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 )
 
-type PinStorage struct {
+type PinStorage interface {
+    CountPages(pageSize int) int
+    GetPinPage(page int, pageSize int) []PinData
+    
+}
+
+type PinSlice struct {
 	Pins []PinData
 }
 
-func NewPinStorage(cfg configs.Config) PinStorage {
-    newStorage := PinStorage{}
+func NewPinSliceStorage(cfg configs.Config) *PinSlice {
+    newStorage := PinSlice{}
     newStorage.initialize(cfg)
 
-    return newStorage
+    return &newStorage
 }
 
-func (p *PinStorage) CountPages(pageSize int) int {
+func (p *PinSlice) CountPages(pageSize int) int {
     return (len(p.Pins) + pageSize - 1) / pageSize
 }
 
-func (p *PinStorage) GetPinPage(page int, pageSize int) []PinData {
+func (p *PinSlice) GetPinPage(page int, pageSize int) []PinData {
     startIndex := (page - 1) * pageSize
     endIndex := startIndex + pageSize
     if endIndex > len(p.Pins) {
@@ -40,7 +46,7 @@ func (p *PinStorage) GetPinPage(page int, pageSize int) []PinData {
     return pagedImages
 }
 
-func (p *PinStorage) initialize(cfg configs.Config) {
+func (p *PinSlice) initialize(cfg configs.Config) {
 	baseDir := cfg.ImageBaseDir
 
 	files, err := os.ReadDir(baseDir)

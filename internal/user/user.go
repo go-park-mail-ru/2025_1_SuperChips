@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"time"
 
-	statusError "github.com/go-park-mail-ru/2025_1_SuperChips/internal/error"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/errs"
 )
 
 type User struct {
@@ -25,13 +25,6 @@ type PublicUser struct {
 	Birthday time.Time `json:"birthday"`
 }
 
-var (
-	ErrForbidden  = &statusError.StatusCodeError{Code: 403, Msg: "invalid credentials"}
-	ErrValidation = &statusError.StatusCodeError{Code: 400, Msg: "validation failed"}
-	ErrConflict   = &statusError.StatusCodeError{Code: 409, Msg: "resource conflict"}
-	ErrNotFound   = &statusError.StatusCodeError{Code: 404, Msg: "resource not found"}
-	ErrInternal   = &statusError.StatusCodeError{Code: 500, Msg: "internal server error"}
-)
 
 var (
 	ErrInvalidEmail         = errors.New("invalid email")
@@ -58,27 +51,27 @@ func isValidEmail(email string) bool {
 
 func (u User) ValidateUser() error {
 	if len(u.Email) > 64 || len(u.Email) < 3 {
-		return wrapError(ErrValidation, ErrInvalidEmail)
+		return wrapError(errs.ErrValidation, ErrInvalidEmail)
 	}
 
 	if !isValidEmail(u.Email) {
-		return wrapError(ErrValidation, ErrInvalidEmail)
+		return wrapError(errs.ErrValidation, ErrInvalidEmail)
 	}
 
 	if len(u.Username) > 32 || len(u.Username) < 2 {
-		return wrapError(ErrValidation, ErrInvalidUsername)
+		return wrapError(errs.ErrValidation, ErrInvalidUsername)
 	}
 
 	if u.Password == "" {
-		return wrapError(ErrValidation, ErrNoPassword)
+		return wrapError(errs.ErrValidation, ErrNoPassword)
 	}
 
 	if len(u.Password) > 96 {
-		return wrapError(ErrValidation, ErrPasswordTooLong)
+		return wrapError(errs.ErrValidation, ErrPasswordTooLong)
 	}
 
 	if u.Birthday.After(time.Now()) || time.Since(u.Birthday) > 150*365*24*time.Hour {
-		return wrapError(ErrValidation, ErrInvalidBirthday)
+		return wrapError(errs.ErrValidation, ErrInvalidBirthday)
 	}
 
 	return nil

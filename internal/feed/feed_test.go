@@ -1,6 +1,7 @@
 package feed
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -8,6 +9,17 @@ import (
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 )
+
+var cfg configs.Config
+
+func init() {
+	config, err := configs.LoadConfigFromEnv()
+	if err != nil {
+		log.Fatalf("Error while loading config for test: %s", err)
+	}
+
+	cfg = config
+}
 
 // Мокирование данных конфигурации для тестов
 func mockConfig() configs.Config {
@@ -47,7 +59,7 @@ func TestIsImageFile(t *testing.T) {
 
 func TestCountPages(t *testing.T) {
 	// Добавляем 5 изображений.
-	storage := PinStorage{}
+	storage := NewPinSliceStorage(cfg)
 	storage.Pins = append(storage.Pins, PinData{}, PinData{}, PinData{}, PinData{}, PinData{})
 
 	tests := []struct {
@@ -71,7 +83,7 @@ func TestCountPages(t *testing.T) {
 
 func TestGetPinPage(t *testing.T) {
 	// Добавляем 5 фиктивных изображений.
-	storage := PinStorage{}
+	storage := NewPinSliceStorage(cfg)
 	storage.Pins = append(storage.Pins, PinData{}, PinData{}, PinData{}, PinData{}, PinData{})
 
 	tests := []struct {
@@ -113,7 +125,7 @@ func TestInitialize(t *testing.T) {
 		}
 	}
 
-	storage := NewPinStorage(cfg)
+	storage := NewPinSliceStorage(cfg)
 
 	// Проверяем, что были извлечены корректные файлы (image.jpg и image.png).
 	if len(storage.Pins) != 2 {
