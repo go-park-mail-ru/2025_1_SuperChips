@@ -58,7 +58,9 @@ func CorsMiddleware(next http.HandlerFunc, cfg configs.Config, allowedMethods []
 		allowedOrigins := cfg.AllowedOrigins
         if cfg.Environment == "prod" {
             origin := r.Header.Get("Origin")
-            if slices.Contains(allowedOrigins, origin) {
+			if slices.Contains(allowedOrigins, "*") {
+                w.Header().Set("Access-Control-Allow-Origin", "*")
+			} else if slices.Contains(allowedOrigins, origin) {
                 w.Header().Set("Access-Control-Allow-Origin", origin)
             } else {
 				httpErrorToJson(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
