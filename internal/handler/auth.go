@@ -190,7 +190,7 @@ func setCookie(w http.ResponseWriter, config configs.Config, name string, value 
 		Path:     "/",
 		HttpOnly: httpOnly,
 		Secure:   config.CookieSecure,
-		SameSite: http.SameSiteNoneMode,
+		SameSite: http.SameSiteNoneMode, // temporarily; for developing purposes
 		Expires:  time.Now().Add(config.ExpirationTime),
 	})
 }

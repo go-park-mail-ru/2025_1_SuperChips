@@ -2,6 +2,7 @@ package configs
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -23,32 +24,17 @@ type Config struct {
 
 var (
 	errMissingJWT = errors.New("missing jwt token key")
-	errNoEnv      = errors.New("missing env variable")
 )
-
-func printConfig(cfg Config) {
-	log.Println("-----------------------------------------------")
-	log.Println("Resulting config: ")
-	log.Printf("Port: %s\n", cfg.Port)
-	log.Printf("ExpirationTime: %s\n", cfg.ExpirationTime.String())
-	log.Printf("CookieSecure: %t\n", cfg.CookieSecure)
-	log.Printf("Env: %s\n", cfg.Environment)
-	log.Printf("IP: %s\n", cfg.IpAddress)
-	log.Printf("Image dir: %s\n", cfg.ImageBaseDir)
-	log.Printf("PageSize: %d\n", cfg.PageSize)
-	log.Printf("Allowed origins: %s\n", strings.Join(cfg.AllowedOrigins, ", "))
-	log.Println("-----------------------------------------------")
-}
 
 func LoadConfigFromEnv() (Config, error) {
 	config := Config{}
 
-	port, ok := os.LookupEnv("PORT")
-	if ok {
-		config.Port = ":" + port
-	} else {
-		config.Port = ":8080"
+	port, err := getEnvHelper("PORT", ":8080")
+	if err != nil {
+		log.Fatalln(err.Error())
 	}
+
+	config.Port = port
 
 	jwtSecret, ok := os.LookupEnv("JWT_SECRET")
 	if ok {
@@ -71,50 +57,42 @@ func LoadConfigFromEnv() (Config, error) {
 		config.ExpirationTime = 15 * time.Minute
 	}
 
-	cookieSecure, ok := os.LookupEnv("COOKIE_SECURE")
-	if ok {
-		cookieSecureLower := strings.ToLower(cookieSecure)
-		if cookieSecureLower == "true" {
-			config.CookieSecure = true
-		} else if cookieSecureLower == "false" {
-			config.CookieSecure = false
-		} else {
-			log.Println("Error parsing cookieSecure, assuming false")
-		}
-	} else {
-		log.Println("env variable cookieSecure not given, setting default value (false)")
+	cookieSecure, err := getEnvHelper("COOKIE_SECURE", "false")
+	if err != nil {
+		log.Fatalln(err.Error())
+	} else if cookieSecure != "false" && cookieSecure != "true" {
+		log.Fatalln("error parsing cookie_secure variable")
 	}
 
-	env, ok := os.LookupEnv("ENVIRONMENT")
-	if ok {
-		envLower := strings.ToLower(env)
-		if envLower == "prod" {
-			config.Environment = envLower
-		} else if envLower == "test" {
-			config.Environment = envLower
-		} else {
-			log.Println("could not parse environment variable")
-			return config, errNoEnv
-		}
+	var cookieSecureBool bool
+	if cookieSecure == "true" {
+		cookieSecureBool = true
 	} else {
-		return config, errNoEnv
+		cookieSecureBool = false
 	}
 
-	ipAddress, ok := os.LookupEnv("IP")
-	if ok {
-		config.IpAddress = ipAddress
-	} else {
-		log.Println("env variable IpAddress not given, setting default value (localhost)")
-		config.IpAddress = "localhost"
+	config.CookieSecure = cookieSecureBool
+
+	env, err := getEnvHelper("ENVIRONMENT")
+	if err != nil {
+		log.Fatalln(err.Error())
 	}
 
-	imgDir, ok := os.LookupEnv("IMG_DIR")
-	if ok {
-		config.ImageBaseDir = imgDir
-	} else {
-		log.Println("env variable ImageBaseDir not given, setting default value (./static/img)")
-		config.ImageBaseDir = "./static/img"
+	config.Environment = env
+
+	ipAddress, err := getEnvHelper("IP", "localhost")
+	if err != nil {
+		log.Fatalln(err.Error())
 	}
+
+	config.IpAddress = ipAddress
+
+	imgDir, err := getEnvHelper("IMG_DIR", "./static/img")
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
+
+	config.ImageBaseDir = imgDir
 
 	config.PageSize = 20
 	pageSize, ok := os.LookupEnv("PAGE_SIZE")
@@ -129,10 +107,9 @@ func LoadConfigFromEnv() (Config, error) {
 		log.Println("env variable pageSize not given, setting default value (20)")
 	}
 
-	allowedOrigins, ok := os.LookupEnv("ALLOWED_ORIGINS")
-	if !ok {
-		log.Println("allowed origins not specified, setting default value: * (all)")
-		allowedOrigins = "*"
+	allowedOrigins, err := getEnvHelper("ALLOWED_ORIGINS", "*")
+	if err != nil {
+		log.Fatalln(err.Error())
 	}
 
 	config.AllowedOrigins = strings.Split(allowedOrigins, ",")
@@ -141,3 +118,33 @@ func LoadConfigFromEnv() (Config, error) {
 
 	return config, nil
 }
+
+func printConfig(cfg Config) {
+	log.Println("-----------------------------------------------")
+	log.Println("Resulting config: ")
+	log.Printf("Port: %s\n", cfg.Port)
+	log.Printf("ExpirationTime: %s\n", cfg.ExpirationTime.String())
+	log.Printf("CookieSecure: %t\n", cfg.CookieSecure)
+	log.Printf("Env: %s\n", cfg.Environment)
+	log.Printf("IP: %s\n", cfg.IpAddress)
+	log.Printf("Image dir: %s\n", cfg.ImageBaseDir)
+	log.Printf("PageSize: %d\n", cfg.PageSize)
+	log.Printf("Allowed origins: %s\n", strings.Join(cfg.AllowedOrigins, ", "))
+	log.Println("-----------------------------------------------")
+}
+
+func getEnvHelper(key string, defaultValue ...string) (string, error) {
+    value, ok := os.LookupEnv(key)
+    if ok {
+        return value, nil
+    }
+
+    if len(defaultValue) > 0 {
+        log.Printf("Variable %s not found, using default value: %s", key, defaultValue[0])
+        return defaultValue[0], nil
+    }
+
+    errMsg := fmt.Sprintf("Mandatory environment variable %s not set!", key)
+    return "", errors.New(errMsg)
+}
+
