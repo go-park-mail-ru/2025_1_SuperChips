@@ -30,14 +30,14 @@ var (
 )
 
 type JWTManager struct {
-	secret     string
+	secret     []byte
 	expiration time.Duration
 	issuer     string
 }
 
 func NewJWTManager(cfg configs.Config) JWTManager {
 	newManager := JWTManager{
-		secret: string(cfg.JWTSecret),
+		secret: cfg.JWTSecret,
 		expiration: cfg.ExpirationTime,
 		issuer: "flow",
 	}

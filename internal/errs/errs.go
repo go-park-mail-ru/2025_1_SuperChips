@@ -1,6 +1,5 @@
 package errs
 
-
 type StatusError interface {
 	error
 	StatusCode() int
@@ -20,10 +19,9 @@ func (e *StatusCodeError) StatusCode() int {
 }
 
 var (
-	ErrForbidden  = &StatusCodeError{Code: 403, Msg: "invalid credentials"}
-	ErrValidation = &StatusCodeError{Code: 400, Msg: "validation failed"}
-	ErrConflict   = &StatusCodeError{Code: 409, Msg: "resource conflict"}
-	ErrNotFound   = &StatusCodeError{Code: 404, Msg: "resource not found"}
-	ErrInternal   = &StatusCodeError{Code: 500, Msg: "internal server error"}
+	ErrUnauthorized = &StatusCodeError{Code: 401, Msg: "invalid credentials"}
+	ErrValidation   = &StatusCodeError{Code: 400, Msg: "validation failed"}
+	ErrConflict     = &StatusCodeError{Code: 409, Msg: "resource conflict"}
+	ErrNotFound     = &StatusCodeError{Code: 404, Msg: "resource not found"}
+	ErrInternal     = &StatusCodeError{Code: 500, Msg: "internal server error"}
 )
-

@@ -51,7 +51,7 @@ func CorsMiddleware(next http.HandlerFunc, cfg configs.Config, allowedMethods []
         w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 		if !slices.Contains(allowedMethods, r.Method) {
-			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+			httpErrorToJson(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 			return
 		}
 
@@ -61,7 +61,7 @@ func CorsMiddleware(next http.HandlerFunc, cfg configs.Config, allowedMethods []
             if slices.Contains(allowedOrigins, origin) {
                 w.Header().Set("Access-Control-Allow-Origin", origin)
             } else {
-				http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+				httpErrorToJson(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
                 return
             }
         } else {
@@ -84,25 +84,22 @@ func handleAuthError(w http.ResponseWriter, err error) {
 		Description: http.StatusText(http.StatusInternalServerError),
 	}
 
-	if errors.As(err, &authErr) {
-		errorResp.Description = http.StatusText(authErr.StatusCode())
+	switch {
+	case errors.As(err, &authErr):
+		errorResp.Description = authErr.Error()
 		serverGenerateJSONResponse(w, errorResp, authErr.StatusCode())
-		return
-	}
-
-	if errors.Is(err, http.ErrNoCookie) {
+	case errors.Is(err, http.ErrNoCookie):
 		errorResp.Description = http.StatusText(http.StatusForbidden)
 		serverGenerateJSONResponse(w, errorResp, http.StatusForbidden)
-		return
-	}
-
-	if errors.Is(err, ErrBadRequest) {
+	case errors.Is(err, ErrBadRequest):
 		errorResp.Description = http.StatusText(http.StatusBadRequest)
 		serverGenerateJSONResponse(w, errorResp, http.StatusBadRequest)
-		return
+	case errors.Is(err, user.ErrInvalidCredentials), errors.Is(err, errs.ErrValidation):
+		errorResp.Description = "invalid credentials"
+		serverGenerateJSONResponse(w, errorResp, http.StatusUnauthorized)
+	default:
+		serverGenerateJSONResponse(w, errorResp, http.StatusInternalServerError)
 	}
-
-	serverGenerateJSONResponse(w, errorResp, http.StatusInternalServerError)
 }
 
 func serverGenerateJSONResponse(w http.ResponseWriter, body interface{}, statusCode int) {
@@ -110,7 +107,7 @@ func serverGenerateJSONResponse(w http.ResponseWriter, body interface{}, statusC
 	w.WriteHeader(statusCode)
 
 	if err := json.NewEncoder(w).Encode(body); err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		httpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }
 
@@ -118,10 +115,20 @@ func decodeData(w http.ResponseWriter, body io.ReadCloser, placeholder any) erro
 	defer body.Close()
 
 	if err := json.NewDecoder(body).Decode(placeholder); err != nil {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		httpErrorToJson(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return err
 	}
 
 	return nil
+}
+
+// все ответы должны быть json, 
+// так что это функция для преобразования http ошибок в json
+func httpErrorToJson(w http.ResponseWriter, err string, status int) {
+	response := serverResponse{
+		Description: err,
+	}
+
+	serverGenerateJSONResponse(w, response, status)
 }
 

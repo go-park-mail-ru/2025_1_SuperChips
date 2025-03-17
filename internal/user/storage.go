@@ -56,11 +56,11 @@ func (storage *MapUserStorage) AddUser(user User) error {
 func (storage *MapUserStorage) LoginUser(email, password string) error {
 	user, found := storage.findUserByMail(email)
 	if !found {
-		return wrapError(errs.ErrForbidden, ErrInvalidCredentials)
+		return wrapError(errs.ErrUnauthorized, ErrInvalidCredentials)
 	}
 
 	if !security.ComparePassword(password, user.Password) {
-		return wrapError(errs.ErrForbidden, ErrInvalidCredentials)
+		return wrapError(errs.ErrUnauthorized, ErrInvalidCredentials)
 	}
 
 	return nil

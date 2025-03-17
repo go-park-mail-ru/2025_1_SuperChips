@@ -1,7 +1,6 @@
 package feed
 
 import (
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,20 +12,12 @@ import (
 var cfg configs.Config
 
 func init() {
-	config, err := configs.LoadConfigFromEnv()
-	if err != nil {
-		log.Fatalf("Error while loading config for test: %s", err)
-	}
-
-	cfg = config
-}
-
-// Мокирование данных конфигурации для тестов
-func mockConfig() configs.Config {
-	return configs.Config{
+	cfg = configs.Config{
 		ImageBaseDir: "test_images", // Путь к папке с тестовыми изображениями
 		IpAddress:    "localhost",
 		Port:         "8080",
+		PageSize: 20,
+		Environment: "test",
 	}
 }
 
@@ -109,8 +100,6 @@ func TestGetPinPage(t *testing.T) {
 }
 
 func TestInitialize(t *testing.T) {
-	cfg := mockConfig()
-
 	// Создаем папку для тестовых изображений.
 	dir := cfg.ImageBaseDir
 	os.MkdirAll(dir, os.ModePerm)

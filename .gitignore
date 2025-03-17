@@ -2,3 +2,4 @@
 config.cfg
 variables.env
 static/img/*
+*.out

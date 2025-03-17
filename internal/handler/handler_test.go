@@ -3,7 +3,6 @@ package handler_test
 import (
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/auth"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/feed"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/handler"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/user"
@@ -19,12 +19,15 @@ import (
 var cfg configs.Config
 
 func init() {
-	config, err := configs.LoadConfigFromEnv()
-	if err != nil {
-		log.Fatalf("Error while loading config for test: %s", err)
+	cfg = configs.Config{
+		ImageBaseDir: "test_images", // Путь к папке с тестовыми изображениями
+		IpAddress:    "localhost",
+		Port:         "8080",
+		PageSize: 20,
+		Environment: "test",
+		JWTSecret: []byte("j8reh9egjiofdhopsef"),
+		ExpirationTime: time.Minute * 15,
 	}
-
-	cfg = config
 }
 
 func printDifference(t *testing.T, num int, name string, got any, exp any) {
@@ -88,7 +91,7 @@ func TestFeedHandler(t *testing.T) {
 		{
 			Page:       "4",
 			PageSize:   2,
-			Response:   `{"description":"page not found"}`,
+			Response:   `{"description":"Not Found"}`,
 			StatusCode: http.StatusNotFound,
 		},
 		// Сценарий: страница существует и на ней есть данные.
@@ -158,7 +161,7 @@ func TestLoginHandler(t *testing.T) {
 		{
 			RequestBody: `{"email": "void@example.com", "password": "void1"}`,
 			Response:    `{"description":"invalid credentials"}`,
-			StatusCode:  http.StatusForbidden,
+			StatusCode:  http.StatusUnauthorized,
 		},
 		// Сценарий: учётные данные есть в БД, но индекс в БД некорректный.
 		{
@@ -194,14 +197,23 @@ func TestLoginHandler(t *testing.T) {
 			Email:    "test3@example.com",
 			Birthday: time.Date(2005, time.April, 4, 0, 0, 0, 0, time.UTC),
 		}
-		strg.AddUser(user1)
-		strg.AddUser(user2)
-		strg.AddUser(user_broken)
+		if err := strg.AddUser(user1); err != nil {
+			println(err)
+		}
+		if err := strg.AddUser(user2); err != nil {
+			println(err)
+		}
+
+		if err := strg.AddUser(user_broken); err != nil {
+			println(err)
+		}
 		strg.SetUserID(0, "test3@example.com")
 		return strg
 	}
 
 	app := handler.AppHandler{}
+	app.Config = cfg
+	app.JWTManager = auth.NewJWTManager(cfg)
 	app.UserStorage = mockNewUserStorage()
 
 	for num, c := range cases {

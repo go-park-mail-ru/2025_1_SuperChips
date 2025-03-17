@@ -37,10 +37,13 @@ func (app AppHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	var response serverResponse
 
-	if user.ValidateEmailAndPassword(data.Email, data.Password) != nil ||
-	app.UserStorage.LoginUser(data.Email, data.Password) != nil {
-		response.Description = "invalid credentials"
-		serverGenerateJSONResponse(w, response, http.StatusUnauthorized)
+	if err := user.ValidateEmailAndPassword(data.Email, data.Password); err != nil {
+		handleAuthError(w, err)
+		return
+	}
+
+	if err := app.UserStorage.LoginUser(data.Email, data.Password); err != nil {
+		handleAuthError(w, err)
 		return
 	}
 
@@ -160,7 +163,7 @@ func (app AppHandler) UserDataHandler(w http.ResponseWriter, r *http.Request) {
 	claims, err := app.JWTManager.ParseJWTToken(token.Value)
 	if err != nil {
 		if errors.Is(err, auth.ErrorExpiredToken) {
-			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			httpErrorToJson(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			return
 		}
 
@@ -187,7 +190,7 @@ func setCookie(w http.ResponseWriter, config configs.Config, name string, value 
 		Path:     "/",
 		HttpOnly: httpOnly,
 		Secure:   config.CookieSecure,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteNoneMode,
 		Expires:  time.Now().Add(config.ExpirationTime),
 	})
 }
