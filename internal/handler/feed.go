@@ -20,13 +20,13 @@ func (app AppHandler) FeedHandler(w http.ResponseWriter, r *http.Request) {
     page := parsePageQueryParam(r.URL.Query().Get("page"))
 
     if page < 1 {
-		handleHttpError(w, "bad request", http.StatusBadRequest)
+        httpErrorToJson(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
         return
     }
 
     pagedImages := app.PinStorage.GetPinPage(page, pageSize)
     if len(pagedImages) == 0 {
-        handleHttpError(w, "page not found", http.StatusNotFound)
+        httpErrorToJson(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
         return
     }
 

@@ -12,6 +12,8 @@ import (
 
 // в будущем: сделать UserVersion для
 // простой инвалидации токенов в случае надобности
+
+
 type Claims struct {
 	UserID int
 	Email  string
@@ -21,31 +23,46 @@ type Claims struct {
 const AuthToken = "auth_token"
 
 var (
-	ErrInvalidUser      = errors.New("invalid user")
-	ErrSigningJWT       = errors.New("failed to sign JWT")
-	ErrorCookieCreation = errors.New("error creating a jwt cookie")
-	ErrorJWTParse       = errors.New("error parsing jwt token")
-	ErrorExpiredToken   = errors.New("expired token")
+	ErrInvalidUser    = errors.New("invalid user")
+	ErrSigningJWT     = errors.New("failed to sign JWT")
+	ErrorJWTParse     = errors.New("error parsing jwt token")
+	ErrorExpiredToken = errors.New("expired token")
 )
 
-func CreateJWT(config configs.Config, userID uint64, email string) (string, error) {
+type JWTManager struct {
+	secret     []byte
+	expiration time.Duration
+	issuer     string
+}
+
+func NewJWTManager(cfg configs.Config) JWTManager {
+	newManager := JWTManager{
+		secret: cfg.JWTSecret,
+		expiration: cfg.ExpirationTime,
+		issuer: "flow",
+	}
+
+	return newManager
+}
+
+func (mngr JWTManager) CreateJWT(email string, userID int) (string, error) {
 	if userID == 0 {
 		return "", ErrInvalidUser
 	}
 
-	expiration := time.Now().Add(config.ExpirationTime)
+	expiration := time.Now().Add(mngr.expiration)
 	claims := &Claims{
 		UserID: int(userID),
 		Email:  email,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expiration),
-			Issuer:    "flow",
+			Issuer:    mngr.issuer,
 			ID:        uuid.New().String(),
 		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(config.JWTSecret)
+	tokenString, err := token.SignedString(mngr.secret)
 	if err != nil {
 		return "", ErrSigningJWT
 	}
@@ -53,13 +70,13 @@ func CreateJWT(config configs.Config, userID uint64, email string) (string, erro
 	return tokenString, nil
 }
 
-func ParseJWTToken(tokenString string, config configs.Config) (*Claims, error) {
+func (mngr JWTManager) ParseJWTToken(tokenString string) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return config.JWTSecret, nil
-	})  
+		return mngr.secret, nil
+	})
 
 	if err != nil || !token.Valid {
 		return nil, ErrorExpiredToken

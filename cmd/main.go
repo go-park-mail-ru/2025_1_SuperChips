@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/auth"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/feed"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/handler"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/user"
@@ -25,12 +26,14 @@ func main() {
 	}	
 
 	userStorage := user.NewMapUserStorage()
-	pinStorage := feed.NewPinStorage(config)
+	pinStorage := feed.NewPinSliceStorage(config)
+	jwtManager := auth.NewJWTManager(config)
 
 	app := handler.AppHandler{
 		Config: config,
 		UserStorage: userStorage,
 		PinStorage: pinStorage,
+		JWTManager: jwtManager,
 	}
 
 	allowedGetOptions := []string{http.MethodGet, http.MethodOptions}

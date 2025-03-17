@@ -9,12 +9,15 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 )
 
-// Мокирование данных конфигурации для тестов
-func mockConfig() configs.Config {
-	return configs.Config{
+var cfg configs.Config
+
+func init() {
+	cfg = configs.Config{
 		ImageBaseDir: "test_images", // Путь к папке с тестовыми изображениями
 		IpAddress:    "localhost",
 		Port:         "8080",
+		PageSize: 20,
+		Environment: "test",
 	}
 }
 
@@ -47,7 +50,7 @@ func TestIsImageFile(t *testing.T) {
 
 func TestCountPages(t *testing.T) {
 	// Добавляем 5 изображений.
-	storage := PinStorage{}
+	storage := NewPinSliceStorage(cfg)
 	storage.Pins = append(storage.Pins, PinData{}, PinData{}, PinData{}, PinData{}, PinData{})
 
 	tests := []struct {
@@ -71,7 +74,7 @@ func TestCountPages(t *testing.T) {
 
 func TestGetPinPage(t *testing.T) {
 	// Добавляем 5 фиктивных изображений.
-	storage := PinStorage{}
+	storage := NewPinSliceStorage(cfg)
 	storage.Pins = append(storage.Pins, PinData{}, PinData{}, PinData{}, PinData{}, PinData{})
 
 	tests := []struct {
@@ -97,8 +100,6 @@ func TestGetPinPage(t *testing.T) {
 }
 
 func TestInitialize(t *testing.T) {
-	cfg := mockConfig()
-
 	// Создаем папку для тестовых изображений.
 	dir := cfg.ImageBaseDir
 	os.MkdirAll(dir, os.ModePerm)
@@ -113,7 +114,7 @@ func TestInitialize(t *testing.T) {
 		}
 	}
 
-	storage := NewPinStorage(cfg)
+	storage := NewPinSliceStorage(cfg)
 
 	// Проверяем, что были извлечены корректные файлы (image.jpg и image.png).
 	if len(storage.Pins) != 2 {
