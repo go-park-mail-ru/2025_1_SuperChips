@@ -34,7 +34,7 @@ func LoadConfigFromEnv() (Config, error) {
 		log.Fatalln(err.Error())
 	}
 
-	config.Port = port
+	config.Port = ":" + port
 
 	jwtSecret, ok := os.LookupEnv("JWT_SECRET")
 	if ok {

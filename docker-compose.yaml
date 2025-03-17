@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   backend:
     container_name: flow_backend
@@ -6,5 +5,7 @@ services:
     environment:
       - JWT_SECRET=${JWT_SECRET}
       - IP=${IP}
+      - ENVIRONMENT=${ENVIRONMENT}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
     ports:
       - "${PORT}:${PORT}"
