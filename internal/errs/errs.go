@@ -26,3 +26,4 @@ var (
 	ErrNotFound   = &StatusCodeError{Code: 404, Msg: "resource not found"}
 	ErrInternal   = &StatusCodeError{Code: 500, Msg: "internal server error"}
 )
+

@@ -18,6 +18,7 @@ type Config struct {
 	IpAddress      string
 	ImageBaseDir   string
 	PageSize       int
+	AllowedOrigins []string
 }
 
 var (
@@ -35,6 +36,7 @@ func printConfig(cfg Config) {
 	log.Printf("IP: %s\n", cfg.IpAddress)
 	log.Printf("Image dir: %s\n", cfg.ImageBaseDir)
 	log.Printf("PageSize: %d\n", cfg.PageSize)
+	log.Printf("Allowed origins: %s\n", strings.Join(cfg.AllowedOrigins, ", "))
 	log.Println("-----------------------------------------------")
 }
 
@@ -124,8 +126,16 @@ func LoadConfigFromEnv() (Config, error) {
 			config.PageSize = pageSizeInt
 		}
 	} else {
-		log.Println("env variable pageSize not given, setting defaul value (20)")
+		log.Println("env variable pageSize not given, setting default value (20)")
 	}
+
+	allowedOrigins, ok := os.LookupEnv("ALLOWED_ORIGINS")
+	if !ok {
+		log.Println("allowed origins not specified, setting default value: * (all)")
+		allowedOrigins = "*"
+	}
+
+	config.AllowedOrigins = strings.Split(allowedOrigins, ",")
 
 	printConfig(config)
 

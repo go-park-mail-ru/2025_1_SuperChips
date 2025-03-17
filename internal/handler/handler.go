@@ -10,15 +10,17 @@ import (
 	"strings"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/auth"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/errs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/feed"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/user"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/errs"
 )
 
 type AppHandler struct {
 	Config  configs.Config
 	UserStorage user.UserStorage
 	PinStorage feed.PinStorage
+	JWTManager auth.JWTManager
 }
 
 type serverResponse struct {
@@ -49,17 +51,17 @@ func CorsMiddleware(next http.HandlerFunc, cfg configs.Config, allowedMethods []
         w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 		if !slices.Contains(allowedMethods, r.Method) {
-			handleHttpError(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 			return
 		}
 
-		allowedOrigins := []string{"http://localhost:8080", "http://146.185.208.105:8000", "http://localhost:8000"}
+		allowedOrigins := cfg.AllowedOrigins
         if cfg.Environment == "prod" {
             origin := r.Header.Get("Origin")
             if slices.Contains(allowedOrigins, origin) {
                 w.Header().Set("Access-Control-Allow-Origin", origin)
             } else {
-				handleHttpError(w, "Forbidden", http.StatusForbidden)
+				http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
                 return
             }
         } else {
@@ -75,15 +77,7 @@ func CorsMiddleware(next http.HandlerFunc, cfg configs.Config, allowedMethods []
     })
 }
 
-func handleHttpError(w http.ResponseWriter, errorDesc string, statusCode int) {
-	errorResp := serverResponse{
-		Description: errorDesc,
-	}
-
-	serverGenerateJSONResponse(w, errorResp, statusCode)
-}
-
-func handleError(w http.ResponseWriter, err error) {
+func handleAuthError(w http.ResponseWriter, err error) {
 	var authErr errs.StatusError
 
 	errorResp := serverResponse{
@@ -116,7 +110,7 @@ func serverGenerateJSONResponse(w http.ResponseWriter, body interface{}, statusC
 	w.WriteHeader(statusCode)
 
 	if err := json.NewEncoder(w).Encode(body); err != nil {
-		handleError(w, err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }
 
@@ -124,7 +118,7 @@ func decodeData(w http.ResponseWriter, body io.ReadCloser, placeholder any) erro
 	defer body.Close()
 
 	if err := json.NewDecoder(body).Decode(placeholder); err != nil {
-		handleError(w, fmt.Errorf("%w: %s", ErrBadRequest, err.Error()))
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return err
 	}
 
