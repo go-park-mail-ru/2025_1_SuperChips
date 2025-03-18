@@ -116,10 +116,19 @@ func (app AppHandler) RegistrationHandler(w http.ResponseWriter, r *http.Request
 		case errors.Is(err, errs.ErrConflict):
 			statusCode = http.StatusConflict
 			response.Description = "This email or username is already used"
+			serverGenerateJSONResponse(w, response, statusCode)
+			return
 		default:
 			handleAuthError(w, err)
 			return
 		}
+	}
+
+	id := app.UserStorage.GetUserId(userData.Email)
+
+	if err := app.setCookieJWT(w, app.Config, userData.Email, id); err != nil {
+		handleAuthError(w, err)
+		return
 	}
 
 	serverGenerateJSONResponse(w, response, statusCode)
@@ -190,7 +199,7 @@ func setCookie(w http.ResponseWriter, config configs.Config, name string, value 
 		Path:     "/",
 		HttpOnly: httpOnly,
 		Secure:   config.CookieSecure,
-		SameSite: http.SameSiteNoneMode, // temporarily; for developing purposes
+		SameSite: http.SameSiteLaxMode,
 		Expires:  time.Now().Add(config.ExpirationTime),
 	})
 }
