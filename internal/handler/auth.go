@@ -11,7 +11,6 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/user"
 )
 
-
 type loginData struct {
 	Password string `json:"password"`
 	Email    string `json:"email"`
@@ -102,7 +101,7 @@ func (app AppHandler) RegistrationHandler(w http.ResponseWriter, r *http.Request
 			default:
 				response.Description = "Bad request"
 			}
-		default: 
+		default:
 			handleAuthError(w, err)
 			return
 		}
@@ -196,6 +195,7 @@ func setCookie(w http.ResponseWriter, config configs.Config, name string, value 
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
 		Value:    value,
+		Domain:   "yourflow.ru",
 		Path:     "/",
 		HttpOnly: httpOnly,
 		Secure:   config.CookieSecure,
@@ -214,4 +214,3 @@ func (app AppHandler) setCookieJWT(w http.ResponseWriter, config configs.Config,
 
 	return nil
 }
-
