@@ -9,10 +9,6 @@ RUN go mod download
 COPY . .
 RUN go build -v -o main ./cmd/main.go
 
-ENV PORT=8080
-ENV ENVIRONMENT=prod
-
 EXPOSE $PORT
-
 
 ENTRYPOINT ["./main"]

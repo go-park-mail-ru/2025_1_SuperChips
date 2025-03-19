@@ -1,4 +1,4 @@
-package user
+package entity
 
 import (
 	"errors"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/errs"
 )
+
 
 type User struct {
 	Id       uint64    `json:"-"`
@@ -24,7 +25,6 @@ type PublicUser struct {
 	Avatar   string    `json:"avatar,omitempty"`
 	Birthday time.Time `json:"birthday"`
 }
-
 
 var (
 	ErrInvalidEmail         = errors.New("invalid email")
@@ -84,4 +84,3 @@ func isValidEmail(email string) bool {
 
 	return emailRegex.MatchString(email)
 }
-

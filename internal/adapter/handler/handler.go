@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,17 +9,15 @@ import (
 	"strings"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/auth"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/errs"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/feed"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/user"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/entity"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/usecase"
 )
 
 type AppHandler struct {
-	Config  configs.Config
-	UserStorage user.UserStorage
-	PinStorage feed.PinStorage
-	JWTManager auth.JWTManager
+	Config      configs.Config
+	UserService usecase.UserUsecase
+	PinService  usecase.PinService
+	JWTManager  entity.JWTManager
 }
 
 type serverResponse struct {
@@ -45,10 +42,10 @@ func (app AppHandler) HealthCheckHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func CorsMiddleware(next http.HandlerFunc, cfg configs.Config, allowedMethods []string) http.HandlerFunc {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        w.Header().Set("Access-Control-Allow-Methods", strings.Join(allowedMethods, ", "))
-        w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-CSRF-Token")
-        w.Header().Set("Access-Control-Allow-Credentials", "true")
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Methods", strings.Join(allowedMethods, ", "))
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-CSRF-Token")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 		if !slices.Contains(allowedMethods, r.Method) {
 			httpErrorToJson(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
@@ -56,52 +53,27 @@ func CorsMiddleware(next http.HandlerFunc, cfg configs.Config, allowedMethods []
 		}
 
 		allowedOrigins := cfg.AllowedOrigins
-        if cfg.Environment == "prod" {
-            origin := r.Header.Get("Origin")
+		if cfg.Environment == "prod" {
+			origin := r.Header.Get("Origin")
 			if slices.Contains(allowedOrigins, "*") {
-                w.Header().Set("Access-Control-Allow-Origin", "*")
+				w.Header().Set("Access-Control-Allow-Origin", "*")
 			} else if slices.Contains(allowedOrigins, origin) {
-                w.Header().Set("Access-Control-Allow-Origin", origin)
-            } else {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+			} else {
 				httpErrorToJson(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
-                return
-            }
-        } else {
-            w.Header().Set("Access-Control-Allow-Origin", "*")
-        }
-
-		if r.Method == http.MethodOptions {
-            w.WriteHeader(http.StatusOK)
-            return
+				return
+			}
+		} else {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
 		}
 
-        next.ServeHTTP(w, r)
-    })
-}
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
 
-func handleAuthError(w http.ResponseWriter, err error) {
-	var authErr errs.StatusError
-
-	errorResp := serverResponse{
-		Description: http.StatusText(http.StatusInternalServerError),
-	}
-
-	switch {
-	case errors.As(err, &authErr):
-		errorResp.Description = authErr.Error()
-		serverGenerateJSONResponse(w, errorResp, authErr.StatusCode())
-	case errors.Is(err, http.ErrNoCookie):
-		errorResp.Description = http.StatusText(http.StatusForbidden)
-		serverGenerateJSONResponse(w, errorResp, http.StatusForbidden)
-	case errors.Is(err, ErrBadRequest):
-		errorResp.Description = http.StatusText(http.StatusBadRequest)
-		serverGenerateJSONResponse(w, errorResp, http.StatusBadRequest)
-	case errors.Is(err, user.ErrInvalidCredentials), errors.Is(err, errs.ErrValidation):
-		errorResp.Description = "invalid credentials"
-		serverGenerateJSONResponse(w, errorResp, http.StatusUnauthorized)
-	default:
-		serverGenerateJSONResponse(w, errorResp, http.StatusInternalServerError)
-	}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func serverGenerateJSONResponse(w http.ResponseWriter, body interface{}, statusCode int) {
@@ -124,7 +96,7 @@ func decodeData(w http.ResponseWriter, body io.ReadCloser, placeholder any) erro
 	return nil
 }
 
-// все ответы должны быть json, 
+// все ответы должны быть json,
 // так что это функция для преобразования http ошибок в json
 func httpErrorToJson(w http.ResponseWriter, err string, status int) {
 	response := serverResponse{
@@ -133,4 +105,3 @@ func httpErrorToJson(w http.ResponseWriter, err string, status int) {
 
 	serverGenerateJSONResponse(w, response, status)
 }
-

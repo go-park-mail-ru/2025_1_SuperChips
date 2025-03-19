@@ -4,18 +4,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/user"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/entity"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/map"
 )
 
 func TestValidateUser(t *testing.T) {
 	tests := []struct {
 		name    string
-		user    user.User
+		user    entity.User
 		wantErr bool
 	}{
 		{
 			name: "Сценарий: корректный",
-			user: user.User{
+			user: entity.User{
 				Email:    "test@example.com",
 				Username: "username",
 				Password: "securepassword123",
@@ -25,7 +26,7 @@ func TestValidateUser(t *testing.T) {
 		},
 		{
 			name: "Сценарий: некорректная почта: слишком длинная.",
-			user: user.User{
+			user: entity.User{
 				Email:    "lalalalalalalalalalalalalalalalalalalalalalalalalalalalalalalala@b.c",
 				Username: "username",
 				Password: "securepassword123",
@@ -35,7 +36,7 @@ func TestValidateUser(t *testing.T) {
 		},
 		{
 			name: "Сценарий: некорректная почта: некорректный формат.",
-			user: user.User{
+			user: entity.User{
 				Email:    "invalid-email",
 				Username: "username",
 				Password: "securepassword123",
@@ -45,7 +46,7 @@ func TestValidateUser(t *testing.T) {
 		},
 		{
 			name: "Сценарий: некорректная имя пользователя: слишком короткое.",
-			user: user.User{
+			user: entity.User{
 				Email:    "test@example.com",
 				Username: "a",
 				Password: "securepassword123",
@@ -55,7 +56,7 @@ func TestValidateUser(t *testing.T) {
 		},
 		{
 			name: "Сценарий: некорректный пароль: отсутствует пароль.",
-			user: user.User{
+			user: entity.User{
 				Email:    "test@example.com",
 				Username: "username",
 				Password: "",
@@ -65,7 +66,7 @@ func TestValidateUser(t *testing.T) {
 		},
 		{
 			name: "Сценарий: некорректный пароль: слишком длинный.",
-			user: user.User{
+			user: entity.User{
 				Email:    "test@example.com",
 				Username: "username",
 				Password: string(make([]byte, 97)),
@@ -75,7 +76,7 @@ func TestValidateUser(t *testing.T) {
 		},
 		{
 			name: "Сценарий: некорректная дата рождения: дата из будущего.",
-			user: user.User{
+			user: entity.User{
 				Email:    "test@example.com",
 				Username: "username",
 				Password: "securepassword123",
@@ -85,7 +86,7 @@ func TestValidateUser(t *testing.T) {
 		},
 		{
 			name: "Сценарий: некорректная дата рождения: слишком старая дата.",
-			user: user.User{
+			user: entity.User{
 				Email:    "test@example.com",
 				Username: "username",
 				Password: "securepassword123",
@@ -106,10 +107,11 @@ func TestValidateUser(t *testing.T) {
 }
 
 func TestMapUserStorage_AddUser(t *testing.T) {
-	storage := user.NewMapUserStorage()
+	storage := repository.MapUserStorage{}
+	storage.NewStorage()
 
 	// Создаём пользователя
-	user := user.User{
+	user := entity.User{
 		Username: "testUser",
 		Email:    "test@example.com",
 		Password: "password123",
@@ -131,9 +133,10 @@ func TestMapUserStorage_AddUser(t *testing.T) {
 }
 
 func TestMapUserStorage_AddUser_WithExistingEmail(t *testing.T) {
-	storage := user.NewMapUserStorage()
+	storage := repository.MapUserStorage{}
+	storage.NewStorage()
 
-	user1 := user.User{
+	user1 := entity.User{
 		Username: "user1",
 		Email:    "user@example.com",
 		Password: "password123",
@@ -144,7 +147,7 @@ func TestMapUserStorage_AddUser_WithExistingEmail(t *testing.T) {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	user2 := user.User{
+	user2 := entity.User{
 		Username: "user2",
 		Email:    "user@example.com",
 		Password: "password456",
@@ -157,9 +160,10 @@ func TestMapUserStorage_AddUser_WithExistingEmail(t *testing.T) {
 }
 
 func TestMapUserStorage_AddUser_UsernameAlreadyTaken(t *testing.T) {
-	storage := user.NewMapUserStorage()
+	storage := repository.MapUserStorage{}
+	storage.NewStorage()
 
-	user1 := user.User{
+	user1 := entity.User{
 		Username: "existingUser",
 		Email:    "user1@example.com",
 		Password: "password123",
@@ -170,7 +174,7 @@ func TestMapUserStorage_AddUser_UsernameAlreadyTaken(t *testing.T) {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	user2 := user.User{
+	user2 := entity.User{
 		Username: "existingUser",
 		Email:    "user2@example.com",
 		Password: "password456",
@@ -189,9 +193,10 @@ func TestMapUserStorage_AddUser_UsernameAlreadyTaken(t *testing.T) {
 }
 
 func TestMapUserStorage_LoginUser(t *testing.T) {
-	storage := user.NewMapUserStorage()
+	storage := repository.MapUserStorage{}
+	storage.NewStorage()
 
-	user := user.User{
+	user := entity.User{
 		Username: "testUser",
 		Email:    "test@example.com",
 		Password: "password123",
@@ -214,7 +219,8 @@ func TestMapUserStorage_LoginUser(t *testing.T) {
 }
 
 func TestMapUserStorage_LoginUser_UserNotFound(t *testing.T) {
-	storage := user.NewMapUserStorage()
+	storage := repository.MapUserStorage{}
+	storage.NewStorage()
 
 	err := storage.LoginUser("nonexistent@example.com", "somePassword")
 
@@ -229,9 +235,10 @@ func TestMapUserStorage_LoginUser_UserNotFound(t *testing.T) {
 }
 
 func TestMapUserStorage_GetUserPublicInfo(t *testing.T) {
-	storage := user.NewMapUserStorage()
+	storage := repository.MapUserStorage{}
+	storage.NewStorage()
 
-	user := user.User{
+	user := entity.User{
 		Username: "testUser",
 		Email:    "test@example.com",
 		Password: "password123",
@@ -258,9 +265,10 @@ func TestMapUserStorage_GetUserPublicInfo(t *testing.T) {
 }
 
 func TestMapUserStorage_GetUserId(t *testing.T) {
-	storage := user.NewMapUserStorage()
+	storage := repository.MapUserStorage{}
+	storage.NewStorage()
 
-	user := user.User{
+	user := entity.User{
 		Username: "testUser",
 		Email:    "test@example.com",
 		Password: "password123",

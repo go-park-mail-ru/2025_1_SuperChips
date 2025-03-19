@@ -1,4 +1,4 @@
-package feed
+package repository
 
 import (
 	"fmt"
@@ -7,30 +7,18 @@ import (
 	"strings"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/entity"
 )
 
-type PinStorage interface {
-    CountPages(pageSize int) int
-    GetPinPage(page int, pageSize int) []PinData
-    
-}
-
 type PinSlice struct {
-	Pins []PinData
+	Pins []entity.PinData
 }
 
-func NewPinSliceStorage(cfg configs.Config) *PinSlice {
-    newStorage := PinSlice{}
-    newStorage.initialize(cfg)
-
-    return &newStorage
+func (p *PinSlice) NewStorage(cfg configs.Config) {
+    p.initialize(cfg)
 }
 
-func (p *PinSlice) CountPages(pageSize int) int {
-    return (len(p.Pins) + pageSize - 1) / pageSize
-}
-
-func (p *PinSlice) GetPinPage(page int, pageSize int) []PinData {
+func (p *PinSlice) GetPinPage(page int, pageSize int) []entity.PinData {
     startIndex := (page - 1) * pageSize
     endIndex := startIndex + pageSize
     if endIndex > len(p.Pins) {
@@ -38,7 +26,7 @@ func (p *PinSlice) GetPinPage(page int, pageSize int) []PinData {
     }
 
     if startIndex >= len(p.Pins) {
-        return make([]PinData, 0)
+        return make([]entity.PinData, 0)
     }
 
     pagedImages := p.Pins[startIndex:endIndex]
@@ -58,7 +46,7 @@ func (p *PinSlice) initialize(cfg configs.Config) {
 
     for _, file := range files {
         if !file.IsDir() && isImageFile(file.Name()) {
-            p.Pins = append(p.Pins, PinData{
+            p.Pins = append(p.Pins, entity.PinData{
 				Header: fmt.Sprintf("Header %d", id),
 				Image: fmt.Sprintf("http://%s%s/static/img/%s", cfg.IpAddress, cfg.Port, file.Name()),
 				Author: fmt.Sprintf("Author %d", -id),

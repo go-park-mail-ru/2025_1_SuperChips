@@ -1,4 +1,4 @@
-package auth
+package usecase
 
 import (
 	"errors"
@@ -6,19 +6,10 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/entity"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
-
-// в будущем: сделать UserVersion для
-// простой инвалидации токенов в случае надобности
-
-
-type Claims struct {
-	UserID int
-	Email  string
-	jwt.RegisteredClaims
-}
 
 const AuthToken = "auth_token"
 
@@ -35,23 +26,19 @@ type JWTManager struct {
 	issuer     string
 }
 
-func NewJWTManager(cfg configs.Config) JWTManager {
-	newManager := JWTManager{
-		secret: cfg.JWTSecret,
-		expiration: cfg.ExpirationTime,
-		issuer: "flow",
-	}
-
-	return newManager
+func (mngr *JWTManager) NewJWTManager(cfg configs.Config) {
+	mngr.secret = cfg.JWTSecret
+	mngr.expiration = cfg.ExpirationTime
+	mngr.issuer = "flow"
 }
 
-func (mngr JWTManager) CreateJWT(email string, userID int) (string, error) {
+func (mngr *JWTManager) CreateJWT(email string, userID int) (string, error) {
 	if userID == 0 {
 		return "", ErrInvalidUser
 	}
 
 	expiration := time.Now().Add(mngr.expiration)
-	claims := &Claims{
+	claims := &entity.Claims{
 		UserID: int(userID),
 		Email:  email,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -70,8 +57,8 @@ func (mngr JWTManager) CreateJWT(email string, userID int) (string, error) {
 	return tokenString, nil
 }
 
-func (mngr JWTManager) ParseJWTToken(tokenString string) (*Claims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+func (mngr *JWTManager) ParseJWTToken(tokenString string) (*entity.Claims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &entity.Claims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
@@ -82,7 +69,7 @@ func (mngr JWTManager) ParseJWTToken(tokenString string) (*Claims, error) {
 		return nil, ErrorExpiredToken
 	}
 
-	claims, ok := token.Claims.(*Claims)
+	claims, ok := token.Claims.(*entity.Claims)
 	if !ok {
 		return nil, ErrorJWTParse
 	}

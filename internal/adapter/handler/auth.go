@@ -6,15 +6,10 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/auth"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/entity"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/errs"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/user"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/usecase"
 )
-
-type loginData struct {
-	Password string `json:"password"`
-	Email    string `json:"email"`
-}
 
 // LoginHandler godoc
 // @Summary Log in user
@@ -29,24 +24,19 @@ type loginData struct {
 // @Failure 500 string Description "Internal server error"
 // @Router /api/v1/auth/login [post]
 func (app AppHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
-	var data loginData
+	var data entity.LoginData
 	if err := decodeData(w, r.Body, &data); err != nil {
 		return
 	}
 
 	var response serverResponse
 
-	if err := user.ValidateEmailAndPassword(data.Email, data.Password); err != nil {
+	if err := app.UserService.CheckCredentials(data.Email, data.Password); err != nil {
 		handleAuthError(w, err)
 		return
 	}
 
-	if err := app.UserStorage.LoginUser(data.Email, data.Password); err != nil {
-		handleAuthError(w, err)
-		return
-	}
-
-	id := app.UserStorage.GetUserId(data.Email)
+	id := app.UserService.GetUserId(data.Email)
 
 	if err := app.setCookieJWT(w, app.Config, data.Email, id); err != nil {
 		handleAuthError(w, err)
@@ -72,7 +62,7 @@ func (app AppHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 string serverResponse.Description "Internal server error"
 // @Router /api/v1/auth/register [post]
 func (app AppHandler) RegistrationHandler(w http.ResponseWriter, r *http.Request) {
-	userData := user.User{}
+	var userData entity.User
 	if err := decodeData(w, r.Body, &userData); err != nil {
 		return
 	}
@@ -83,35 +73,24 @@ func (app AppHandler) RegistrationHandler(w http.ResponseWriter, r *http.Request
 
 	statusCode := http.StatusCreated
 
-	if err := userData.ValidateUser(); err != nil {
+	if err := app.UserService.AddUser(userData); err != nil {
 		switch {
 		case errors.Is(err, errs.ErrValidation):
 			statusCode = http.StatusBadRequest
 			switch {
-			case errors.Is(err, user.ErrInvalidBirthday):
+			case errors.Is(err, entity.ErrInvalidBirthday):
 				response.Description = "Invalid birthday"
-			case errors.Is(err, user.ErrNoPassword):
+			case errors.Is(err, entity.ErrNoPassword):
 				response.Description = "Password not given"
-			case errors.Is(err, user.ErrInvalidEmail):
+			case errors.Is(err, entity.ErrInvalidEmail):
 				response.Description = "Invalid email"
-			case errors.Is(err, user.ErrInvalidUsername):
+			case errors.Is(err, entity.ErrInvalidUsername):
 				response.Description = "Invalid username"
-			case errors.Is(err, user.ErrPasswordTooLong):
+			case errors.Is(err, entity.ErrPasswordTooLong):
 				response.Description = "Password is too long"
 			default:
 				response.Description = "Bad request"
 			}
-		default:
-			handleAuthError(w, err)
-			return
-		}
-
-		serverGenerateJSONResponse(w, response, statusCode)
-		return
-	}
-
-	if err := app.UserStorage.AddUser(userData); err != nil {
-		switch {
 		case errors.Is(err, errs.ErrConflict):
 			statusCode = http.StatusConflict
 			response.Description = "This email or username is already used"
@@ -123,7 +102,7 @@ func (app AppHandler) RegistrationHandler(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	id := app.UserStorage.GetUserId(userData.Email)
+	id := app.UserService.GetUserId(userData.Email)
 
 	if err := app.setCookieJWT(w, app.Config, userData.Email, id); err != nil {
 		handleAuthError(w, err)
@@ -143,7 +122,7 @@ func (app AppHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	changedConfig := app.Config
 	changedConfig.ExpirationTime = -time.Hour * 24 * 365
 
-	setCookie(w, changedConfig, auth.AuthToken, "", true)
+	setCookie(w, changedConfig, usecase.AuthToken, "", true)
 
 	response := serverResponse{
 		Description: "logged out",
@@ -162,7 +141,7 @@ func (app AppHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 string serverResponse.Description "Internal server error"
 // @Router /api/v1/auth/user [get]
 func (app AppHandler) UserDataHandler(w http.ResponseWriter, r *http.Request) {
-	token, err := r.Cookie(auth.AuthToken)
+	token, err := r.Cookie(usecase.AuthToken)
 	if err != nil {
 		handleAuthError(w, err)
 		return
@@ -170,7 +149,7 @@ func (app AppHandler) UserDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	claims, err := app.JWTManager.ParseJWTToken(token.Value)
 	if err != nil {
-		if errors.Is(err, auth.ErrorExpiredToken) {
+		if errors.Is(err, usecase.ErrorExpiredToken) {
 			httpErrorToJson(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			return
 		}
@@ -179,7 +158,7 @@ func (app AppHandler) UserDataHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userData, err := app.UserStorage.GetUserPublicInfo(claims.Email)
+	userData, err := app.UserService.GetUserPublicInfo(claims.Email)
 	if err != nil {
 		handleAuthError(w, err)
 		return
@@ -210,7 +189,32 @@ func (app AppHandler) setCookieJWT(w http.ResponseWriter, config configs.Config,
 		return err
 	}
 
-	setCookie(w, config, auth.AuthToken, tokenString, true)
+	setCookie(w, config, usecase.AuthToken, tokenString, true)
 
 	return nil
+}
+
+func handleAuthError(w http.ResponseWriter, err error) {
+	var authErr errs.StatusError
+
+	errorResp := serverResponse{
+		Description: http.StatusText(http.StatusInternalServerError),
+	}
+
+	switch {
+	case errors.As(err, &authErr):
+		errorResp.Description = authErr.Error()
+		serverGenerateJSONResponse(w, errorResp, authErr.StatusCode())
+	case errors.Is(err, http.ErrNoCookie):
+		errorResp.Description = http.StatusText(http.StatusForbidden)
+		serverGenerateJSONResponse(w, errorResp, http.StatusForbidden)
+	case errors.Is(err, ErrBadRequest):
+		errorResp.Description = http.StatusText(http.StatusBadRequest)
+		serverGenerateJSONResponse(w, errorResp, http.StatusBadRequest)
+	case errors.Is(err, entity.ErrInvalidCredentials), errors.Is(err, errs.ErrValidation):
+		errorResp.Description = "invalid credentials"
+		serverGenerateJSONResponse(w, errorResp, http.StatusUnauthorized)
+	default:
+		serverGenerateJSONResponse(w, errorResp, http.StatusInternalServerError)
+	}
 }

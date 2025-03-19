@@ -24,7 +24,7 @@ func (app AppHandler) FeedHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    pagedImages := app.PinStorage.GetPinPage(page, pageSize)
+    pagedImages := app.PinService.GetPins(page, pageSize)
     if len(pagedImages) == 0 {
         httpErrorToJson(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
         return

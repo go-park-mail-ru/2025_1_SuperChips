@@ -1,4 +1,4 @@
-package feed
+package entity
 
 type PinData struct {
 	Header string `json:"header"` // Заголовок пина
