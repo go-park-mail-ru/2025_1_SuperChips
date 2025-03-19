@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/entity"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/usecase"
 )
 
@@ -17,7 +16,7 @@ type AppHandler struct {
 	Config      configs.Config
 	UserService usecase.UserUsecase
 	PinService  usecase.PinService
-	JWTManager  entity.JWTManager
+	JWTManager  usecase.JWTManager
 }
 
 type serverResponse struct {

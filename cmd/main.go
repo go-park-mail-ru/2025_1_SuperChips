@@ -40,7 +40,7 @@ func main() {
 		Config:      config,
 		UserService: *userService,
 		PinService:  *pinService,
-		JWTManager:  &jwtManager,
+		JWTManager:  jwtManager,
 	}
 
 	allowedGetOptions := []string{http.MethodGet, http.MethodOptions}

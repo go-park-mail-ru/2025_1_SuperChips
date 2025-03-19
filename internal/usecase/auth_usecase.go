@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/entity"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
@@ -19,6 +18,12 @@ var (
 	ErrorJWTParse     = errors.New("error parsing jwt token")
 	ErrorExpiredToken = errors.New("expired token")
 )
+
+type Claims struct {
+	UserID int
+	Email  string
+	jwt.RegisteredClaims
+}
 
 type JWTManager struct {
 	secret     []byte
@@ -38,7 +43,7 @@ func (mngr *JWTManager) CreateJWT(email string, userID int) (string, error) {
 	}
 
 	expiration := time.Now().Add(mngr.expiration)
-	claims := &entity.Claims{
+	claims := &Claims{
 		UserID: int(userID),
 		Email:  email,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -57,8 +62,8 @@ func (mngr *JWTManager) CreateJWT(email string, userID int) (string, error) {
 	return tokenString, nil
 }
 
-func (mngr *JWTManager) ParseJWTToken(tokenString string) (*entity.Claims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &entity.Claims{}, func(token *jwt.Token) (interface{}, error) {
+func (mngr *JWTManager) ParseJWTToken(tokenString string) (*Claims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
@@ -69,7 +74,7 @@ func (mngr *JWTManager) ParseJWTToken(tokenString string) (*entity.Claims, error
 		return nil, ErrorExpiredToken
 	}
 
-	claims, ok := token.Claims.(*entity.Claims)
+	claims, ok := token.Claims.(*Claims)
 	if !ok {
 		return nil, ErrorJWTParse
 	}
