@@ -18,6 +18,8 @@ services:
       - IP=${IP}
       - ENVIRONMENT=${ENVIRONMENT}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - PORT=${PORT}
+      - COOKIE_SECURE=${COOKIE_SECURE}
     ports:
       - "${PORT}:${PORT}"
     depends_on:
