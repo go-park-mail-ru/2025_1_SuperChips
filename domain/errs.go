@@ -1,4 +1,4 @@
-package errs
+package domain
 
 type StatusError interface {
 	error

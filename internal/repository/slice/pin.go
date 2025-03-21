@@ -7,18 +7,21 @@ import (
 	"strings"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/entity"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
 
 type PinSlice struct {
-	Pins []entity.PinData
+	Pins []domain.PinData
 }
 
-func (p *PinSlice) NewStorage(cfg configs.Config) {
+func NewPinSliceStorage(cfg configs.Config) PinSlice {
+    p := PinSlice{}
     p.initialize(cfg)
+
+    return p
 }
 
-func (p *PinSlice) GetPinPage(page int, pageSize int) []entity.PinData {
+func (p *PinSlice) GetPins(page int, pageSize int) []domain.PinData {
     startIndex := (page - 1) * pageSize
     endIndex := startIndex + pageSize
     if endIndex > len(p.Pins) {
@@ -26,7 +29,7 @@ func (p *PinSlice) GetPinPage(page int, pageSize int) []entity.PinData {
     }
 
     if startIndex >= len(p.Pins) {
-        return make([]entity.PinData, 0)
+        return make([]domain.PinData, 0)
     }
 
     pagedImages := p.Pins[startIndex:endIndex]
@@ -46,9 +49,9 @@ func (p *PinSlice) initialize(cfg configs.Config) {
 
     for _, file := range files {
         if !file.IsDir() && isImageFile(file.Name()) {
-            p.Pins = append(p.Pins, entity.PinData{
+            p.Pins = append(p.Pins, domain.PinData{
 				Header: fmt.Sprintf("Header %d", id),
-				Image: fmt.Sprintf("http://%s%s/static/img/%s", cfg.IpAddress, cfg.Port, file.Name()),
+				Image: fmt.Sprintf("https://yourflow.ru/static/img/%s", file.Name()),
 				Author: fmt.Sprintf("Author %d", -id),
 			})
 			id++

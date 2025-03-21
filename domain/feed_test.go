@@ -1,4 +1,4 @@
-// package feed
+package domain_test
 
 // import (
 // 	"os"

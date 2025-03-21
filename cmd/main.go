@@ -10,10 +10,13 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/adapter/handler"
 	userMap "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/map"
 	pinSlice "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/slice"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/usecase"
+	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
+	middleware "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/middleware"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/pin"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/user"
 )
 
 // @title flow API
@@ -25,22 +28,19 @@ func main() {
 		log.Fatalf("Cannot launch due to config error: %s", err)
 	}
 
-	userStorage := userMap.MapUserStorage{}
-	userStorage.NewStorage()
-	userService := usecase.NewUserService(&userStorage)
+	userStorage := userMap.NewMapUserStorage()
+	pinStorage := pinSlice.NewPinSliceStorage(config)
 
-	pinStorage := pinSlice.PinSlice{}
-	pinStorage.NewStorage(config)
-	pinService := usecase.NewPinService(&pinStorage)
+	jwtManager := auth.NewJWTManager(config)
 
-	jwtManager := usecase.JWTManager{}
-	jwtManager.NewJWTManager(config)
+	userService := user.NewUserService(&userStorage)
+	pinService := pin.NewPinService(&pinStorage)
 
-	app := handler.AppHandler{
+	app := rest.AppHandler{
 		Config:      config,
 		UserService: *userService,
 		PinService:  *pinService,
-		JWTManager:  jwtManager,
+		JWTManager:  *jwtManager,
 	}
 
 	allowedGetOptions := []string{http.MethodGet, http.MethodOptions}
@@ -52,12 +52,12 @@ func main() {
 
 	mux.Handle("GET /static/", http.StripPrefix("/static/", fs))
 
-	mux.HandleFunc("/health", handler.CorsMiddleware(app.HealthCheckHandler, config, allowedGetOptions))
-	mux.HandleFunc("/api/v1/feed", handler.CorsMiddleware(app.FeedHandler, config, allowedGetOptions))
-	mux.HandleFunc("/api/v1/auth/login", handler.CorsMiddleware(app.LoginHandler, config, allowedPostOptions))
-	mux.HandleFunc("/api/v1/auth/registration", handler.CorsMiddleware(app.RegistrationHandler, config, allowedPostOptions))
-	mux.HandleFunc("/api/v1/auth/logout", handler.CorsMiddleware(app.LogoutHandler, config, allowedPostOptions))
-	mux.HandleFunc("/api/v1/auth/user", handler.CorsMiddleware(app.UserDataHandler, config, allowedGetOptions))
+	mux.HandleFunc("/health", middleware.CorsMiddleware(app.HealthCheckHandler, config, allowedGetOptions))
+	mux.HandleFunc("/api/v1/feed", middleware.CorsMiddleware(app.FeedHandler, config, allowedGetOptions))
+	mux.HandleFunc("/api/v1/auth/login", middleware.CorsMiddleware(app.LoginHandler, config, allowedPostOptions))
+	mux.HandleFunc("/api/v1/auth/registration", middleware.CorsMiddleware(app.RegistrationHandler, config, allowedPostOptions))
+	mux.HandleFunc("/api/v1/auth/logout", middleware.CorsMiddleware(app.LogoutHandler, config, allowedPostOptions))
+	mux.HandleFunc("/api/v1/auth/user", middleware.CorsMiddleware(app.UserDataHandler, config, allowedGetOptions))
 
 	server := http.Server{
 		Addr:    config.Port,

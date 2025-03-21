@@ -1,12 +1,10 @@
-package entity
+package domain
 
 import (
 	"errors"
 	"fmt"
 	"regexp"
 	"time"
-
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/errs"
 )
 
 
@@ -41,19 +39,19 @@ var (
 
 func ValidateEmailAndPassword(email, password string) error {
 	if len(email) > 64 || len(email) < 3 {
-		return wrapError(errs.ErrValidation, ErrInvalidEmail)
+		return wrapError(ErrValidation, ErrInvalidEmail)
 	}
 
 	if !isValidEmail(email) {
-		return wrapError(errs.ErrValidation, ErrInvalidEmail)
+		return wrapError(ErrValidation, ErrInvalidEmail)
 	}
 
 	if password == "" {
-		return wrapError(errs.ErrValidation, ErrNoPassword)
+		return wrapError(ErrValidation, ErrNoPassword)
 	}
 
 	if len(password) > 96 {
-		return wrapError(errs.ErrValidation, ErrPasswordTooLong)
+		return wrapError(ErrValidation, ErrPasswordTooLong)
 	}
 
 	return nil
@@ -65,11 +63,11 @@ func (u User) ValidateUser() error {
 	}
 
 	if len(u.Username) > 32 || len(u.Username) < 2 {
-		return wrapError(errs.ErrValidation, ErrInvalidUsername)
+		return wrapError(ErrValidation, ErrInvalidUsername)
 	}
 
 	if u.Birthday.After(time.Now()) || time.Since(u.Birthday) > 150*365*24*time.Hour {
-		return wrapError(errs.ErrValidation, ErrInvalidBirthday)
+		return wrapError(ErrValidation, ErrInvalidBirthday)
 	}
 
 	return nil

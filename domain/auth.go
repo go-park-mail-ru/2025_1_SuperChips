@@ -1,4 +1,4 @@
-package entity
+package domain
 
 type LoginData struct {
 	Password string `json:"password"`

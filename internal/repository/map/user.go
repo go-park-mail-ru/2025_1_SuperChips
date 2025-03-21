@@ -4,31 +4,33 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/adapter/security"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/entity"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/errs"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
+	security "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/security"
 )
 
 type MapUserStorage struct {
-	users map[string]entity.User
+	users map[string]domain.User
 	id    uint
 }
 
-func (storage *MapUserStorage) NewStorage() {
-	storage.initialize()
+func NewMapUserStorage() MapUserStorage {
+	strg := MapUserStorage{}
+	strg.initialize()
+
+	return strg
 }
 
-func (storage *MapUserStorage) AddUser(user entity.User) error {
+func (storage *MapUserStorage) AddUser(user domain.User) error {
 	if err := user.ValidateUser(); err != nil {
 		return err
 	}
 
 	if storage.containsEmail(user.Email) {
-		return wrapError(errs.ErrConflict, entity.ErrEmailAlreadyTaken)
+		return wrapError(domain.ErrConflict, domain.ErrEmailAlreadyTaken)
 	}
 
 	if storage.containsUsername(user.Username) {
-		return wrapError(errs.ErrConflict, entity.ErrUsernameAlreadyTaken)
+		return wrapError(domain.ErrConflict, domain.ErrUsernameAlreadyTaken)
 	}
 
 	user.Id = uint64(storage.id)
@@ -36,7 +38,7 @@ func (storage *MapUserStorage) AddUser(user entity.User) error {
 
 	hashPassword, err := security.HashPassword(user.Password)
 	if err != nil {
-		return wrapError(errs.ErrInternal, nil)
+		return wrapError(domain.ErrInternal, nil)
 	}
 
 	user.Password = hashPassword
@@ -48,23 +50,23 @@ func (storage *MapUserStorage) AddUser(user entity.User) error {
 func (storage *MapUserStorage) LoginUser(email, password string) error {
 	user, found := storage.findUserByMail(email)
 	if !found {
-		return wrapError(errs.ErrUnauthorized, entity.ErrInvalidCredentials)
+		return wrapError(domain.ErrUnauthorized, domain.ErrInvalidCredentials)
 	}
 
 	if !security.ComparePassword(password, user.Password) {
-		return wrapError(errs.ErrUnauthorized, entity.ErrInvalidCredentials)
+		return wrapError(domain.ErrUnauthorized, domain.ErrInvalidCredentials)
 	}
 
 	return nil
 }
 
-func (storage *MapUserStorage) GetUserPublicInfo(email string) (entity.PublicUser, error) {
+func (storage *MapUserStorage) GetUserPublicInfo(email string) (domain.PublicUser, error) {
 	user, found := storage.findUserByMail(email)
 	if !found {
-		return entity.PublicUser{}, wrapError(errs.ErrNotFound, entity.ErrUserNotFound)
+		return domain.PublicUser{}, wrapError(domain.ErrNotFound, domain.ErrUserNotFound)
 	}
 
-	publicUser := entity.PublicUser{
+	publicUser := domain.PublicUser{
 		Username: user.Username,
 		Email:    user.Email,
 		Birthday: user.Birthday,
@@ -84,7 +86,7 @@ func (storage *MapUserStorage) GetUserId(email string) uint64 {
 }
 
 func (u *MapUserStorage) initialize() {
-	u.users = make(map[string]entity.User, 0)
+	u.users = make(map[string]domain.User, 0)
 	u.id = 1
 }
 
@@ -108,17 +110,17 @@ func (u MapUserStorage) containsEmail(email string) bool {
 	return false
 }
 
-func (u MapUserStorage) findUserByMail(email string) (entity.User, bool) {
+func (u MapUserStorage) findUserByMail(email string) (domain.User, bool) {
 	for _, v := range u.users {
 		if v.Email == email {
 			return v, true
 		}
 	}
 
-	return entity.User{}, false
+	return domain.User{}, false
 }
 
-func (u *MapUserStorage) addUserToBase(user entity.User) {
+func (u *MapUserStorage) addUserToBase(user domain.User) {
 	m := sync.RWMutex{}
 
 	m.Lock()

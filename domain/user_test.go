@@ -1,4 +1,4 @@
-// package entity_test
+package domain_test
 
 // import (
 // 	"testing"

@@ -1,4 +1,4 @@
-package handler
+package rest
 
 import (
 	"net/http"
@@ -20,21 +20,21 @@ func (app AppHandler) FeedHandler(w http.ResponseWriter, r *http.Request) {
     page := parsePageQueryParam(r.URL.Query().Get("page"))
 
     if page < 1 {
-        httpErrorToJson(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+        HttpErrorToJson(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
         return
     }
 
     pagedImages := app.PinService.GetPins(page, pageSize)
     if len(pagedImages) == 0 {
-        httpErrorToJson(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+        HttpErrorToJson(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
         return
     }
 
-    response := serverResponse{
+    response := ServerResponse{
 		Data: pagedImages,
 	}
 
-	serverGenerateJSONResponse(w, response, http.StatusOK)
+	ServerGenerateJSONResponse(w, response, http.StatusOK)
 }
 
 func parsePageQueryParam(pageStr string) int {

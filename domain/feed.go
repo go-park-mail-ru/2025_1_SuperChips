@@ -1,4 +1,4 @@
-package entity
+package domain
 
 type PinData struct {
 	Header string `json:"header"` // Заголовок пина

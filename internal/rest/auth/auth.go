@@ -1,4 +1,4 @@
-package usecase
+package rest
 
 import (
 	"errors"
@@ -31,10 +31,12 @@ type JWTManager struct {
 	issuer     string
 }
 
-func (mngr *JWTManager) NewJWTManager(cfg configs.Config) {
-	mngr.secret = cfg.JWTSecret
-	mngr.expiration = cfg.ExpirationTime
-	mngr.issuer = "flow"
+func NewJWTManager(cfg configs.Config) *JWTManager {
+	return &JWTManager{
+		secret: cfg.JWTSecret,
+		expiration: cfg.ExpirationTime,
+		issuer: "flow",
+	}
 }
 
 func (mngr *JWTManager) CreateJWT(email string, userID int) (string, error) {
