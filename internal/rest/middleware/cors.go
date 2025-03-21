@@ -12,7 +12,7 @@ import (
 func CorsMiddleware(next http.HandlerFunc, cfg configs.Config, allowedMethods []string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Methods", strings.Join(allowedMethods, ", "))
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-CSRF-Token")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-CSRF-Token, X-Forwarded-Host")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 		if !slices.Contains(allowedMethods, r.Method) {
