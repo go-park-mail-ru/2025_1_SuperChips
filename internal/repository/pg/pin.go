@@ -92,7 +92,7 @@ func (p *pgPinStorage) addAllPins() error {
 	id := 1
 
 	// add one user who will have all pins
-	_, err = p.db.Exec("INSERT INTO user (username, avatar, public_name, email, password) VALUES ($1, $2, $3, $4, $5)", "admin", "", "admin", "admin@yourflow", "admin")
+	_, err = p.db.Exec("INSERT INTO flow_user (username, avatar, public_name, email, password) VALUES ($1, $2, $3, $4, $5)", "admin", "", "admin", "admin@yourflow", "admin")
 	if err != nil {
 		return err
 	}
