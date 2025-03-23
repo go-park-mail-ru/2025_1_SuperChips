@@ -1,5 +1,7 @@
 services:
   database:
+    networks:
+      - flow_network
     container_name: postgres_db
     image: postgres:15
     environment:
@@ -9,6 +11,8 @@ services:
     ports:
       - "5432:5432"
   backend:
+    networks:
+      - flow_network
     container_name: flow_backend
     build: 
       context: .
