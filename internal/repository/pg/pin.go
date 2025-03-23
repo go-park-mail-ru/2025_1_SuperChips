@@ -10,6 +10,17 @@ import (
 	pin "github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
 
+type flowDB struct {
+	Flow_id     uint64
+	Title       sql.NullString
+	Description sql.NullString
+	Author_id   uint64
+	Created_at  string
+	Updated_at  string
+	Is_private  bool
+	Media_url   string
+}
+
 const (
 	CREATE_PIN_TABLE = `
 		CREATE TABLE IF NOT EXISTS flow (
@@ -17,10 +28,10 @@ const (
 		title TEXT,
 		description TEXT,
 		author_id INTEGER NOT NULL,
-		create_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+		created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 		updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 		is_private BOOLEAN NOT NULL DEFAULT FALSE,
-		media_url TEXT,
+		media_url TEXT NOT NULL,
 		FOREIGN KEY (author_id) REFERENCES flow_user(user_id)
 		);
 		`
@@ -29,20 +40,20 @@ const (
 // GetPins(page int, pageSize int) []domain.PinData
 
 type pgPinStorage struct {
-	db *sql.DB
+	db      *sql.DB
 	baseDir string
 }
 
 func NewPGPinStorage(db *sql.DB, baseDir string) (*pgPinStorage, error) {
 	storage := &pgPinStorage{
-		db: db,
+		db:      db,
 		baseDir: baseDir,
 	}
 
 	if err := storage.initialize(); err != nil {
 		return nil, err
 	}
-	
+
 	if err := storage.addAllPins(); err != nil {
 		return nil, err
 	}
@@ -60,7 +71,7 @@ func (p *pgPinStorage) initialize() error {
 }
 
 func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
-	rows, err := p.db.Query("SELECT * FROM flow LIMIT $1 OFFSET $2", pageSize, (page-1)*pageSize)
+	rows, err := p.db.Query("SELECT flow_id, title, description, author_id, is_private, media_url FROM flow LIMIT $1 OFFSET $2", pageSize, (page-1)*pageSize)
 	if err != nil {
 		return []pin.PinData{}, err
 	}
@@ -70,13 +81,21 @@ func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
 	var pins []pin.PinData
 
 	for rows.Next() {
-		var pin pin.PinData
-		err := rows.Scan(&pin.FlowID, &pin.Header, &pin.Description, &pin.AuthorID, &pin.Created_at, &pin.Updated_at, &pin.IsPrivate, &pin.MediaURL)
+		var flowDB flowDB
+		err := rows.Scan(&flowDB.Flow_id, &flowDB.Title, &flowDB.Description, &flowDB.Author_id, &flowDB.Is_private, &flowDB.Media_url)
 		if err != nil {
-			return pins, err
+			return []pin.PinData{}, err
 		}
 
-		pins = append(pins, pin)
+		if !flowDB.Is_private {
+			pin := pin.PinData{
+				Description: flowDB.Description.String,
+				Header:   flowDB.Title.String,
+				MediaURL: flowDB.Media_url,
+				AuthorID: flowDB.Author_id,
+			}
+			pins = append(pins, pin)
+		}
 	}
 
 	return pins, nil
@@ -111,19 +130,19 @@ func (p *pgPinStorage) addAllPins() error {
 }
 
 func isImageFile(filename string) bool {
-    ext := strings.ToLower(filepath.Ext(filename))
+	ext := strings.ToLower(filepath.Ext(filename))
 
-    pattern := "*.jpg;*.jpeg;*.png;*.gif;*.bmp;*.tiff;*.webp"
+	pattern := "*.jpg;*.jpeg;*.png;*.gif;*.bmp;*.tiff;*.webp"
 
-    for _, p := range strings.Split(pattern, ";") {
-        match, err := filepath.Match(p, ext)
-        if err != nil {
-            continue
-        }
-        if match {
-            return true
-        }
-    }
+	for _, p := range strings.Split(pattern, ";") {
+		match, err := filepath.Match(p, ext)
+		if err != nil {
+			continue
+		}
+		if match {
+			return true
+		}
+	}
 
-    return false
+	return false
 }

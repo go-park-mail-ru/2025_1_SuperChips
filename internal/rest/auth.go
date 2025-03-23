@@ -215,6 +215,8 @@ func handleAuthError(w http.ResponseWriter, err error) {
 		Description: http.StatusText(http.StatusInternalServerError),
 	}
 
+	println(err.Error())
+
 	switch {
 	case errors.As(err, &authErr):
 		errorResp.Description = authErr.Error()

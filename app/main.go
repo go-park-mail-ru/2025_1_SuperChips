@@ -34,7 +34,8 @@ func main() {
 		log.Fatalf("Cannot launch due to pg config error: %s", err)
 	}
 
-	time.Sleep(5 * time.Second)
+	log.Println("Waiting for database to start...")
+	time.Sleep(7 * time.Second)
 
 	psqlconn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", pgConfig.PgHost, 5432, pgConfig.PgUser, pgConfig.PgPassword, pgConfig.PgDB)
 	db, err := pg.ConnectDB(psqlconn)
