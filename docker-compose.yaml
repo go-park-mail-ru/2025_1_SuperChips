@@ -32,3 +32,7 @@ services:
       - "${PORT}:${PORT}"
     depends_on:
       - database
+
+networks:
+  flow_network:
+    driver: bridge
