@@ -13,7 +13,7 @@ import (
 const (
 	CREATE_PIN_TABLE = `
 		CREATE TABLE IF NOT EXISTS flow (
-		flow_id INTEGER PRIMARY KEY,
+		flow_id SERIAL PRIMARY KEY,
 		title TEXT,
 		description TEXT,
 		author_id INTEGER NOT NULL,
@@ -21,6 +21,8 @@ const (
 		updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 		is_private BOOLEAN NOT NULL,
 		media_url TEXT,
+		FOREIGN KEY (author_id) REFERENCES user(user_id)
+		);
 		`
 )
 
@@ -89,9 +91,15 @@ func (p *pgPinStorage) addAllPins() error {
 
 	id := 1
 
+	// add one user who will have all pins
+	_, err = p.db.Exec("INSERT INTO user (username, avatar, public_name, email, password) VALUES ($1, $2, $3, $4, $5)", "admin", "", "admin", "admin@yourflow", "admin")
+	if err != nil {
+		return err
+	}
+
 	for _, file := range files {
 		if !file.IsDir() && isImageFile(file.Name()) {
-			_, err := p.db.Exec("INSERT INTO flow (title, media_url, author_id) VALUES ($1, $2, $3)", fmt.Sprintf("Header %d", id), fmt.Sprintf("https://yourflow.ru/static/img/%s", file.Name()), id)
+			_, err := p.db.Exec("INSERT INTO flow (title, media_url, author_id) VALUES ($1, $2, $3)", fmt.Sprintf("Header %d", id), fmt.Sprintf("https://yourflow.ru/static/img/%s", file.Name()), 1)
 			if err != nil {
 				return err
 			}

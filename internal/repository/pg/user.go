@@ -121,7 +121,7 @@ func (p *pgUserStorage) GetUserId(email string) (uint64, error) {
     var id uint64
 
     err := p.db.QueryRow(`
-        SELECT user_id FROM flow_user WHERE email = $1
+        SELECT user_id FROM flow_id WHERE email = $1
     `, email).Scan(&id)
     if err != nil {
         if err == sql.ErrNoRows {
