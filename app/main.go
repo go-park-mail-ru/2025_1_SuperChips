@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -10,11 +11,12 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
-	userMap "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/map"
 	pinSlice "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/slice"
+	userPg "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
 	middleware "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/middleware"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
+	pg "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/pg"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/pin"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/user"
 )
@@ -23,17 +25,34 @@ import (
 // @version 1.0
 // @description API for Flow.
 func main() {
-	config, err := configs.LoadConfigFromEnv()
-	if err != nil {
+	config := configs.Config{}
+	if err := config.LoadConfigFromEnv(); err != nil {
 		log.Fatalf("Cannot launch due to config error: %s", err)
 	}
 
-	userStorage := userMap.NewMapUserStorage()
+	pgConfig := configs.PostgresConfig{}
+	if err := pgConfig.LoadConfigFromEnv(); err != nil {
+		log.Fatalf("Cannot launch due to pg config error: %s", err)
+	}
+
+	psqlconn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", "localhost", 5432, pgConfig.PgUser, pgConfig.PgPassword, pgConfig.PgDB)
+	db, err := pg.ConnectDB(psqlconn)
+	if err != nil {
+		log.Fatalf("Cannot launch due to database connection error: %s", err)
+	}
+
+	defer db.Close()
+
+	userStorage, err := userPg.NewPGUserStorage(db)
+	if err != nil {
+		log.Fatalf("Cannot launch due to user storage db error: %s", err)
+	}
+
 	pinStorage := pinSlice.NewPinSliceStorage(config)
 
 	jwtManager := auth.NewJWTManager(config)
 
-	userService := user.NewUserService(&userStorage)
+	userService := user.NewUserService(userStorage)
 	pinService := pin.NewPinService(&pinStorage)
 
 	authHandler := rest.AuthHandler{

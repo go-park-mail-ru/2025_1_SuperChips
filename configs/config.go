@@ -26,9 +26,7 @@ var (
 	errMissingJWT = errors.New("missing jwt token key")
 )
 
-func LoadConfigFromEnv() (Config, error) {
-	config := Config{}
-
+func (config *Config) LoadConfigFromEnv() error {
 	port, err := getEnvHelper("PORT", ":8080")
 	if err != nil {
 		log.Fatalln(err.Error())
@@ -40,7 +38,7 @@ func LoadConfigFromEnv() (Config, error) {
 	if ok {
 		config.JWTSecret = []byte(jwtSecret)
 	} else {
-		return config, errMissingJWT
+		return errMissingJWT
 	}
 
 	expirationTimeStr, ok := os.LookupEnv("EXPIRATION_TIME")
@@ -114,9 +112,9 @@ func LoadConfigFromEnv() (Config, error) {
 
 	config.AllowedOrigins = strings.Split(allowedOrigins, ",")
 
-	printConfig(config)
+	printConfig(*config)
 
-	return config, nil
+	return nil
 }
 
 func printConfig(cfg Config) {
