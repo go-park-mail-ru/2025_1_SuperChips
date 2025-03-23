@@ -25,7 +25,7 @@ var ErrBadRequest = fmt.Errorf("bad request")
 // @Produce json
 // @Success 200 string serverResponse.Description
 // @Router /health [get]
-func (app AppHandler) HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
+func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	response := ServerResponse{
 		Description: "server is up",
 	}

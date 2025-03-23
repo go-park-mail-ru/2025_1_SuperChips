@@ -3,7 +3,15 @@ package rest
 import (
 	"net/http"
 	"strconv"
+
+	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/pin"
 )
+
+type PinsHandler struct {
+    Config      configs.Config
+	PinService  pin.PinService
+}
 
 // FeedHandler godoc
 // @Summary Get Pins
@@ -15,7 +23,7 @@ import (
 // @Failure 404 string serverResponse.Description "page not found"
 // @Failure 400 string serverResponse.Description "bad request"
 // @Router /api/v1/feed [get]
-func (app AppHandler) FeedHandler(w http.ResponseWriter, r *http.Request) {
+func (app PinsHandler) FeedHandler(w http.ResponseWriter, r *http.Request) {
     pageSize := app.Config.PageSize
     page := parsePageQueryParam(r.URL.Query().Get("page"))
 
