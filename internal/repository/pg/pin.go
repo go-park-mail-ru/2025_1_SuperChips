@@ -13,7 +13,7 @@ import (
 const (
 	CREATE_PIN_TABLE = `
 		CREATE TABLE IF NOT EXISTS flow (
-		flow_id INTEGER AUTOINCREMENT PRIMARY KEY,
+		flow_id INTEGER PRIMARY KEY,
 		title TEXT,
 		description TEXT,
 		author_id INTEGER NOT NULL,

@@ -19,7 +19,7 @@ type pgUserStorage struct {
 const (
 	CREATE_USER_TABLE = `
 		CREATE TABLE IF NOT EXISTS user (
-		user_id INTEGER AUTOINCREMENT PRIMARY KEY,
+		user_id INTEGER PRIMARY KEY,
 		username TEXT NOT NULL UNIQUE,
 		avatar TEXT,
 		public_name TEXT NOT NULL,
