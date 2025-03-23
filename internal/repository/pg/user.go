@@ -108,7 +108,6 @@ func (p *pgUserStorage) LoginUser(email, password string) error {
     `, email).Scan(&hashedPassword)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			println("here")
 			return user.ErrInvalidCredentials
 		}
 
