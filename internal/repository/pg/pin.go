@@ -19,7 +19,7 @@ const (
 		author_id INTEGER NOT NULL,
 		create_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 		updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-		is_private BOOLEAN NOT NULL,
+		is_private BOOLEAN NOT NULL DEFAULT FALSE,
 		media_url TEXT,
 		FOREIGN KEY (author_id) REFERENCES flow_user(user_id)
 		);
@@ -99,7 +99,7 @@ func (p *pgPinStorage) addAllPins() error {
 
 	for _, file := range files {
 		if !file.IsDir() && isImageFile(file.Name()) {
-			_, err := p.db.Exec("INSERT INTO flow (title, media_url, author_id, is_private) VALUES ($1, $2, $3, $4)", fmt.Sprintf("Header %d", id), fmt.Sprintf("https://yourflow.ru/static/img/%s", file.Name()), 1, false)
+			_, err := p.db.Exec("INSERT INTO flow (title, media_url, author_id) VALUES ($1, $2, $3)", fmt.Sprintf("Header %d", id), fmt.Sprintf("https://yourflow.ru/static/img/%s", file.Name()), 1)
 			if err != nil {
 				return err
 			}
