@@ -42,7 +42,11 @@ func (app AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := app.UserService.GetUserId(data.Email)
+	id, err := app.UserService.GetUserId(data.Email)
+	if err != nil {
+		handleAuthError(w, err)
+		return
+	}
 
 	if err := app.setCookieJWT(w, app.Config, data.Email, id); err != nil {
 		handleAuthError(w, err)
@@ -108,7 +112,11 @@ func (app AuthHandler) RegistrationHandler(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
-	id := app.UserService.GetUserId(userData.Email)
+	id, err := app.UserService.GetUserId(userData.Email)
+	if err != nil {
+		handleAuthError(w, err)
+		return
+	}
 
 	if err := app.setCookieJWT(w, app.Config, userData.Email, id); err != nil {
 		handleAuthError(w, err)

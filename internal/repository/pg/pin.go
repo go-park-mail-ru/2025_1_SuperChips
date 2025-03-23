@@ -21,7 +21,6 @@ const (
 		updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 		is_private BOOLEAN NOT NULL,
 		media_url TEXT,
-		FOREIGN KEY (author_id) REFERENCES user(user_id)
 		`
 )
 

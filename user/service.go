@@ -6,7 +6,7 @@ type UserRepository interface {
 	AddUser(user domain.User) error
 	LoginUser(email, password string) error
 	GetUserPublicInfo(email string) (domain.PublicUser, error)
-	GetUserId(email string) uint64	
+	GetUserId(email string) (uint64, error)	
 }
 
 type UserService struct {
@@ -47,7 +47,7 @@ func (u *UserService) GetUserPublicInfo(email string) (domain.PublicUser, error)
 	return u.repo.GetUserPublicInfo(email)
 }
 
-func (u *UserService) GetUserId(email string) uint64 {
+func (u *UserService) GetUserId(email string) (uint64, error) {
 	return u.repo.GetUserId(email)
 }
 
