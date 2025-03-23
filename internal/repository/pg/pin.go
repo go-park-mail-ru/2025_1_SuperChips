@@ -99,7 +99,7 @@ func (p *pgPinStorage) addAllPins() error {
 
 	for _, file := range files {
 		if !file.IsDir() && isImageFile(file.Name()) {
-			_, err := p.db.Exec("INSERT INTO flow (title, media_url, author_id) VALUES ($1, $2, $3)", fmt.Sprintf("Header %d", id), fmt.Sprintf("https://yourflow.ru/static/img/%s", file.Name()), 1)
+			_, err := p.db.Exec("INSERT INTO flow (title, media_url, author_id, is_private) VALUES ($1, $2, $3, $4)", fmt.Sprintf("Header %d", id), fmt.Sprintf("https://yourflow.ru/static/img/%s", file.Name()), 1, false)
 			if err != nil {
 				return err
 			}
