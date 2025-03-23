@@ -7,18 +7,18 @@ import (
 	user "github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
 
-// type userDB struct {
-// 	user_id     uint64
-// 	username    string
-// 	avatar      sql.NullString
-// 	public_name string
-// 	email       string
-// 	create_at   string
-// 	updated_at  string
-// 	password    string
-// 	birthday    sql.NullTime
-// 	about       sql.NullString
-// }
+type userDB struct {
+	user_id     uint64
+	username    string
+	avatar      sql.NullString
+	public_name string
+	email       string
+	create_at   string
+	updated_at  string
+	password    string
+	birthday    sql.NullTime
+	about       sql.NullString
+}
 
 type pgUserStorage struct {
 	db *sql.DB
@@ -124,16 +124,23 @@ func (p *pgUserStorage) LoginUser(email, password string) error {
 }
 
 func (p *pgUserStorage) GetUserPublicInfo(email string) (user.PublicUser, error) {
-	var publicUser user.PublicUser
+	var userDB userDB
 
 	err := p.db.QueryRow(`
         SELECT username, email, avatar, birthday FROM flow_user WHERE email = $1
-    `, email).Scan(&publicUser.Username, &publicUser.Email, &publicUser.Avatar, &publicUser.Birthday)
+    `, email).Scan(&userDB.username, &userDB.email, &userDB.avatar, &userDB.birthday)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return user.PublicUser{}, user.ErrUserNotFound
 		}
 		return user.PublicUser{}, err
+	}
+
+	publicUser := user.PublicUser{
+		Username: userDB.username,
+		Email:    userDB.email,
+		Avatar:   userDB.avatar.String,
+		Birthday: userDB.birthday.Time,
 	}
 
 	return publicUser, nil
