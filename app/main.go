@@ -11,8 +11,7 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
-	pinSlice "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/slice"
-	userPg "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
+	pgStorage "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
 	middleware "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/middleware"
@@ -43,17 +42,20 @@ func main() {
 
 	defer db.Close()
 
-	userStorage, err := userPg.NewPGUserStorage(db)
+	userStorage, err := pgStorage.NewPGUserStorage(db)
 	if err != nil {
 		log.Fatalf("Cannot launch due to user storage db error: %s", err)
 	}
 
-	pinStorage := pinSlice.NewPinSliceStorage(config)
+	pinStorage, err := pgStorage.NewPGPinStorage(db)
+	if err != nil {
+		log.Fatalf("Cannot launch due to pin storage db error: %s", err)
+	}
 
 	jwtManager := auth.NewJWTManager(config)
 
 	userService := user.NewUserService(userStorage)
-	pinService := pin.NewPinService(&pinStorage)
+	pinService := pin.NewPinService(pinStorage)
 
 	authHandler := rest.AuthHandler{
 		Config:      config,
@@ -62,7 +64,7 @@ func main() {
 	}
 
 	pinsHandler := rest.PinsHandler{
-		Config: config,
+		Config:     config,
 		PinService: *pinService,
 	}
 

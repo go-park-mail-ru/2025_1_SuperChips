@@ -7,14 +7,16 @@ import (
 	"time"
 )
 
-
 type User struct {
-	Id       uint64    `json:"-"`
-	Username string    `json:"username"`
-	Password string    `json:"password"`
-	Email    string    `json:"email"`
-	Avatar   string    `json:"avatar,omitempty"`
-	Birthday time.Time `json:"birthday"`
+	Id         uint64    `json:"-"`
+	Username   string    `json:"username"`
+	Password   string    `json:"password"`
+	Email      string    `json:"email"`
+	Avatar     string    `json:"avatar,omitempty"`
+	Birthday   time.Time `json:"birthday"`
+	About      string    `json:"about,omitempty"`
+	PublicName string    `json:"public_name,omitempty"`
+	JWTVersion uint64    `json:"-"`
 }
 
 type PublicUser struct {

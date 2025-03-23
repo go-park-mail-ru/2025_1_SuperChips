@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -21,7 +22,7 @@ func NewPinSliceStorage(cfg configs.Config) PinSlice {
     return p
 }
 
-func (p *PinSlice) GetPins(page int, pageSize int) []domain.PinData {
+func (p *PinSlice) GetPins(page int, pageSize int) ([]domain.PinData, error) {
     startIndex := (page - 1) * pageSize
     endIndex := startIndex + pageSize
     if endIndex > len(p.Pins) {
@@ -29,12 +30,12 @@ func (p *PinSlice) GetPins(page int, pageSize int) []domain.PinData {
     }
 
     if startIndex >= len(p.Pins) {
-        return make([]domain.PinData, 0)
+        return make([]domain.PinData, 0), errors.New("page not found")
     }
 
     pagedImages := p.Pins[startIndex:endIndex]
 
-    return pagedImages
+    return pagedImages, nil
 }
 
 func (p *PinSlice) initialize(cfg configs.Config) {
@@ -51,8 +52,8 @@ func (p *PinSlice) initialize(cfg configs.Config) {
         if !file.IsDir() && isImageFile(file.Name()) {
             p.Pins = append(p.Pins, domain.PinData{
 				Header: fmt.Sprintf("Header %d", id),
-				Image: fmt.Sprintf("https://yourflow.ru/static/img/%s", file.Name()),
-				Author: fmt.Sprintf("Author %d", -id),
+				MediaURL: fmt.Sprintf("https://yourflow.ru/static/img/%s", file.Name()),
+				AuthorID: uint64(id),
 			})
 			id++
         }

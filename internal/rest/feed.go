@@ -32,7 +32,12 @@ func (app PinsHandler) FeedHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    pagedImages := app.PinService.GetPins(page, pageSize)
+    pagedImages, err := app.PinService.GetPins(page, pageSize)
+    if err != nil {
+        HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+        return
+    }
+
     if len(pagedImages) == 0 {
         HttpErrorToJson(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
         return
