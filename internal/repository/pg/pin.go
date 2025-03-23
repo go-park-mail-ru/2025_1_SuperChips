@@ -2,6 +2,10 @@ package repository
 
 import (
 	"database/sql"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 
 	pin "github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
@@ -25,14 +29,22 @@ const (
 
 type pgPinStorage struct {
 	db *sql.DB
+	baseDir string
 }
 
-func NewPGPinStorage(db *sql.DB) (*pgPinStorage, error) {
+func NewPGPinStorage(db *sql.DB, baseDir string) (*pgPinStorage, error) {
 	storage := &pgPinStorage{
 		db: db,
+		baseDir: baseDir,
 	}
 
-	storage.initialize()
+	if err := storage.initialize(); err != nil {
+		return nil, err
+	}
+	
+	if err := storage.addAllPins(); err != nil {
+		return nil, err
+	}
 
 	return storage, nil
 }
@@ -67,4 +79,44 @@ func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
 	}
 
 	return pins, nil
+}
+
+// временная функция, добавляющая все файлы из директории в базу данных
+func (p *pgPinStorage) addAllPins() error {
+	files, err := os.ReadDir(p.baseDir)
+	if err != nil {
+		return err
+	}
+
+	id := 1
+
+	for _, file := range files {
+		if !file.IsDir() && isImageFile(file.Name()) {
+			_, err := p.db.Exec("INSERT INTO flow (title, media_url, author_id) VALUES ($1, $2, $3)", fmt.Sprintf("Header %d", id), fmt.Sprintf("https://yourflow.ru/static/img/%s", file.Name()), id)
+			if err != nil {
+				return err
+			}
+			id++
+		}
+	}
+
+	return nil
+}
+
+func isImageFile(filename string) bool {
+    ext := strings.ToLower(filepath.Ext(filename))
+
+    pattern := "*.jpg;*.jpeg;*.png;*.gif;*.bmp;*.tiff;*.webp"
+
+    for _, p := range strings.Split(pattern, ";") {
+        match, err := filepath.Match(p, ext)
+        if err != nil {
+            continue
+        }
+        if match {
+            return true
+        }
+    }
+
+    return false
 }
