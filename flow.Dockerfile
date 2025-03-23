@@ -7,7 +7,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN go build -v -o main ./cmd/main.go
+RUN go build -v -o main ./app/main.go
 
 EXPOSE $PORT
 

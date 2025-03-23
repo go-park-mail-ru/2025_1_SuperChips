@@ -8,7 +8,14 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/user"
 )
+
+type AuthHandler struct {
+	Config      configs.Config
+	UserService user.UserService
+	JWTManager  auth.JWTManager
+}
 
 // LoginHandler godoc
 // @Summary Log in user
@@ -22,7 +29,7 @@ import (
 // @Failure 403 string Description "invalid credentials"
 // @Failure 500 string Description "Internal server error"
 // @Router /api/v1/auth/login [post]
-func (app AppHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
+func (app AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var data domain.LoginData
 	if err := DecodeData(w, r.Body, &data); err != nil {
 		return
@@ -60,7 +67,7 @@ func (app AppHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 // @Failure 409 string serverResponse.Description "Conflict"
 // @Failure 500 string serverResponse.Description "Internal server error"
 // @Router /api/v1/auth/register [post]
-func (app AppHandler) RegistrationHandler(w http.ResponseWriter, r *http.Request) {
+func (app AuthHandler) RegistrationHandler(w http.ResponseWriter, r *http.Request) {
 	var userData domain.User
 	if err := DecodeData(w, r.Body, &userData); err != nil {
 		return
@@ -117,7 +124,7 @@ func (app AppHandler) RegistrationHandler(w http.ResponseWriter, r *http.Request
 // @Produce json
 // @Success 200 string serverResponse.Description "logged out"
 // @Router /api/v1/auth/logout [post]
-func (app AppHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
+func (app AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	changedConfig := app.Config
 	changedConfig.ExpirationTime = -time.Hour * 24 * 365
 
@@ -139,7 +146,7 @@ func (app AppHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 // @Failure 401 string serverResponse.Description "Unauthorized"
 // @Failure 500 string serverResponse.Description "Internal server error"
 // @Router /api/v1/auth/user [get]
-func (app AppHandler) UserDataHandler(w http.ResponseWriter, r *http.Request) {
+func (app AuthHandler) UserDataHandler(w http.ResponseWriter, r *http.Request) {
 	token, err := r.Cookie(auth.AuthToken)
 	if err != nil {
 		handleAuthError(w, err)
@@ -182,7 +189,7 @@ func setCookie(w http.ResponseWriter, config configs.Config, name string, value 
 	})
 }
 
-func (app AppHandler) setCookieJWT(w http.ResponseWriter, config configs.Config, email string, userID uint64) error {
+func (app AuthHandler) setCookieJWT(w http.ResponseWriter, config configs.Config, email string, userID uint64) error {
 	tokenString, err := app.JWTManager.CreateJWT(email, int(userID))
 	if err != nil {
 		return err

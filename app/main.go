@@ -36,11 +36,15 @@ func main() {
 	userService := user.NewUserService(&userStorage)
 	pinService := pin.NewPinService(&pinStorage)
 
-	app := rest.AppHandler{
+	authHandler := rest.AuthHandler{
 		Config:      config,
 		UserService: *userService,
-		PinService:  *pinService,
 		JWTManager:  *jwtManager,
+	}
+
+	pinsHandler := rest.PinsHandler{
+		Config: config,
+		PinService: *pinService,
 	}
 
 	allowedGetOptions := []string{http.MethodGet, http.MethodOptions}
@@ -52,12 +56,12 @@ func main() {
 
 	mux.Handle("GET /static/", http.StripPrefix("/static/", fs))
 
-	mux.HandleFunc("/health", middleware.CorsMiddleware(app.HealthCheckHandler, config, allowedGetOptions))
-	mux.HandleFunc("/api/v1/feed", middleware.CorsMiddleware(app.FeedHandler, config, allowedGetOptions))
-	mux.HandleFunc("/api/v1/auth/login", middleware.CorsMiddleware(app.LoginHandler, config, allowedPostOptions))
-	mux.HandleFunc("/api/v1/auth/registration", middleware.CorsMiddleware(app.RegistrationHandler, config, allowedPostOptions))
-	mux.HandleFunc("/api/v1/auth/logout", middleware.CorsMiddleware(app.LogoutHandler, config, allowedPostOptions))
-	mux.HandleFunc("/api/v1/auth/user", middleware.CorsMiddleware(app.UserDataHandler, config, allowedGetOptions))
+	mux.HandleFunc("/health", middleware.CorsMiddleware(rest.HealthCheckHandler, config, allowedGetOptions))
+	mux.HandleFunc("/api/v1/feed", middleware.CorsMiddleware(pinsHandler.FeedHandler, config, allowedGetOptions))
+	mux.HandleFunc("/api/v1/auth/login", middleware.CorsMiddleware(authHandler.LoginHandler, config, allowedPostOptions))
+	mux.HandleFunc("/api/v1/auth/registration", middleware.CorsMiddleware(authHandler.RegistrationHandler, config, allowedPostOptions))
+	mux.HandleFunc("/api/v1/auth/logout", middleware.CorsMiddleware(authHandler.LogoutHandler, config, allowedPostOptions))
+	mux.HandleFunc("/api/v1/auth/user", middleware.CorsMiddleware(authHandler.UserDataHandler, config, allowedGetOptions))
 
 	server := http.Server{
 		Addr:    config.Port,
