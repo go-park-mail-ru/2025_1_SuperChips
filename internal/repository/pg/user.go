@@ -1,30 +1,27 @@
 package repository
 
 import (
-	"context"
+	"database/sql"
 
 	user "github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	security "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/security"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type userDB struct {
 	user_id     uint64
 	username    string
-	avatar      pgtype.Text
+	avatar      sql.NullString
 	public_name string
 	email       string
 	create_at   string
 	updated_at  string
 	password    string
-	birthday    pgtype.Timestamptz
-	about       pgtype.Text
+	birthday    sql.NullTime
+	about       sql.NullString
 }
 
 type pgUserStorage struct {
-	db *pgxpool.Pool
+	db *sql.DB
 }
 
 // AddUser(user domain.User) error
@@ -50,7 +47,7 @@ const (
     `
 )
 
-func NewPGUserStorage(db *pgxpool.Pool) (*pgUserStorage, error) {
+func NewPGUserStorage(db *sql.DB) (*pgUserStorage, error) {
 	storage := &pgUserStorage{
 		db: db,
 	}
@@ -63,7 +60,7 @@ func NewPGUserStorage(db *pgxpool.Pool) (*pgUserStorage, error) {
 }
 
 func (p *pgUserStorage) initialize() error {
-	_, err := p.db.Exec(context.Background(), CREATE_USER_TABLE)
+	_, err := p.db.Exec(CREATE_USER_TABLE)
 	if err != nil {
 		return err
 	}
@@ -81,17 +78,17 @@ func (p *pgUserStorage) AddUser(userInfo user.User) error {
 		return err
 	}
 
-	row := p.db.QueryRow(context.Background(), `SELECT user_id FROM flow_user WHERE email = $1 OR username = $2`, userInfo.Email, userInfo.Username)
+	row := p.db.QueryRow(`SELECT user_id FROM flow_user WHERE email = $1 OR username = $2`, userInfo.Email, userInfo.Username)
 	var id uint64
 	err = row.Scan(&id)
-	if err == pgx.ErrNoRows {
+	if err == sql.ErrNoRows {
 	} else if err != nil {
 		return err
 	} else {
 		return user.ErrConflict
 	}
 
-	_, err = p.db.Exec(context.Background(), `
+	_, err = p.db.Exec(`
         INSERT INTO flow_user (username, avatar, public_name, email, password)
         VALUES ($1, $2, $3, $4, $5)
     `, userInfo.Username, userInfo.Avatar, userInfo.PublicName, userInfo.Email, hashedPassword)
@@ -109,11 +106,11 @@ func (p *pgUserStorage) LoginUser(email, password string) error {
 		return err
 	}
 
-	err := p.db.QueryRow(context.Background(), `
+	err := p.db.QueryRow(`
         SELECT password FROM flow_user WHERE email = $1
     `, email).Scan(&hashedPassword)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if err == sql.ErrNoRows {
 			return user.ErrInvalidCredentials
 		}
 
@@ -131,11 +128,11 @@ func (p *pgUserStorage) LoginUser(email, password string) error {
 func (p *pgUserStorage) GetUserPublicInfo(email string) (user.PublicUser, error) {
 	var userDB userDB
 
-	err := p.db.QueryRow(context.Background(), `
+	err := p.db.QueryRow(`
         SELECT username, email, avatar, birthday FROM flow_user WHERE email = $1
     `, email).Scan(&userDB.username, &userDB.email, &userDB.avatar, &userDB.birthday)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if err == sql.ErrNoRows {
 			return user.PublicUser{}, user.ErrUserNotFound
 		}
 		return user.PublicUser{}, err
@@ -154,11 +151,11 @@ func (p *pgUserStorage) GetUserPublicInfo(email string) (user.PublicUser, error)
 func (p *pgUserStorage) GetUserId(email string) (uint64, error) {
 	var id uint64
 
-	err := p.db.QueryRow(context.Background(), `
+	err := p.db.QueryRow(`
         SELECT user_id FROM flow_user WHERE email = $1
     `, email).Scan(&id)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if err == sql.ErrNoRows {
 			return 0, user.ErrUserNotFound
 		}
 		return 0, err
