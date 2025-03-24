@@ -84,7 +84,10 @@ func (p *pgUserStorage) AddUser(userInfo user.User) error {
 	row := p.db.QueryRow(context.Background(), `SELECT user_id FROM flow_user WHERE email = $1 OR username = $2`, userInfo.Email, userInfo.Username)
 	var id uint64
 	err = row.Scan(&id)
-	if err != nil && err != pgx.ErrNoRows {
+	if err == pgx.ErrNoRows {
+	} else if err != nil {
+		return err
+	} else {
 		return user.ErrConflict
 	}
 
