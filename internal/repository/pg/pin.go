@@ -1,22 +1,24 @@
 package repository
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
 	pin "github.com/go-park-mail-ru/2025_1_SuperChips/domain"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type flowDB struct {
 	Flow_id     uint64
-	Title       sql.NullString
-	Description sql.NullString
+	Title       pgtype.Text
+	Description pgtype.Text
 	Author_id   uint64
-	Created_at  string
-	Updated_at  string
+	Created_at  pgtype.Timestamptz
+	Updated_at  pgtype.Timestamptz
 	Is_private  bool
 	Media_url   string
 }
@@ -40,11 +42,11 @@ const (
 // GetPins(page int, pageSize int) []domain.PinData
 
 type pgPinStorage struct {
-	db      *sql.DB
+	db      *pgxpool.Pool
 	baseDir string
 }
 
-func NewPGPinStorage(db *sql.DB, baseDir string) (*pgPinStorage, error) {
+func NewPGPinStorage(db *pgxpool.Pool, baseDir string) (*pgPinStorage, error) {
 	storage := &pgPinStorage{
 		db:      db,
 		baseDir: baseDir,
@@ -62,7 +64,7 @@ func NewPGPinStorage(db *sql.DB, baseDir string) (*pgPinStorage, error) {
 }
 
 func (p *pgPinStorage) initialize() error {
-	_, err := p.db.Exec(CREATE_PIN_TABLE)
+	_, err := p.db.Exec(context.Background(), CREATE_PIN_TABLE)
 	if err != nil {
 		return err
 	}
@@ -71,7 +73,7 @@ func (p *pgPinStorage) initialize() error {
 }
 
 func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
-	rows, err := p.db.Query("SELECT flow_id, title, description, author_id, is_private, media_url FROM flow LIMIT $1 OFFSET $2", pageSize, (page-1)*pageSize)
+	rows, err := p.db.Query(context.Background(), "SELECT flow_id, title, description, author_id, is_private, media_url FROM flow LIMIT $1 OFFSET $2", pageSize, (page-1)*pageSize)
 	if err != nil {
 		return []pin.PinData{}, err
 	}
@@ -110,15 +112,14 @@ func (p *pgPinStorage) addAllPins() error {
 
 	id := 1
 
-	// add one user who will have all pins
-	_, err = p.db.Exec("INSERT INTO flow_user (username, avatar, public_name, email, password) VALUES ($1, $2, $3, $4, $5)", "admin", "", "admin", "admin@yourflow", "admin")
+	_, err = p.db.Exec(context.Background(), "INSERT INTO flow_user (username, avatar, public_name, email, password) VALUES ($1, $2, $3, $4, $5)", "admin", "", "admin", "admin@yourflow", "admin")
 	if err != nil {
 		return err
 	}
 
 	for _, file := range files {
 		if !file.IsDir() && isImageFile(file.Name()) {
-			_, err := p.db.Exec("INSERT INTO flow (title, media_url, author_id) VALUES ($1, $2, $3)", fmt.Sprintf("Header %d", id), fmt.Sprintf("https://yourflow.ru/static/img/%s", file.Name()), 1)
+			_, err := p.db.Exec(context.Background(), "INSERT INTO flow (title, media_url, author_id) VALUES ($1, $2, $3)", fmt.Sprintf("Header %d", id), fmt.Sprintf("https://yourflow.ru/static/img/%s", file.Name()), 1)
 			if err != nil {
 				return err
 			}

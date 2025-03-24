@@ -1,20 +1,20 @@
 package rest
 
 import (
-	"database/sql"
+	"context"
 
-	_ "github.com/lib/pq"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func ConnectDB(conn string) (*sql.DB, error) {
-	db, err := sql.Open("postgres", conn)
+func ConnectDB(connString string) (*pgxpool.Pool, error) {
+	pool, err := pgxpool.New(context.Background(), connString)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := db.Ping(); err != nil {
+	if err := pool.Ping(context.Background()); err != nil {
 		return nil, err
 	}
 
-	return db, nil
+	return pool, nil
 }
