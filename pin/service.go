@@ -21,4 +21,3 @@ func NewPinService(r PinRepository) *PinService {
 func (p *PinService) GetPins(page int, pageSize int) ([]domain.PinData, error) {
 	return p.repo.GetPins(page, pageSize)
 }
-

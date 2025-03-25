@@ -5,9 +5,9 @@ import (
 	"net/http"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/pin"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/user"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
 )
 
 type AppHandler struct {
@@ -32,4 +32,3 @@ func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 
 	ServerGenerateJSONResponse(w, response, http.StatusOK)
 }
-

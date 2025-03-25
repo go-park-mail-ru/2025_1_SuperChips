@@ -101,11 +101,11 @@ func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
 
 		if !flowDB.Is_private {
 			pin := pin.PinData{
-				FlowID:   flowDB.Flow_id,
+				FlowID:      flowDB.Flow_id,
 				Description: flowDB.Description.String,
-				Header:   flowDB.Title.String,
-				MediaURL: flowDB.Media_url,
-				AuthorID: flowDB.Author_id,
+				Header:      flowDB.Title.String,
+				MediaURL:    flowDB.Media_url,
+				AuthorID:    flowDB.Author_id,
 			}
 			pins = append(pins, pin)
 		}

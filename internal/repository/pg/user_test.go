@@ -20,7 +20,7 @@ func TestUserRepository_AddUser(t *testing.T) {
 	}
 
 	db, mock := userMock.Db, userMock.Mock
-	
+
 	defer db.Close()
 
 	repo, err := pg.NewPGUserStorage(db)
@@ -33,7 +33,7 @@ func TestUserRepository_AddUser(t *testing.T) {
 		Email:      "test@example.com",
 		Password:   "password123",
 		PublicName: "Test User",
-		Birthday:  time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
+		Birthday:   time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 
 	mock.ExpectQuery(`SELECT user_id FROM flow_user WHERE email = \$1 OR username = \$2`).
@@ -173,7 +173,7 @@ func TestUserRepository_AddUser_Conflict(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	
+
 	db, mock := userMock.Db, userMock.Mock
 
 	defer db.Close()
@@ -188,7 +188,7 @@ func TestUserRepository_AddUser_Conflict(t *testing.T) {
 		Email:      "test@example.com",
 		Password:   "password123",
 		PublicName: "Test User",
-		Birthday:  time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
+		Birthday:   time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 
 	mock.ExpectQuery(`SELECT user_id FROM flow_user WHERE email = \$1 OR username = \$2`).
@@ -204,4 +204,3 @@ func TestUserRepository_AddUser_Conflict(t *testing.T) {
 		t.Errorf("there were unfulfilled expectations: %v", err)
 	}
 }
-

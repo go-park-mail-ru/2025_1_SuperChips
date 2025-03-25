@@ -9,8 +9,8 @@ import (
 )
 
 type PinsHandler struct {
-    Config      configs.Config
-	PinService  pin.PinService
+	Config     configs.Config
+	PinService pin.PinService
 }
 
 // FeedHandler godoc
@@ -24,26 +24,26 @@ type PinsHandler struct {
 // @Failure 400 string serverResponse.Description "bad request"
 // @Router /api/v1/feed [get]
 func (app PinsHandler) FeedHandler(w http.ResponseWriter, r *http.Request) {
-    pageSize := app.Config.PageSize
-    page := parsePageQueryParam(r.URL.Query().Get("page"))
+	pageSize := app.Config.PageSize
+	page := parsePageQueryParam(r.URL.Query().Get("page"))
 
-    if page < 1 {
-        HttpErrorToJson(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-        return
-    }
+	if page < 1 {
+		HttpErrorToJson(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
 
-    pagedImages, err := app.PinService.GetPins(page, pageSize)
-    if err != nil {
-        HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-        return
-    }
+	pagedImages, err := app.PinService.GetPins(page, pageSize)
+	if err != nil {
+		HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
 
-    if len(pagedImages) == 0 {
-        HttpErrorToJson(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-        return
-    }
+	if len(pagedImages) == 0 {
+		HttpErrorToJson(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
 
-    response := ServerResponse{
+	response := ServerResponse{
 		Data: pagedImages,
 	}
 
@@ -51,10 +51,10 @@ func (app PinsHandler) FeedHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func parsePageQueryParam(pageStr string) int {
-    page, err := strconv.Atoi(pageStr)
-    if err != nil || page < 1 {
-        return 1
-    }
-    return page
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		return 1
+	}
+	return page
 }
 
