@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS flow_user (
-    user_id SERIAL PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
     avatar TEXT,
     public_name TEXT NOT NULL,

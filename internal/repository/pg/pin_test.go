@@ -25,9 +25,9 @@ func TestGetPins(t *testing.T) {
 		{FlowID: 3, Header: "title3", Description: "description3", AuthorID: 3, IsPrivate: false, MediaURL: "media_url3"},
 	}
 
-	mock.Mock.ExpectQuery(`SELECT flow_id, title, description, author_id, is_private, media_url FROM flow LIMIT \$1 OFFSET \$2`).
+	mock.Mock.ExpectQuery(`SELECT id, title, description, author_id, is_private, media_url FROM flow LIMIT \$1 OFFSET \$2`).
 		WithArgs(pageSize, (page-1)*pageSize).
-		WillReturnRows(sqlmock.NewRows([]string{"flow_id", "title", "description", "author_id", "is_private", "media_url"}).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "title", "description", "author_id", "is_private", "media_url"}).
 			AddRow(1, "title1", "description1", 1, false, "media_url1").
 			AddRow(2, "title2", "description2", 2, true, "media_url2").
 			AddRow(3, "title3", "description3", 3, false, "media_url3"))

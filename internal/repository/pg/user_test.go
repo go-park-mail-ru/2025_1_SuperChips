@@ -36,7 +36,7 @@ func TestUserRepository_AddUser(t *testing.T) {
 		Birthday:   time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 
-	mock.ExpectQuery(`SELECT user_id FROM flow_user WHERE email = \$1 OR username = \$2`).
+	mock.ExpectQuery(`SELECT id FROM flow_user WHERE email = \$1 OR username = \$2`).
 		WithArgs(user.Email, user.Username).
 		WillReturnError(sql.ErrNoRows)
 
@@ -154,7 +154,7 @@ func TestUserRepository_GetUserId(t *testing.T) {
 	email := "test@example.com"
 	var expectedID uint64 = 1
 
-	mock.ExpectQuery(`SELECT user_id FROM flow_user WHERE email = \$1`).
+	mock.ExpectQuery(`SELECT id FROM flow_user WHERE email = \$1`).
 		WithArgs(email).
 		WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow(expectedID))
 
@@ -195,7 +195,7 @@ func TestUserRepository_AddUser_Conflict(t *testing.T) {
 		Birthday:   time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 
-	mock.ExpectQuery(`SELECT user_id FROM flow_user WHERE email = \$1 OR username = \$2`).
+	mock.ExpectQuery(`SELECT id FROM flow_user WHERE email = \$1 OR username = \$2`).
 		WithArgs(user.Email, user.Username).
 		WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow(1))
 

@@ -8,7 +8,7 @@ import (
 )
 
 type flowPinDB struct {
-	Flow_id     uint64
+	Id     uint64
 	Title       sql.NullString
 	Description sql.NullString
 	Author_id   uint64
@@ -46,7 +46,7 @@ func NewPGPinStorage(db *sql.DB) (*pgPinStorage, error) {
 }
 
 func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
-	rows, err := p.db.Query("SELECT flow_id, title, description, author_id, is_private, media_url FROM flow LIMIT $1 OFFSET $2", pageSize, (page-1)*pageSize)
+	rows, err := p.db.Query("SELECT id, title, description, author_id, is_private, media_url FROM flow LIMIT $1 OFFSET $2", pageSize, (page-1)*pageSize)
 	if err != nil {
 		return []pin.PinData{}, err
 	}
@@ -57,14 +57,14 @@ func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
 
 	for rows.Next() {
 		var flowPinDB flowPinDB
-		err := rows.Scan(&flowPinDB.Flow_id, &flowPinDB.Title, &flowPinDB.Description, &flowPinDB.Author_id, &flowPinDB.Is_private, &flowPinDB.Media_url)
+		err := rows.Scan(&flowPinDB.Id, &flowPinDB.Title, &flowPinDB.Description, &flowPinDB.Author_id, &flowPinDB.Is_private, &flowPinDB.Media_url)
 		if err != nil {
 			return []pin.PinData{}, err
 		}
 
 		if !flowPinDB.Is_private {
 			pin := pin.PinData{
-				FlowID:      flowPinDB.Flow_id,
+				FlowID:      flowPinDB.Id,
 				Description: flowPinDB.Description.String,
 				Header:      flowPinDB.Title.String,
 				MediaURL:    flowPinDB.Media_url,
