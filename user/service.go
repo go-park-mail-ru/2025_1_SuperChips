@@ -1,10 +1,13 @@
 package user
 
-import "github.com/go-park-mail-ru/2025_1_SuperChips/domain"
+import (
+	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/security"
+)
 
 type UserRepository interface {
 	AddUser(user domain.User) error
-	LoginUser(email, password string) error
+	LoginUser(email, password string) (string, error)
 	GetUserPublicInfo(email string) (domain.PublicUser, error)
 	GetUserId(email string) (uint64, error)	
 }
@@ -36,8 +39,13 @@ func (u *UserService) LoginUser(email, password string) error {
 		return err
 	}
 
-	if err := u.repo.LoginUser(email, password); err != nil {
+	pswd, err := u.repo.LoginUser(email, password)
+	if err != nil {
 		return err
+	}
+
+	if !security.ComparePassword(password, pswd) {
+		return domain.ErrInvalidCredentials
 	}
 
 	return nil

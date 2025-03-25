@@ -10,7 +10,7 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	pg "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg/mocks"
-	security "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/security"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/security"
 )
 
 func TestUserRepository_AddUser(t *testing.T) {
@@ -80,13 +80,17 @@ func TestUserRepository_LoginUser(t *testing.T) {
 		WithArgs(email).
 		WillReturnRows(sqlmock.NewRows([]string{"password"}).AddRow(hashedPassword))
 
-	err = repo.LoginUser(email, password)
+	pswd, err := repo.LoginUser(email, password)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %v", err)
+	}
+
+	if !security.ComparePassword(password, pswd) {
+		t.Errorf("passwords dont match")
 	}
 }
 
@@ -148,7 +152,7 @@ func TestUserRepository_GetUserId(t *testing.T) {
 	}
 
 	email := "test@example.com"
-	expectedID := uint64(1)
+	var expectedID uint64 = 1
 
 	mock.ExpectQuery(`SELECT user_id FROM flow_user WHERE email = \$1`).
 		WithArgs(email).

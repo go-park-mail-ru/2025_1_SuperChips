@@ -15,9 +15,12 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
 	middleware "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/middleware"
-	pg "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/pg"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/pg"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/pin"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/user"
+	"github.com/golang-migrate/migrate/v4"
+    "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
 // @title flow API
@@ -35,15 +38,37 @@ func main() {
 	}
 
 	log.Println("Waiting for database to start...")
-	time.Sleep(7 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second * 10)
 
+	defer cancel()
+
+	// т.к. бд не сразу после запуска начинает принимать запросы
+	// пробуем подключиться к бд в течение 10 секунд
 	psqlconn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", pgConfig.PgHost, 5432, pgConfig.PgUser, pgConfig.PgPassword, pgConfig.PgDB)
-	db, err := pg.ConnectDB(psqlconn)
+	db, err := pg.ConnectDB(psqlconn, ctx)
 	if err != nil {
 		log.Fatalf("Cannot launch due to database connection error: %s", err)
 	}
 
 	defer db.Close()
+
+	driver, err := postgres.WithInstance(db, &postgres.Config{})
+	if err != nil {
+		log.Fatalf("Failed to initialize migration driver: %s", err)
+	}
+
+	m, err := migrate.NewWithDatabaseInstance(
+		"file://database/migrations",
+		"postgres",
+		driver,
+	)
+	if err != nil {
+		log.Fatalf("Failed to create migration instance: %s", err)
+	}
+
+	if err := m.Up(); err != nil {
+		log.Fatalf("Failed to apply migrations: %s", err)
+	}
 
 	userStorage, err := pgStorage.NewPGUserStorage(db)
 	if err != nil {
@@ -74,11 +99,11 @@ func main() {
 	allowedGetOptions := []string{http.MethodGet, http.MethodOptions}
 	allowedPostOptions := []string{http.MethodPost, http.MethodOptions}
 
-	fs := http.FileServer(http.Dir("./static/"))
+	fs := http.FileServer(http.Dir(config.StaticBaseDir))
 
 	mux := http.NewServeMux()
 
-	mux.Handle("GET /static/", http.StripPrefix("/static/", fs))
+	mux.Handle("GET /static/", http.StripPrefix(config.StaticBaseDir, fs))
 
 	mux.HandleFunc("/health", middleware.CorsMiddleware(rest.HealthCheckHandler, config, allowedGetOptions))
 	mux.HandleFunc("/api/v1/feed", middleware.CorsMiddleware(pinsHandler.FeedHandler, config, allowedGetOptions))
@@ -113,7 +138,7 @@ func main() {
 		log.Println("Termination signal detected, shutting down gracefully.")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel = context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {

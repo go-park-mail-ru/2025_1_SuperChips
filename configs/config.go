@@ -18,6 +18,7 @@ type Config struct {
 	Environment    string
 	IpAddress      string
 	ImageBaseDir   string
+	StaticBaseDir  string
 	PageSize       int
 	AllowedOrigins []string
 }
@@ -112,6 +113,9 @@ func (config *Config) LoadConfigFromEnv() error {
 
 	config.AllowedOrigins = strings.Split(allowedOrigins, ",")
 
+	staticBaseDir, _ := getEnvHelper("STATIC_BASE_DIR", "./static")
+	config.StaticBaseDir = staticBaseDir
+
 	printConfig(*config)
 
 	return nil
@@ -132,17 +136,16 @@ func printConfig(cfg Config) {
 }
 
 func getEnvHelper(key string, defaultValue ...string) (string, error) {
-    value, ok := os.LookupEnv(key)
-    if ok {
-        return value, nil
-    }
+	value, ok := os.LookupEnv(key)
+	if ok {
+		return value, nil
+	}
 
-    if len(defaultValue) > 0 {
-        log.Printf("Variable %s not found, using default value: %s", key, defaultValue[0])
-        return defaultValue[0], nil
-    }
+	if len(defaultValue) > 0 {
+		log.Printf("Variable %s not found, using default value: %s", key, defaultValue[0])
+		return defaultValue[0], nil
+	}
 
-    errMsg := fmt.Sprintf("Mandatory environment variable %s not set!", key)
-    return "", errors.New(errMsg)
+	errMsg := fmt.Sprintf("Mandatory environment variable %s not set!", key)
+	return "", errors.New(errMsg)
 }
-
