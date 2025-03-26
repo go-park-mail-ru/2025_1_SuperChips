@@ -8,12 +8,18 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/user"
 )
 
+type UserUsecaseInterface interface {
+	AddUser(user domain.User) error
+	LoginUser(email, password string) error
+	GetUserPublicInfo(email string) (domain.PublicUser, error)
+	GetUserId(email string) (uint64, error)  
+}
+  
 type AuthHandler struct {
 	Config      configs.Config
-	UserService user.UserService
+	UserService UserUsecaseInterface
 	JWTManager  auth.JWTManager
 }
 

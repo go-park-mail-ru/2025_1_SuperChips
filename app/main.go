@@ -87,13 +87,13 @@ func main() {
 
 	authHandler := rest.AuthHandler{
 		Config:      config,
-		UserService: *userService,
+		UserService: userService,
 		JWTManager:  *jwtManager,
 	}
 
 	pinsHandler := rest.PinsHandler{
 		Config:     config,
-		PinService: *pinService,
+		PinService: pinService,
 	}
 
 	allowedGetOptions := []string{http.MethodGet, http.MethodOptions}

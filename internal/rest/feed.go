@@ -5,12 +5,16 @@ import (
 	"strconv"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/pin"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
 
+type PinServiceInterface interface {
+	GetPins(page int, pageSize int) ([]domain.PinData, error)
+}
+
 type PinsHandler struct {
-	Config     configs.Config
-	PinService pin.PinService
+    Config      configs.Config
+	PinService  PinServiceInterface
 }
 
 // FeedHandler godoc

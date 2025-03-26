@@ -3,7 +3,7 @@ MOCKGEN=mockgen
 NAME := main.exe
 COVERAGE_FILE=coverage.out
 MOCK_DST=./mocks
-TESTED_DIRS := ./internal/rest/... ./internal/domain/...
+TESTED_DIRS := ./internal/rest/... ./domain/...
 
 build : cmd/main.go
 	$(GO) build -o $(NAME) $<
