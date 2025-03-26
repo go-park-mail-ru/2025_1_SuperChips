@@ -38,13 +38,13 @@ func main() {
 
 	authHandler := rest.AuthHandler{
 		Config:      config,
-		UserService: *userService,
+		UserService: userService,
 		JWTManager:  *jwtManager,
 	}
 
 	pinsHandler := rest.PinsHandler{
 		Config: config,
-		PinService: *pinService,
+		PinService: pinService,
 	}
 
 	allowedGetOptions := []string{http.MethodGet, http.MethodOptions}
@@ -57,7 +57,9 @@ func main() {
 	mux.Handle("GET /static/", http.StripPrefix("/static/", fs))
 
 	mux.HandleFunc("/health", middleware.CorsMiddleware(rest.HealthCheckHandler, config, allowedGetOptions))
+
 	mux.HandleFunc("/api/v1/feed", middleware.CorsMiddleware(pinsHandler.FeedHandler, config, allowedGetOptions))
+	
 	mux.HandleFunc("/api/v1/auth/login", middleware.CorsMiddleware(authHandler.LoginHandler, config, allowedPostOptions))
 	mux.HandleFunc("/api/v1/auth/registration", middleware.CorsMiddleware(authHandler.RegistrationHandler, config, allowedPostOptions))
 	mux.HandleFunc("/api/v1/auth/logout", middleware.CorsMiddleware(authHandler.LogoutHandler, config, allowedPostOptions))

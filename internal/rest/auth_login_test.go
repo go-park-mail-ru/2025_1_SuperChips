@@ -157,7 +157,7 @@ func TestLoginHandler(t *testing.T) {
 
 			app := rest.AuthHandler{
 				Config:      cfg,
-				UserService: *mockUserService,
+				UserService: mockUserService,
 				JWTManager:  *auth.NewJWTManager(cfg),
 			}
 

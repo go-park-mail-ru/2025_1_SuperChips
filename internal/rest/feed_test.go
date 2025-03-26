@@ -139,7 +139,7 @@ func TestPinsHandler_FeedHandler(t *testing.T) {
 
 			app := rest.PinsHandler{
 				Config:     cfg,
-				PinService: *mockPinService,
+				PinService: mockPinService,
 			}
 
 			req := httptest.NewRequest(tt.method, tt.url+"?"+tt.query, strings.NewReader(tt.body))
