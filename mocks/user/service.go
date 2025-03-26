@@ -41,17 +41,34 @@ func (m *MockUserRepository) EXPECT() *MockUserRepositoryMockRecorder {
 }
 
 // AddUser mocks base method.
-func (m *MockUserRepository) AddUser(user domain.User) error {
+func (m *MockUserRepository) AddUser(user domain.User) (uint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddUser", user)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(uint64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // AddUser indicates an expected call of AddUser.
 func (mr *MockUserRepositoryMockRecorder) AddUser(user any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddUser", reflect.TypeOf((*MockUserRepository)(nil).AddUser), user)
+}
+
+// GetHash mocks base method.
+func (m *MockUserRepository) GetHash(email, password string) (uint64, string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetHash", email, password)
+	ret0, _ := ret[0].(uint64)
+	ret1, _ := ret[1].(string)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetHash indicates an expected call of GetHash.
+func (mr *MockUserRepositoryMockRecorder) GetHash(email, password any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHash", reflect.TypeOf((*MockUserRepository)(nil).GetHash), email, password)
 }
 
 // GetUserId mocks base method.
@@ -82,19 +99,4 @@ func (m *MockUserRepository) GetUserPublicInfo(email string) (domain.PublicUser,
 func (mr *MockUserRepositoryMockRecorder) GetUserPublicInfo(email any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserPublicInfo", reflect.TypeOf((*MockUserRepository)(nil).GetUserPublicInfo), email)
-}
-
-// LoginUser mocks base method.
-func (m *MockUserRepository) LoginUser(email, password string) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "LoginUser", email, password)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// LoginUser indicates an expected call of LoginUser.
-func (mr *MockUserRepositoryMockRecorder) LoginUser(email, password any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoginUser", reflect.TypeOf((*MockUserRepository)(nil).LoginUser), email, password)
 }

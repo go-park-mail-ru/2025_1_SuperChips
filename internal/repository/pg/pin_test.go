@@ -9,13 +9,15 @@ import (
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	pg "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg/mocks"
 )
 
 func TestGetPins(t *testing.T) {
-	mock, err := mocks.NewPinMock()
-	require.NoError(t, err)
-	defer mock.Db.Close()
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer db.Close()
 
 	page := 1
 	pageSize := 3
@@ -25,14 +27,14 @@ func TestGetPins(t *testing.T) {
 		{FlowID: 3, Header: "title3", Description: "description3", AuthorID: 3, IsPrivate: false, MediaURL: "media_url3"},
 	}
 
-	mock.Mock.ExpectQuery(`SELECT id, title, description, author_id, is_private, media_url FROM flow LIMIT \$1 OFFSET \$2`).
+	mock.ExpectQuery(`SELECT id, title, description, author_id, is_private, media_url FROM flow LIMIT \$1 OFFSET \$2`).
 		WithArgs(pageSize, (page-1)*pageSize).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "title", "description", "author_id", "is_private", "media_url"}).
 			AddRow(1, "title1", "description1", 1, false, "media_url1").
 			AddRow(2, "title2", "description2", 2, true, "media_url2").
 			AddRow(3, "title3", "description3", 3, false, "media_url3"))
 
-	repo, err := pg.NewPGPinStorage(mock.Db)
+	repo, err := pg.NewPGPinStorage(db)
 	require.NoError(t, err)
 
 	pins, err := repo.GetPins(page, pageSize)
@@ -40,6 +42,6 @@ func TestGetPins(t *testing.T) {
 
 	assert.Equal(t, expectedPins, pins)
 
-	err = mock.Mock.ExpectationsWereMet()
+	err = mock.ExpectationsWereMet()
 	require.NoError(t, err)
 }

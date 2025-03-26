@@ -12,27 +12,27 @@ type PostgresConfig struct {
 	PgHost     string // хост
 }
 
-const MISSING_VAR_TEXT = "missing environment variable %s"
+const missingVarText = "missing environment variable %s"
 
 func (config *PostgresConfig) LoadConfigFromEnv() error {
 	pgUser, ok := os.LookupEnv("POSTGRES_USER")
 	if !ok {
-		return fmt.Errorf(MISSING_VAR_TEXT, "POSTGRES_USER")
+		return fmt.Errorf(missingVarText, "POSTGRES_USER")
 	}
 
 	pgPassword, ok := os.LookupEnv("POSTGRES_PASSWORD")
 	if !ok {
-		return fmt.Errorf(MISSING_VAR_TEXT, "POSTGRES_PASSWORD")
+		return fmt.Errorf(missingVarText, "POSTGRES_PASSWORD")
 	}
 
 	pgDB, ok := os.LookupEnv("POSTGRES_DB")
 	if !ok {
-		return fmt.Errorf(MISSING_VAR_TEXT, "POSTGRES_DB")
+		return fmt.Errorf(missingVarText, "POSTGRES_DB")
 	}
 
 	pgHost, ok := os.LookupEnv("POSTGRES_HOST")
 	if !ok {
-		return fmt.Errorf(MISSING_VAR_TEXT, "POSTGRES_HOST")
+		return fmt.Errorf(missingVarText, "POSTGRES_HOST")
 	}
 
 	config.PgUser = pgUser

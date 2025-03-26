@@ -61,7 +61,7 @@ func ValidateEmailAndPassword(email, password string) error {
 
 func (u User) ValidateUser() error {
 	if err := ValidateEmailAndPassword(u.Email, u.Password); err != nil {
-		return err
+		return WrapError(ErrValidation, err)
 	}
 
 	if len(u.Username) > 32 || len(u.Username) < 2 {

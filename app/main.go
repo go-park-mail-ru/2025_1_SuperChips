@@ -75,7 +75,7 @@ func main() {
 		log.Fatalf("Cannot launch due to user storage db error: %s", err)
 	}
 
-	pinStorage, err := pgStorage.NewPGPinStorageWithImages(db, config.ImageBaseDir)
+	pinStorage, err := pgStorage.NewPGPinStorage(db)
 	if err != nil {
 		log.Fatalf("Cannot launch due to pin storage db error: %s", err)
 	}

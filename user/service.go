@@ -6,8 +6,8 @@ import (
 )
 
 type UserRepository interface {
-	AddUser(user domain.User) error
-	LoginUser(email, password string) (string, error)
+	AddUser(user domain.User) (uint64, error)
+	GetHash(email, password string) (uint64, string, error)
 	GetUserPublicInfo(email string) (domain.PublicUser, error)
 	GetUserId(email string) (uint64, error)	
 }
@@ -22,33 +22,41 @@ func NewUserService(u UserRepository) *UserService {
 	}
 }
 
-func (u *UserService) AddUser(user domain.User) error {
+func (u *UserService) AddUser(user domain.User) (uint64, error) {
 	if err := user.ValidateUser(); err != nil {
-		return err
+		return 0, err
 	}
 
-	if err := u.repo.AddUser(user); err != nil {
-		return err
+	hashed, err := security.HashPassword(user.Password)
+	if err != nil {
+		return 0, err
 	}
 
-	return nil
+	user.Password = hashed
+
+	id, err := u.repo.AddUser(user)
+	if err != nil {
+		return 0, err
+	}
+
+	return id, nil
 }
 
-func (u *UserService) LoginUser(email, password string) error {
+func (u *UserService) LoginUser(email, password string) (uint64, error) {
 	if err := domain.ValidateEmailAndPassword(email, password); err != nil {
-		return err
+		return 0, err
 	}
 
-	pswd, err := u.repo.LoginUser(email, password)
+	id, pswd, err := u.repo.GetHash(email, password)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	if !security.ComparePassword(password, pswd) {
-		return domain.ErrInvalidCredentials
+		return 0, domain.ErrInvalidCredentials
 	}
 
-	return nil
+	return id, nil
 }
 
 func (u *UserService) GetUserPublicInfo(email string) (domain.PublicUser, error) {

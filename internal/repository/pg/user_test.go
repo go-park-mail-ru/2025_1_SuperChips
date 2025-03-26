@@ -9,17 +9,13 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	pg "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg/mocks"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/security"
 )
 
 func TestUserRepository_AddUser(t *testing.T) {
-	userMock, err := mocks.NewUserMock()
+	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	db, mock := userMock.Db, userMock.Mock
 
 	defer db.Close()
 
@@ -36,15 +32,13 @@ func TestUserRepository_AddUser(t *testing.T) {
 		Birthday:   time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 
-	mock.ExpectQuery(`SELECT id FROM flow_user WHERE email = \$1 OR username = \$2`).
-		WithArgs(user.Email, user.Username).
-		WillReturnError(sql.ErrNoRows)
+	expectedId := uint64(12)
 
-	mock.ExpectExec(`INSERT INTO flow_user`).
-		WithArgs(user.Username, user.Avatar, user.PublicName, user.Email, sqlmock.AnyArg()).
-		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectQuery(`INSERT INTO flow_user \(username, avatar, public_name, email, password\) VALUES \(\$1, \$2, \$3, \$4, \$5\) ON CONFLICT \(email, username\) DO NOTHING RETURNING id`).
+		WithArgs(user.Username, "", user.PublicName, user.Email, user.Password).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(expectedId))
 
-	err = repo.AddUser(user)
+	_, err = repo.AddUser(user)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -55,12 +49,10 @@ func TestUserRepository_AddUser(t *testing.T) {
 }
 
 func TestUserRepository_LoginUser(t *testing.T) {
-	userMock, err := mocks.NewUserMock()
+	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	db, mock := userMock.Db, userMock.Mock
 
 	defer db.Close()
 
@@ -71,16 +63,15 @@ func TestUserRepository_LoginUser(t *testing.T) {
 
 	email := "test@example.com"
 	password := "password123"
-	hashedPassword, err := security.HashPassword(password)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	mock.ExpectQuery(`SELECT password FROM flow_user WHERE email = \$1`).
+	mock.ExpectQuery(`SELECT id, password FROM flow_user WHERE email = \$1`).
 		WithArgs(email).
-		WillReturnRows(sqlmock.NewRows([]string{"password"}).AddRow(hashedPassword))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "password"}).AddRow(2, password))
 
-	pswd, err := repo.LoginUser(email, password)
+	_, pswd, err := repo.GetHash(email, password)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -89,18 +80,16 @@ func TestUserRepository_LoginUser(t *testing.T) {
 		t.Errorf("there were unfulfilled expectations: %v", err)
 	}
 
-	if !security.ComparePassword(password, pswd) {
+	if password != pswd {
 		t.Errorf("passwords dont match")
 	}
 }
 
 func TestUserRepository_GetUserPublicInfo(t *testing.T) {
-	userMock, err := mocks.NewUserMock()
+	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	db, mock := userMock.Db, userMock.Mock
 
 	defer db.Close()
 
@@ -137,12 +126,10 @@ func TestUserRepository_GetUserPublicInfo(t *testing.T) {
 }
 
 func TestUserRepository_GetUserId(t *testing.T) {
-	userMock, err := mocks.NewUserMock()
+	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	db, mock := userMock.Db, userMock.Mock
 
 	defer db.Close()
 
@@ -173,12 +160,10 @@ func TestUserRepository_GetUserId(t *testing.T) {
 }
 
 func TestUserRepository_AddUser_Conflict(t *testing.T) {
-	userMock, err := mocks.NewUserMock()
+	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	db, mock := userMock.Db, userMock.Mock
 
 	defer db.Close()
 
@@ -195,11 +180,11 @@ func TestUserRepository_AddUser_Conflict(t *testing.T) {
 		Birthday:   time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 
-	mock.ExpectQuery(`SELECT id FROM flow_user WHERE email = \$1 OR username = \$2`).
-		WithArgs(user.Email, user.Username).
-		WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow(1))
+	mock.ExpectQuery(`INSERT INTO flow_user \(username, avatar, public_name, email, password\) VALUES \(\$1, \$2, \$3, \$4, \$5\) ON CONFLICT \(email, username\) DO NOTHING RETURNING id`).
+		WithArgs(user.Username, "", user.PublicName, user.Email, user.Password).
+		WillReturnError(sql.ErrNoRows)
 
-	err = repo.AddUser(user)
+	_, err = repo.AddUser(user)
 	if !errors.Is(err, domain.ErrConflict) {
 		t.Errorf("expected conflict error, got %v", err)
 	}

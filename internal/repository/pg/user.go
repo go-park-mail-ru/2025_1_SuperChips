@@ -2,28 +2,29 @@ package repository
 
 import (
 	"database/sql"
+	"errors"
 
+	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	user "github.com/go-park-mail-ru/2025_1_SuperChips/domain"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/security"
+	_ "github.com/jmoiron/sqlx"
 )
 
 type userDB struct {
-	user_id     uint64
-	username    string
-	avatar      sql.NullString
-	public_name string
-	email       string
-	create_at   string
-	updated_at  string
-	password    string
-	birthday    sql.NullTime
-	about       sql.NullString
+	Id         uint64         `db:"id"`
+	Username   string         `db:"username"`
+	Avatar     sql.NullString `db:"avatar"`
+	PublicName string         `db:"public_name"`
+	Email      string         `db:"email"`
+	CreatedAt  string         `db:"created_at"`
+	UpdatedAt  string         `db:"updated_at"`
+	Password   string         `db:"password"`
+	Birthday   sql.NullTime   `db:"birthday"`
+	About      sql.NullString `db:"about"`
 }
 
 type pgUserStorage struct {
 	db *sql.DB
 }
-
 
 func NewPGUserStorage(db *sql.DB) (*pgUserStorage, error) {
 	storage := &pgUserStorage{
@@ -33,48 +34,37 @@ func NewPGUserStorage(db *sql.DB) (*pgUserStorage, error) {
 	return storage, nil
 }
 
-func (p *pgUserStorage) AddUser(userInfo user.User) error {
-	hashedPassword, err := security.HashPassword(userInfo.Password)
-	if err != nil {
-		return err
-	}
-
-	row := p.db.QueryRow(`SELECT id FROM flow_user WHERE email = $1 OR username = $2`, userInfo.Email, userInfo.Username)
+func (p *pgUserStorage) AddUser(userInfo user.User) (uint64, error) {
 	var id uint64
-	err = row.Scan(&id)
-	if err == sql.ErrNoRows {
-	} else if err != nil {
-		return err
-	} else {
-		return user.ErrConflict
-	}
-
-	_, err = p.db.Exec(`
+	err := p.db.QueryRow(`
         INSERT INTO flow_user (username, avatar, public_name, email, password)
         VALUES ($1, $2, $3, $4, $5)
-    `, userInfo.Username, userInfo.Avatar, userInfo.PublicName, userInfo.Email, hashedPassword)
-	if err != nil {
-		return err
+		ON CONFLICT (email, username) DO NOTHING
+		RETURNING id
+    `, userInfo.Username, userInfo.Avatar, userInfo.PublicName, userInfo.Email, userInfo.Password).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, domain.ErrConflict
+	} else if err != nil {
+		return 0, err
 	}
 
-	return nil
+	return id, nil
 }
 
-func (p *pgUserStorage) LoginUser(email, password string) (string, error) {
+func (p *pgUserStorage) GetHash(email, password string) (uint64, string, error) {
 	var hashedPassword string
+	var id uint64
 
 	err := p.db.QueryRow(`
-        SELECT password FROM flow_user WHERE email = $1
-    `, email).Scan(&hashedPassword)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return "", user.ErrInvalidCredentials
-		}
-
-		return "", err
+        SELECT id, password FROM flow_user WHERE email = $1
+    `, email).Scan(&id, &hashedPassword)
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		return 0, "", user.ErrInvalidCredentials
+	} else if err != nil {
+		return 0, "", err
 	}
 
-	return hashedPassword, nil
+	return id, hashedPassword, nil
 }
 
 func (p *pgUserStorage) GetUserPublicInfo(email string) (user.PublicUser, error) {
@@ -82,19 +72,18 @@ func (p *pgUserStorage) GetUserPublicInfo(email string) (user.PublicUser, error)
 
 	err := p.db.QueryRow(`
         SELECT username, email, avatar, birthday FROM flow_user WHERE email = $1
-    `, email).Scan(&userDB.username, &userDB.email, &userDB.avatar, &userDB.birthday)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return user.PublicUser{}, user.ErrUserNotFound
-		}
+    `, email).Scan(&userDB.Username, &userDB.Email, &userDB.Avatar, &userDB.Birthday)
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		return user.PublicUser{}, user.ErrInvalidCredentials
+	} else if err != nil {
 		return user.PublicUser{}, err
 	}
 
 	publicUser := user.PublicUser{
-		Username: userDB.username,
-		Email:    userDB.email,
-		Avatar:   userDB.avatar.String,
-		Birthday: userDB.birthday.Time,
+		Username: userDB.Username,
+		Email:    userDB.Email,
+		Avatar:   userDB.Avatar.String,
+		Birthday: userDB.Birthday.Time,
 	}
 
 	return publicUser, nil
