@@ -99,7 +99,7 @@ func main() {
 	allowedGetOptions := []string{http.MethodGet, http.MethodOptions}
 	allowedPostOptions := []string{http.MethodPost, http.MethodOptions}
 
-	fs := http.FileServer(http.Dir(config.StaticBaseDir))
+	fs := http.FileServer(http.Dir("." + config.StaticBaseDir))
 
 	mux := http.NewServeMux()
 

@@ -113,7 +113,7 @@ func (config *Config) LoadConfigFromEnv() error {
 
 	config.AllowedOrigins = strings.Split(allowedOrigins, ",")
 
-	staticBaseDir, _ := getEnvHelper("STATIC_BASE_DIR", "./static")
+	staticBaseDir, _ := getEnvHelper("STATIC_BASE_DIR", "/static/")
 	config.StaticBaseDir = staticBaseDir
 
 	printConfig(*config)
