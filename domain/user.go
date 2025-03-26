@@ -7,7 +7,6 @@ import (
 	"time"
 )
 
-
 type User struct {
 	Id       uint64    `json:"-"`
 	Username string    `json:"username"`
@@ -39,19 +38,19 @@ var (
 
 func ValidateEmailAndPassword(email, password string) error {
 	if len(email) > 64 || len(email) < 3 {
-		return wrapError(ErrValidation, ErrInvalidEmail)
+		return WrapError(ErrValidation, ErrInvalidEmail)
 	}
 
 	if !isValidEmail(email) {
-		return wrapError(ErrValidation, ErrInvalidEmail)
+		return WrapError(ErrValidation, ErrInvalidEmail)
 	}
 
 	if password == "" {
-		return wrapError(ErrValidation, ErrNoPassword)
+		return WrapError(ErrValidation, ErrNoPassword)
 	}
 
 	if len(password) > 96 {
-		return wrapError(ErrValidation, ErrPasswordTooLong)
+		return WrapError(ErrValidation, ErrPasswordTooLong)
 	}
 
 	return nil
@@ -63,17 +62,17 @@ func (u User) ValidateUser() error {
 	}
 
 	if len(u.Username) > 32 || len(u.Username) < 2 {
-		return wrapError(ErrValidation, ErrInvalidUsername)
+		return WrapError(ErrValidation, ErrInvalidUsername)
 	}
 
 	if u.Birthday.After(time.Now()) || time.Since(u.Birthday) > 150*365*24*time.Hour {
-		return wrapError(ErrValidation, ErrInvalidBirthday)
+		return WrapError(ErrValidation, ErrInvalidBirthday)
 	}
 
 	return nil
 }
 
-func wrapError(base error, err error) error {
+func WrapError(base error, err error) error {
 	return fmt.Errorf("%w: %w", base, err)
 }
 
