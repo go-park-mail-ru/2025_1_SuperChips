@@ -8,12 +8,15 @@ import (
 )
 
 type User struct {
-	Id       uint64    `json:"-"`
-	Username string    `json:"username"`
-	Password string    `json:"password"`
-	Email    string    `json:"email"`
-	Avatar   string    `json:"avatar,omitempty"`
-	Birthday time.Time `json:"birthday"`
+	Id         uint64    `json:"-"`
+	Username   string    `json:"username"`
+	Password   string    `json:"password"`
+	Email      string    `json:"email"`
+	Avatar     string    `json:"avatar,omitempty"`
+	Birthday   time.Time `json:"birthday"`
+	About      string    `json:"about,omitempty"`
+	PublicName string    `json:"public_name,omitempty"`
+	JWTVersion uint64    `json:"-"`
 }
 
 type PublicUser struct {
@@ -58,7 +61,7 @@ func ValidateEmailAndPassword(email, password string) error {
 
 func (u User) ValidateUser() error {
 	if err := ValidateEmailAndPassword(u.Email, u.Password); err != nil {
-		return err
+		return WrapError(ErrValidation, err)
 	}
 
 	if len(u.Username) > 32 || len(u.Username) < 2 {

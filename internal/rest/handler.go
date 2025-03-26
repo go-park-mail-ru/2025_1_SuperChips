@@ -6,6 +6,7 @@ import (
 
 )
 
+
 var ErrBadRequest = fmt.Errorf("bad request")
 
 // HealthCheckHandler godoc
@@ -21,4 +22,3 @@ func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 
 	ServerGenerateJSONResponse(w, response, http.StatusOK)
 }
-

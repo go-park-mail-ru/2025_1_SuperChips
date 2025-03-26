@@ -1,14 +1,18 @@
 services:
   database:
+    networks:
+      - flow_network
     container_name: postgres_db
     image: postgres:15
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB={POSTGRES_DB}
+      - POSTGRES_DB=${POSTGRES_DB}
     ports:
       - "5432:5432"
   backend:
+    networks:
+      - flow_network
     container_name: flow_backend
     build: 
       context: .
@@ -20,7 +24,15 @@ services:
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
       - PORT=${PORT}
       - COOKIE_SECURE=${COOKIE_SECURE}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_HOST=${POSTGRES_HOST}
     ports:
       - "${PORT}:${PORT}"
     depends_on:
       - database
+
+networks:
+  flow_network:
+    driver: bridge

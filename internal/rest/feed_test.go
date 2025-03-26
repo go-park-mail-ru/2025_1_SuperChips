@@ -28,6 +28,7 @@ func TestPinsHandler_FeedHandler(t *testing.T) {
 		pageSize       int
 		expectMockCall bool
 		mockRepoReturn []domain.PinData
+		mockRepoError  error
 
 		expStatus   int
 		expResponse string
@@ -44,6 +45,7 @@ func TestPinsHandler_FeedHandler(t *testing.T) {
 			pageSize:       10,
 			expectMockCall: true,
 			mockRepoReturn: []domain.PinData{{Header: "1"}, {Header: "2"}},
+			mockRepoError:  nil,
 
 			expStatus: http.StatusOK,
 			expResponse: tu.Marshal(rest.ServerResponse{
@@ -61,6 +63,7 @@ func TestPinsHandler_FeedHandler(t *testing.T) {
 			pageSize:       10,
 			expectMockCall: true,
 			mockRepoReturn: []domain.PinData{{Header: "1"}, {Header: "2"}},
+			mockRepoError:  nil,
 
 			expStatus: http.StatusOK,
 			expResponse: tu.Marshal(rest.ServerResponse{
@@ -78,6 +81,7 @@ func TestPinsHandler_FeedHandler(t *testing.T) {
 			pageSize:       10,
 			expectMockCall: true,
 			mockRepoReturn: []domain.PinData{{Header: "1"}, {Header: "2"}},
+			mockRepoError:  nil,
 
 			expStatus: http.StatusOK,
 			expResponse: tu.Marshal(rest.ServerResponse{
@@ -95,6 +99,7 @@ func TestPinsHandler_FeedHandler(t *testing.T) {
 			pageSize:       10,
 			expectMockCall: true,
 			mockRepoReturn: []domain.PinData{{Header: "1"}, {Header: "2"}},
+			mockRepoError:  nil,
 
 			expStatus: http.StatusOK,
 			expResponse: tu.Marshal(rest.ServerResponse{
@@ -112,6 +117,7 @@ func TestPinsHandler_FeedHandler(t *testing.T) {
 			pageSize:       10,
 			expectMockCall: true,
 			mockRepoReturn: []domain.PinData{},
+			mockRepoError:  nil,
 
 			expStatus: http.StatusNotFound,
 			expResponse: tu.Marshal(rest.ServerResponse{
@@ -134,7 +140,7 @@ func TestPinsHandler_FeedHandler(t *testing.T) {
 			if tt.expectMockCall {
 				mockPinRepo.EXPECT().
 					GetPins(tt.page, tt.pageSize).
-					Return(tt.mockRepoReturn)
+					Return(tt.mockRepoReturn, tt.mockRepoError)
 			}
 
 			app := rest.PinsHandler{

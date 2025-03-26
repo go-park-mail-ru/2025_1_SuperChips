@@ -5,7 +5,7 @@ import (
 )
 
 type PinRepository interface {
-	GetPins(page int, pageSize int) []domain.PinData
+	GetPins(page int, pageSize int) ([]domain.PinData, error)
 }
 
 type PinService struct {
@@ -18,7 +18,6 @@ func NewPinService(r PinRepository) *PinService {
 	}
 }
 
-func (p *PinService) GetPins(page int, pageSize int) []domain.PinData {
+func (p *PinService) GetPins(page int, pageSize int) ([]domain.PinData, error) {
 	return p.repo.GetPins(page, pageSize)
 }
-

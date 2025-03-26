@@ -11,10 +11,10 @@ import (
 )
 
 type UserUsecaseInterface interface {
-	AddUser(user domain.User) error
-	LoginUser(email, password string) error
+	AddUser(user domain.User) (uint64, error)
+	LoginUser(email, password string) (uint64, error)
 	GetUserPublicInfo(email string) (domain.PublicUser, error)
-	GetUserId(email string) uint64  
+	GetUserId(email string) (uint64, error)
 }
   
 type AuthHandler struct {
@@ -43,12 +43,11 @@ func (app AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	var response ServerResponse
 
-	if err := app.UserService.LoginUser(data.Email, data.Password); err != nil {
+	id, err := app.UserService.LoginUser(data.Email, data.Password)
+	if err != nil {
 		handleAuthError(w, err)
 		return
 	}
-
-	id := app.UserService.GetUserId(data.Email)
 
 	if err := app.setCookieJWT(w, app.Config, data.Email, id); err != nil {
 		handleAuthError(w, err)
@@ -85,7 +84,8 @@ func (app AuthHandler) RegistrationHandler(w http.ResponseWriter, r *http.Reques
 
 	statusCode := http.StatusCreated
 
-	if err := app.UserService.AddUser(userData); err != nil {
+	id, err := app.UserService.AddUser(userData)
+	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrValidation):
 			statusCode = http.StatusBadRequest
@@ -113,8 +113,6 @@ func (app AuthHandler) RegistrationHandler(w http.ResponseWriter, r *http.Reques
 			return
 		}
 	}
-
-	id := app.UserService.GetUserId(userData.Email)
 
 	if err := app.setCookieJWT(w, app.Config, userData.Email, id); err != nil {
 		handleAuthError(w, err)

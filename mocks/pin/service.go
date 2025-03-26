@@ -41,11 +41,12 @@ func (m *MockPinRepository) EXPECT() *MockPinRepositoryMockRecorder {
 }
 
 // GetPins mocks base method.
-func (m *MockPinRepository) GetPins(page, pageSize int) []domain.PinData {
+func (m *MockPinRepository) GetPins(page, pageSize int) ([]domain.PinData, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetPins", page, pageSize)
 	ret0, _ := ret[0].([]domain.PinData)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // GetPins indicates an expected call of GetPins.

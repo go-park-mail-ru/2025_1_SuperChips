@@ -9,11 +9,20 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/security"
 	mock_user "github.com/go-park-mail-ru/2025_1_SuperChips/mocks/user"
 	tu "github.com/go-park-mail-ru/2025_1_SuperChips/test_utils"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/user"
 	"go.uber.org/mock/gomock"
 )
+
+func hashPassword(t *testing.T, pswd string) string {
+	str, err := security.HashPassword(pswd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return str
+}
 
 func TestLoginHandler(t *testing.T) {
 	base := tu.Host + "/login"
@@ -28,11 +37,13 @@ func TestLoginHandler(t *testing.T) {
 		password string
 		userId   uint64
 
-		expectLoginUser bool
-		returnLoginUser error
+		expectLoginUser  bool
+		returnLoginToken string
+		returnLoginError error
 
-		expectGetUserId bool
-		returnGetUserId uint64
+		expectGetUserId      bool
+		returnGetUserId      uint64
+		returnGetUserIdError error
 
 		expStatus   int
 		expResponse string
@@ -51,11 +62,13 @@ func TestLoginHandler(t *testing.T) {
 			password: "qwerty123",
 			userId:   42,
 
-			expectLoginUser: true,
-			returnLoginUser: nil,
+			expectLoginUser:  true,
+			returnLoginToken: hashPassword(t, "qwerty123"),
+			returnLoginError: nil,
 
-			expectGetUserId: true,
-			returnGetUserId: 42,
+			expectGetUserId:      true,
+			returnGetUserId:      42,
+			returnGetUserIdError: nil,
 
 			expStatus: http.StatusOK,
 			expResponse: tu.Marshal(rest.ServerResponse{
@@ -75,11 +88,13 @@ func TestLoginHandler(t *testing.T) {
 			password: "qwerty123",
 			userId:   42,
 
-			expectLoginUser: true,
-			returnLoginUser: nil,
+			expectLoginUser:  true,
+			returnLoginToken: hashPassword(t, "qwerty123"),
+			returnLoginError: nil,
 
-			expectGetUserId: true,
-			returnGetUserId: 42,
+			expectGetUserId:      true,
+			returnGetUserId:      42,
+			returnGetUserIdError: nil,
 
 			expStatus: http.StatusOK,
 			expResponse: tu.Marshal(rest.ServerResponse{
@@ -96,11 +111,13 @@ func TestLoginHandler(t *testing.T) {
 			password: "",
 			userId:   0,
 
-			expectLoginUser: false,
-			returnLoginUser: nil,
+			expectLoginUser:  false,
+			returnLoginToken: "",
+			returnLoginError: nil,
 
-			expectGetUserId: false,
-			returnGetUserId: 0,
+			expectGetUserId:      false,
+			returnGetUserId:      0,
+			returnGetUserIdError: nil,
 
 			expStatus: http.StatusBadRequest,
 			expResponse: tu.Marshal(rest.ServerResponse{
@@ -121,11 +138,13 @@ func TestLoginHandler(t *testing.T) {
 			password: "qwerty123",
 			userId:   42,
 
-			expectLoginUser: false, // Мистика здесь: EXPECT не выполняется, однако метод благополучно вызывается. True поставить нельзя - сломается.
-			returnLoginUser: nil,
+			expectLoginUser:  false, // Мистика здесь: EXPECT не выполняется, однако метод благополучно вызывается. True поставить нельзя - сломается.
+			returnLoginToken: hashPassword(t, "qwerty123"),
+			returnLoginError: nil,
 
-			expectGetUserId: false,
-			returnGetUserId: 0,
+			expectGetUserId:      false,
+			returnGetUserId:      0,
+			returnGetUserIdError: nil,
 
 			expStatus: http.StatusBadRequest,
 			expResponse: tu.Marshal(rest.ServerResponse{
@@ -146,13 +165,13 @@ func TestLoginHandler(t *testing.T) {
 
 			if tt.expectLoginUser {
 				mockUserRepo.EXPECT().
-					LoginUser(tt.email, tt.password).
-					Return(tt.returnLoginUser)
+					GetHash(tt.email, tt.password).
+					Return(tt.returnLoginToken, tt.returnLoginError)
 			}
 			if tt.expectGetUserId {
 				mockUserRepo.EXPECT().
 					GetUserId(tt.email).
-					Return(tt.returnGetUserId)
+					Return(tt.returnGetUserId, tt.returnGetUserIdError)
 			}
 
 			app := rest.AuthHandler{

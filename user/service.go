@@ -1,12 +1,15 @@
 package user
 
-import "github.com/go-park-mail-ru/2025_1_SuperChips/domain"
+import (
+	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/security"
+)
 
 type UserRepository interface {
-	AddUser(user domain.User) error
-	LoginUser(email, password string) error
+	AddUser(user domain.User) (uint64, error)
+	GetHash(email, password string) (uint64, string, error)
 	GetUserPublicInfo(email string) (domain.PublicUser, error)
-	GetUserId(email string) uint64	
+	GetUserId(email string) (uint64, error)	
 }
 
 type UserService struct {
@@ -19,35 +22,48 @@ func NewUserService(u UserRepository) *UserService {
 	}
 }
 
-func (u *UserService) AddUser(user domain.User) error {
+func (u *UserService) AddUser(user domain.User) (uint64, error) {
 	if err := user.ValidateUser(); err != nil {
-		return err
+		return 0, err
 	}
 
-	if err := u.repo.AddUser(user); err != nil {
-		return err
+	hashed, err := security.HashPassword(user.Password)
+	if err != nil {
+		return 0, err
 	}
 
-	return nil
+	user.Password = hashed
+
+	id, err := u.repo.AddUser(user)
+	if err != nil {
+		return 0, err
+	}
+
+	return id, nil
 }
 
-func (u *UserService) LoginUser(email, password string) error {
+func (u *UserService) LoginUser(email, password string) (uint64, error) {
 	if err := domain.ValidateEmailAndPassword(email, password); err != nil {
-		return err
+		return 0, err
 	}
 
-	if err := u.repo.LoginUser(email, password); err != nil {
-		return err
+	id, pswd, err := u.repo.GetHash(email, password)
+	if err != nil {
+		return 0, err
 	}
 
-	return nil
+	if !security.ComparePassword(password, pswd) {
+		return 0, domain.ErrInvalidCredentials
+	}
+
+	return id, nil
 }
 
 func (u *UserService) GetUserPublicInfo(email string) (domain.PublicUser, error) {
 	return u.repo.GetUserPublicInfo(email)
 }
 
-func (u *UserService) GetUserId(email string) uint64 {
+func (u *UserService) GetUserId(email string) (uint64, error) {
 	return u.repo.GetUserId(email)
 }
 
