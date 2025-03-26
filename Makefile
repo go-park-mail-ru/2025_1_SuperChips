@@ -1,14 +1,21 @@
 GO := go
+MOCKGEN=mockgen
 NAME := main.exe
 COVERAGE_FILE=coverage.out
-TESTED_DIRS := ./internal/auth/... ./internal/feed/... ./internal/handler/... ./internal/user/...
+MOCK_DST=./mocks
+TESTED_DIRS := ./internal/rest/... ./domain/...
 
 build : cmd/main.go
 	$(GO) build -o $(NAME) $<
 
-.PHONY : build test
+.PHONY : build test mocks
 
-test:
+mocks:
+	@mkdir -p $(MOCK_DST)/pin $(MOCK_DST)/user
+	$(MOCKGEN) -source=./pin/service.go -destination=$(MOCK_DST)/pin/service.go
+	$(MOCKGEN) -source=./user/service.go -destination=$(MOCK_DST)/user/service.go
+
+test: mocks
 	go test $(TESTED_DIRS) -coverprofile=$(COVERAGE_FILE)
 
 cover: test
