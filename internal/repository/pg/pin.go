@@ -7,6 +7,7 @@ import (
 	_ "github.com/jmoiron/sqlx"
 )
 
+
 type flowPinDB struct {
 	Id          uint64         `db:"id"`
 	Title       sql.NullString `db:"title"`

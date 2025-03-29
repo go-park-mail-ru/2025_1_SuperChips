@@ -11,6 +11,7 @@ import (
 	pg "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
 )
 
+
 func TestGetPins(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
