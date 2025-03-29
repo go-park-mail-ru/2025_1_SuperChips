@@ -10,10 +10,10 @@ import (
 type User struct {
 	Id         uint64    `json:"-"`
 	Username   string    `json:"username"`
-	Password   string    `json:"password"`
+	Password   string    `json:"password,omitempty"`
 	Email      string    `json:"email"`
 	Avatar     string    `json:"avatar,omitempty"`
-	Birthday   time.Time `json:"birthday"`
+	Birthday   time.Time `json:"birthday,omitempty"`
 	About      string    `json:"about,omitempty"`
 	PublicName string    `json:"public_name,omitempty"`
 	JWTVersion uint64    `json:"-"`
@@ -39,7 +39,7 @@ var (
 	ErrUserNotFound         = errors.New("user not found")
 )
 
-func ValidateEmailAndPassword(email, password string) error {
+func ValidateEmail(email string) error {
 	if len(email) > 64 || len(email) < 3 {
 		return WrapError(ErrValidation, ErrInvalidEmail)
 	}
@@ -48,6 +48,10 @@ func ValidateEmailAndPassword(email, password string) error {
 		return WrapError(ErrValidation, ErrInvalidEmail)
 	}
 
+	return nil
+}
+
+func ValidatePassword(password string) error {
 	if password == "" {
 		return WrapError(ErrValidation, ErrNoPassword)
 	}
@@ -59,13 +63,33 @@ func ValidateEmailAndPassword(email, password string) error {
 	return nil
 }
 
+func ValidateEmailAndPassword(email, password string) error {
+	if err := ValidateEmail(email); err != nil {
+		return err
+	}
+
+	if err := ValidatePassword(password); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func ValidateUsername(username string) error {
+	if len(username) > 32 || len(username) < 2 {
+		return WrapError(ErrValidation, ErrInvalidUsername)
+	}
+
+	return nil
+}
+
 func (u User) ValidateUser() error {
 	if err := ValidateEmailAndPassword(u.Email, u.Password); err != nil {
 		return WrapError(ErrValidation, err)
 	}
 
-	if len(u.Username) > 32 || len(u.Username) < 2 {
-		return WrapError(ErrValidation, ErrInvalidUsername)
+	if err := ValidateUsername(u.Username); err != nil {
+		return WrapError(ErrValidation, err)
 	}
 
 	if u.Birthday.After(time.Now()) || time.Since(u.Birthday) > 150*365*24*time.Hour {

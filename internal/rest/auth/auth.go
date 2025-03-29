@@ -33,9 +33,9 @@ type JWTManager struct {
 
 func NewJWTManager(cfg configs.Config) *JWTManager {
 	return &JWTManager{
-		secret: cfg.JWTSecret,
+		secret:     cfg.JWTSecret,
 		expiration: cfg.ExpirationTime,
-		issuer: "flow",
+		issuer:     "flow",
 	}
 }
 
@@ -83,4 +83,3 @@ func (mngr *JWTManager) ParseJWTToken(tokenString string) (*Claims, error) {
 
 	return claims, nil
 }
-
