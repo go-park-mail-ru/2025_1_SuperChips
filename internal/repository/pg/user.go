@@ -71,7 +71,8 @@ func (p *pgUserStorage) GetUserPublicInfo(email string) (user.PublicUser, error)
 	var userDB userDB
 
 	err := p.db.QueryRow(`
-        SELECT username, email, avatar, birthday FROM flow_user WHERE email = $1
+        SELECT username, email, avatar, birthday, about, public_name,
+		FROM flow_user WHERE email = $1
     `, email).Scan(&userDB.Username, &userDB.Email, &userDB.Avatar, &userDB.Birthday)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return user.PublicUser{}, user.ErrInvalidCredentials

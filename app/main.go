@@ -106,7 +106,9 @@ func main() {
 	mux.Handle("GET /static/", http.StripPrefix(config.StaticBaseDir, fs))
 
 	mux.HandleFunc("/health", middleware.CorsMiddleware(rest.HealthCheckHandler, config, allowedGetOptions))
+	
 	mux.HandleFunc("/api/v1/feed", middleware.CorsMiddleware(pinsHandler.FeedHandler, config, allowedGetOptions))
+	
 	mux.HandleFunc("/api/v1/auth/login", middleware.CorsMiddleware(authHandler.LoginHandler, config, allowedPostOptions))
 	mux.HandleFunc("/api/v1/auth/registration", middleware.CorsMiddleware(authHandler.RegistrationHandler, config, allowedPostOptions))
 	mux.HandleFunc("/api/v1/auth/logout", middleware.CorsMiddleware(authHandler.LogoutHandler, config, allowedPostOptions))

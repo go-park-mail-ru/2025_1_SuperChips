@@ -86,6 +86,21 @@ func (mr *MockUserRepositoryMockRecorder) GetUserId(email any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserId", reflect.TypeOf((*MockUserRepository)(nil).GetUserId), email)
 }
 
+// GetUserPrivateInfo mocks base method.
+func (m *MockUserRepository) GetUserPrivateInfo(email string) (domain.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUserPrivateInfo", email)
+	ret0, _ := ret[0].(domain.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUserPrivateInfo indicates an expected call of GetUserPrivateInfo.
+func (mr *MockUserRepositoryMockRecorder) GetUserPrivateInfo(email any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserPrivateInfo", reflect.TypeOf((*MockUserRepository)(nil).GetUserPrivateInfo), email)
+}
+
 // GetUserPublicInfo mocks base method.
 func (m *MockUserRepository) GetUserPublicInfo(email string) (domain.PublicUser, error) {
 	m.ctrl.T.Helper()
