@@ -37,11 +37,11 @@ func NewPGUserStorage(db *sql.DB) (*pgUserStorage, error) {
 func (p *pgUserStorage) AddUser(userInfo user.User) (uint64, error) {
 	var id uint64
 	err := p.db.QueryRow(`
-        INSERT INTO flow_user (username, avatar, public_name, email, password)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO flow_user (username, avatar, public_name, email, password, birthday)
+        VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (email, username) DO NOTHING
 		RETURNING id
-    `, userInfo.Username, userInfo.Avatar, userInfo.PublicName, userInfo.Email, userInfo.Password).Scan(&id)
+    `, userInfo.Username, userInfo.Avatar, userInfo.PublicName, userInfo.Email, userInfo.Password, userInfo.Birthday).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return 0, domain.ErrConflict
 	} else if err != nil {

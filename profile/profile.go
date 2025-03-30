@@ -6,7 +6,7 @@ type ProfileRepository interface {
 	GetUserPublicInfoByEmail(email string) (domain.User, error)
 	GetUserPublicInfoByUsername(username string) (domain.User, error)
 	SaveUserAvatar(email string, avatar string) error
-	UpdateUserData(user domain.User) error
+	UpdateUserData(user domain.User, oldEmail string) error
 }
 
 type ProfileService struct {
@@ -58,12 +58,12 @@ func (p *ProfileService) SaveUserAvatar(email string, avatar string) error {
 	return nil
 }
 
-func (p *ProfileService) UpdateUserData(user domain.User) error {
-	if err := user.ValidateUser(); err != nil {
+func (p *ProfileService) UpdateUserData(user domain.User, oldEmail string) error {
+	if err := user.ValidateUserNoPassword(); err != nil {
 		return err
 	}
 
-	err := p.repo.UpdateUserData(user)
+	err := p.repo.UpdateUserData(user, oldEmail)
 	if err != nil {
 		return err
 	}

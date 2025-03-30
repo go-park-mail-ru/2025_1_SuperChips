@@ -24,9 +24,9 @@ func (p *pgProfileStorage) GetUserPublicInfoByEmail(email string) (domain.User, 
 	var userDB userDB
 
 	err := p.db.QueryRow(`
-		SELECT username, email, avatar, birthday, about, public_name
+		SELECT id, username, email, avatar, birthday, about, public_name
 		FROM flow_user WHERE email = $1
-	`, email).Scan(&userDB.Username, &userDB.Email, &userDB.Avatar, &userDB.Birthday, &userDB.About, &userDB.PublicName)
+	`, email).Scan(&userDB.Id, &userDB.Username, &userDB.Email, &userDB.Avatar, &userDB.Birthday, &userDB.About, &userDB.PublicName)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return domain.User{}, domain.ErrUserNotFound
 	} else if err != nil {
@@ -34,6 +34,7 @@ func (p *pgProfileStorage) GetUserPublicInfoByEmail(email string) (domain.User, 
 	}
 
 	user := domain.User{
+		Id:         userDB.Id,
 		Username:   userDB.Username,
 		Email:      userDB.Email,
 		Avatar:     userDB.Avatar.String,
@@ -49,9 +50,9 @@ func (p *pgProfileStorage) GetUserPublicInfoByUsername(username string) (domain.
 	var userDB userDB
 
 	err := p.db.QueryRow(`
-		SELECT username, email, avatar, birthday, about, public_name
+		SELECT id, username, email, avatar, birthday, about, public_name
 		FROM flow_user WHERE username = $1
-	`, username).Scan(&userDB.Username, &userDB.Email, &userDB.Avatar, &userDB.Birthday, &userDB.About, &userDB.PublicName)
+	`, username).Scan(&userDB.Id, &userDB.Username, &userDB.Email, &userDB.Avatar, &userDB.Birthday, &userDB.About, &userDB.PublicName)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return domain.User{}, domain.ErrUserNotFound
 	} else if err != nil {
@@ -59,6 +60,7 @@ func (p *pgProfileStorage) GetUserPublicInfoByUsername(username string) (domain.
 	}
 
 	user := domain.User{
+		Id:         userDB.Id,
 		Username:   userDB.Username,
 		Email:      userDB.Email,
 		Avatar:     userDB.Avatar.String,
@@ -81,11 +83,11 @@ func (p *pgProfileStorage) SaveUserAvatar(email string, avatar string) error {
 	return nil
 }
 
-func (p *pgProfileStorage) UpdateUserData(user domain.User) error {
+func (p *pgProfileStorage) UpdateUserData(user domain.User, oldEmail string) error {
 	_, err := p.db.Exec(`
-		UPDATE flow_user SET username = $1, birthday = $2, about = $3, public_name = $4
-		WHERE email = $5
-	`, user.Username, user.Birthday, user.About, user.PublicName, user.Email)
+		UPDATE flow_user SET username = $1, birthday = $2, about = $3, public_name = $4, email = $5
+		WHERE email = $6
+	`, user.Username, user.Birthday, user.About, user.PublicName, user.Email, oldEmail)
 	if err != nil {
 		return err
 	}

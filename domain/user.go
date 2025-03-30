@@ -99,6 +99,22 @@ func (u User) ValidateUser() error {
 	return nil
 }
 
+func (u User) ValidateUserNoPassword() error {
+	if err := ValidateEmail(u.Email); err != nil {
+		return WrapError(ErrValidation, err)
+	}
+
+	if err := ValidateUsername(u.Username); err != nil {
+		return WrapError(ErrValidation, err)
+	}
+
+	if u.Birthday.After(time.Now()) || time.Since(u.Birthday) > 150*365*24*time.Hour {
+		return WrapError(ErrValidation, ErrInvalidBirthday)
+	}
+
+	return nil
+}
+
 func WrapError(base error, err error) error {
 	return fmt.Errorf("%w: %w", base, err)
 }

@@ -5,6 +5,7 @@ import (
 	"mime/multipart"
 	"net/http"
 
+	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/utils/image"
@@ -24,18 +25,24 @@ type ProfileService interface {
 	GetUserPublicInfoByEmail(email string) (domain.User, error)
 	GetUserPublicInfoByUsername(username string) (domain.User, error)
 	SaveUserAvatar(email string, avatar string) error
-	UpdateUserData(user domain.User) error
+	UpdateUserData(user domain.User, oldEmail string) error
 }
 
 type ProfileHandler struct {
 	ProfileService ProfileService
 	JwtManager     auth.JWTManager
+	Config         configs.Config
 	AvatarFolder   string // где будут хранится аватары относительно staticFolder
 	StaticFolder   string // где будут хранится статические файлы
 	BaseUrl        string // url для получения аватара
 }
 
 func (h *ProfileHandler) CurrentUserProfileHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPatch {
+		h.updateUserProfileHandler(w, r)
+		return
+	}
+
 	cookie, err := r.Cookie(auth.AuthToken)
 	if err != nil {
 		HttpErrorToJson(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
@@ -134,7 +141,7 @@ func (h *ProfileHandler) UserAvatarHandler(w http.ResponseWriter, r *http.Reques
 	ServerGenerateJSONResponse(w, response, http.StatusCreated)
 }
 
-func (h *ProfileHandler) UpdateUserProfileHandler(w http.ResponseWriter, r *http.Request) {
+func (h *ProfileHandler) updateUserProfileHandler(w http.ResponseWriter, r *http.Request) {
 	claims, err := CheckAuth(r, h.JwtManager)
 	if errors.Is(err, auth.ErrorExpiredToken) {
 		HttpErrorToJson(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
@@ -155,7 +162,7 @@ func (h *ProfileHandler) UpdateUserProfileHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	if err := bufUser.ValidateUser(); err != nil {
+	if err := bufUser.ValidateUserNoPassword(); err != nil {
 		HttpErrorToJson(w, "validation failed", http.StatusBadRequest)
 		return
 	}
@@ -168,7 +175,7 @@ func (h *ProfileHandler) UpdateUserProfileHandler(w http.ResponseWriter, r *http
 		PublicName: bufUser.PublicName,
 	}
 
-	if err := h.ProfileService.UpdateUserData(user); err != nil {
+	if err := h.ProfileService.UpdateUserData(user, claims.Email); err != nil {
 		handleProfileError(w, err)
 		return
 	}
@@ -176,6 +183,17 @@ func (h *ProfileHandler) UpdateUserProfileHandler(w http.ResponseWriter, r *http
 	response := ServerResponse{
 		Description: "OK",
 	}
+
+	// в будущем!! 
+	// обновить версию токена в бд,
+	// тем самым обнулив все предыдущие токены
+	token, err := h.JwtManager.CreateJWT(user.Email, int(bufUser.Id))
+	if err != nil {
+		HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	setCookie(w, h.Config, auth.AuthToken, token, true)
 
 	ServerGenerateJSONResponse(w, response, http.StatusOK)
 }
