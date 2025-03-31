@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	user "github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	_ "github.com/jmoiron/sqlx"
 )
@@ -43,7 +42,7 @@ func (p *pgUserStorage) AddUser(userInfo user.User) (uint64, error) {
 		RETURNING id
     `, userInfo.Username, userInfo.Avatar, userInfo.PublicName, userInfo.Email, userInfo.Password, userInfo.Birthday).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
-		return 0, domain.ErrConflict
+		return 0, user.ErrConflict
 	} else if err != nil {
 		return 0, err
 	}

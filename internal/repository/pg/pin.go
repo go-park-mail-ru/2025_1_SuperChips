@@ -10,17 +10,16 @@ import (
 type flowPinDB struct {
 	Id          uint64         `db:"id"`
 	Title       sql.NullString `db:"title"`
-	Description sql.NullString `db:"description`
-	AuthorId    uint64         `db:"author_id`
-	CreatedAt   sql.NullTime   `db:"created_at`
-	UpdatedAt   sql.NullTime   `db:"updated_at`
+	Description sql.NullString `db:"description"`
+	AuthorId    uint64         `db:"author_id"`
+	CreatedAt   sql.NullTime   `db:"created_at"`
+	UpdatedAt   sql.NullTime   `db:"updated_at"`
 	IsPrivate   bool           `db:"is_private"`
 	MediaURL    string         `db:"media_url"`
 }
 
 type pgPinStorage struct {
 	db      *sql.DB
-	baseDir string
 }
 
 func NewPGPinStorage(db *sql.DB) (*pgPinStorage, error) {

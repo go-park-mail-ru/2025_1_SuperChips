@@ -1,7 +1,6 @@
 package repository_test
 
 import (
-	"database/sql"
 	"errors"
 	"testing"
 	"time"
@@ -34,8 +33,8 @@ func TestUserRepository_AddUser(t *testing.T) {
 
 	expectedId := uint64(12)
 
-	mock.ExpectQuery(`INSERT INTO flow_user \(username, avatar, public_name, email, password\) VALUES \(\$1, \$2, \$3, \$4, \$5\) ON CONFLICT \(email, username\) DO NOTHING RETURNING id`).
-		WithArgs(user.Username, "", user.PublicName, user.Email, user.Password).
+	mock.ExpectQuery(`INSERT INTO flow_user \(username, avatar, public_name, email, password, birthday\) VALUES \(\$1, \$2, \$3, \$4, \$5, \$6\) ON CONFLICT \(email, username\) DO NOTHING RETURNING id`).
+		WithArgs(user.Username, "", user.PublicName, user.Email, user.Password, user.Birthday).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(expectedId))
 
 	_, err = repo.AddUser(user)
@@ -106,17 +105,17 @@ func TestUserRepository_GetUserPublicInfo(t *testing.T) {
 		Birthday: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 
-	mock.ExpectQuery(`SELECT username, email, avatar, birthday FROM flow_user WHERE email = \$1`).
+	mock.ExpectQuery(`SELECT username, email, avatar, birthday, about, public_name, FROM flow_user WHERE email = \$1`).
 		WithArgs(email).
 		WillReturnRows(sqlmock.NewRows([]string{"username", "email", "avatar", "birthday"}).
-			AddRow(mockUser.Username, mockUser.Email, mockUser.Avatar, nil))
+			AddRow(mockUser.Username, mockUser.Email, mockUser.Avatar, mockUser.Birthday))
 
 	user, err := repo.GetUserPublicInfo(email)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 
-	if user.Username != mockUser.Username || user.Email != mockUser.Email || user.Avatar != mockUser.Avatar {
+	if user.Username != mockUser.Username || user.Email != mockUser.Email || user.Avatar != mockUser.Avatar || user.Birthday != mockUser.Birthday {
 		t.Errorf("unexpected user data: got %+v, want %+v", user, mockUser)
 	}
 
@@ -180,9 +179,12 @@ func TestUserRepository_AddUser_Conflict(t *testing.T) {
 		Birthday:   time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 
-	mock.ExpectQuery(`INSERT INTO flow_user \(username, avatar, public_name, email, password\) VALUES \(\$1, \$2, \$3, \$4, \$5\) ON CONFLICT \(email, username\) DO NOTHING RETURNING id`).
-		WithArgs(user.Username, "", user.PublicName, user.Email, user.Password).
-		WillReturnError(sql.ErrNoRows)
+	mock.NewRows([]string{"id", "username", "avatar", "public_name", "email", "password"}).
+	AddRow(1, user.Username, "", user.PublicName, user.Email, user.Password)
+
+	mock.ExpectQuery(`INSERT INTO flow_user \(username, avatar, public_name, email, password, birthday\) VALUES \(\$1, \$2, \$3, \$4, \$5, \$6\) ON CONFLICT \(email, username\) DO NOTHING RETURNING id`).
+		WithArgs(user.Username, "", user.PublicName, user.Email, user.Password, user.Birthday).
+		WillReturnError(domain.ErrConflict)
 
 	_, err = repo.AddUser(user)
 	if !errors.Is(err, domain.ErrConflict) {
