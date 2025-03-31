@@ -33,8 +33,6 @@ func UploadImage(imageFilename, staticDir, imageDir, baseUrl string, file io.Rea
 	filePath := filepath.Join(staticDir, imageDir, filename)
 	fileDir := filepath.Join(staticDir, imageDir)
 
-	println(fileDir)
-
 	if err := os.MkdirAll(filepath.Join(".", fileDir), os.ModePerm); err != nil {
 		return "", err
 	}

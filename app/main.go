@@ -109,7 +109,8 @@ func main() {
 		StaticFolder:   config.StaticBaseDir,
 		AvatarFolder:   config.AvatarDir,
 		BaseUrl:        config.BaseUrl,
-		Config:         config,
+		ExpirationTime: config.ExpirationTime,
+		CookieSecure:   config.CookieSecure,
 	}
 
 	allowedGetOptions := []string{http.MethodGet, http.MethodOptions}

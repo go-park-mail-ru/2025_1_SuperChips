@@ -2,9 +2,10 @@ package domain
 
 import (
 	"errors"
-	"fmt"
 	"regexp"
 	"time"
+
+	"github.com/go-park-mail-ru/2025_1_SuperChips/utils/wrapper"
 )
 
 type User struct {
@@ -41,11 +42,11 @@ var (
 
 func ValidateEmail(email string) error {
 	if len(email) > 64 || len(email) < 3 {
-		return WrapError(ErrValidation, ErrInvalidEmail)
+		return wrapper.WrapError(ErrValidation, ErrInvalidEmail)
 	}
 
 	if !isValidEmail(email) {
-		return WrapError(ErrValidation, ErrInvalidEmail)
+		return wrapper.WrapError(ErrValidation, ErrInvalidEmail)
 	}
 
 	return nil
@@ -53,11 +54,11 @@ func ValidateEmail(email string) error {
 
 func ValidatePassword(password string) error {
 	if password == "" {
-		return WrapError(ErrValidation, ErrNoPassword)
+		return wrapper.WrapError(ErrValidation, ErrNoPassword)
 	}
 
 	if len(password) > 96 {
-		return WrapError(ErrValidation, ErrPasswordTooLong)
+		return wrapper.WrapError(ErrValidation, ErrPasswordTooLong)
 	}
 
 	return nil
@@ -77,7 +78,7 @@ func ValidateEmailAndPassword(email, password string) error {
 
 func ValidateUsername(username string) error {
 	if len(username) > 32 || len(username) < 2 {
-		return WrapError(ErrValidation, ErrInvalidUsername)
+		return wrapper.WrapError(ErrValidation, ErrInvalidUsername)
 	}
 
 	return nil
@@ -85,15 +86,15 @@ func ValidateUsername(username string) error {
 
 func (u User) ValidateUser() error {
 	if err := ValidateEmailAndPassword(u.Email, u.Password); err != nil {
-		return WrapError(ErrValidation, err)
+		return wrapper.WrapError(ErrValidation, err)
 	}
 
 	if err := ValidateUsername(u.Username); err != nil {
-		return WrapError(ErrValidation, err)
+		return wrapper.WrapError(ErrValidation, err)
 	}
 
 	if u.Birthday.After(time.Now()) || time.Since(u.Birthday) > 150*365*24*time.Hour {
-		return WrapError(ErrValidation, ErrInvalidBirthday)
+		return wrapper.WrapError(ErrValidation, ErrInvalidBirthday)
 	}
 
 	return nil
@@ -101,22 +102,18 @@ func (u User) ValidateUser() error {
 
 func (u User) ValidateUserNoPassword() error {
 	if err := ValidateEmail(u.Email); err != nil {
-		return WrapError(ErrValidation, err)
+		return wrapper.WrapError(ErrValidation, err)
 	}
 
 	if err := ValidateUsername(u.Username); err != nil {
-		return WrapError(ErrValidation, err)
+		return wrapper.WrapError(ErrValidation, err)
 	}
 
 	if u.Birthday.After(time.Now()) || time.Since(u.Birthday) > 150*365*24*time.Hour {
-		return WrapError(ErrValidation, ErrInvalidBirthday)
+		return wrapper.WrapError(ErrValidation, ErrInvalidBirthday)
 	}
 
 	return nil
-}
-
-func WrapError(base error, err error) error {
-	return fmt.Errorf("%w: %w", base, err)
 }
 
 func isValidEmail(email string) bool {

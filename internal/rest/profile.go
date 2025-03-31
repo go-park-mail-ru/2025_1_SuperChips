@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"mime/multipart"
 	"net/http"
+	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
@@ -38,15 +39,19 @@ type ProfileService interface {
 type ProfileHandler struct {
 	ProfileService ProfileService
 	JwtManager     auth.JWTManager
-	Config         configs.Config
-	AvatarFolder   string // где будут хранится аватары относительно staticFolder
-	StaticFolder   string // где будут хранится статические файлы
-	BaseUrl        string // url для получения аватара
+	AvatarFolder   string        // где будут хранится аватары относительно staticFolder
+	StaticFolder   string        // где будут хранится статические файлы
+	BaseUrl        string        // url для получения аватара
+	ExpirationTime time.Duration // время жизни куки
+	CookieSecure   bool          // флаг, что куки должны быть только по https
 }
 
 func (h *ProfileHandler) CurrentUserProfileHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPatch {
-		h.updateUserProfileHandler(w, r)
+		h.patchUserProfile(w, r)
+		return
+	} else if r.Method != http.MethodGet {
+		HttpErrorToJson(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -171,7 +176,12 @@ func (h *ProfileHandler) ChangeUserPasswordHandler(w http.ResponseWriter, r *htt
 		return
 	}
 
-	if err := updateAuthToken(w, h.JwtManager, h.Config, claims.Email, id); err != nil {
+	conf := configs.Config{
+		ExpirationTime: h.ExpirationTime,
+		CookieSecure:   h.CookieSecure,
+	}
+
+	if err := updateAuthToken(w, h.JwtManager, conf, claims.Email, id); err != nil {
 		handleProfileError(w, err)
 		return
 	}
@@ -183,7 +193,7 @@ func (h *ProfileHandler) ChangeUserPasswordHandler(w http.ResponseWriter, r *htt
 	ServerGenerateJSONResponse(w, resp, http.StatusOK)
 }
 
-func (h *ProfileHandler) updateUserProfileHandler(w http.ResponseWriter, r *http.Request) {
+func (h *ProfileHandler) patchUserProfile(w http.ResponseWriter, r *http.Request) {
 	claims, err := CheckAuth(r, h.JwtManager)
 	if errors.Is(err, auth.ErrorExpiredToken) {
 		HttpErrorToJson(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
@@ -222,17 +232,22 @@ func (h *ProfileHandler) updateUserProfileHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	// в будущем!! 
+	conf := configs.Config{
+		ExpirationTime: h.ExpirationTime,
+		CookieSecure:   h.CookieSecure,
+	}
+
+	// в будущем!!
 	// обновить версию токена в бд,
 	// тем самым обнулив все предыдущие токены
 	// имеет смысл это делать только при смене мыла
 	if user.Email != claims.Email {
-		if err := updateAuthToken(w, h.JwtManager, h.Config, user.Email, int(bufUser.Id)); err != nil {
+		if err := updateAuthToken(w, h.JwtManager, conf, user.Email, int(bufUser.Id)); err != nil {
 			handleProfileError(w, err)
-			return	
+			return
 		}
 	}
-	
+
 	response := ServerResponse{
 		Description: "OK",
 	}

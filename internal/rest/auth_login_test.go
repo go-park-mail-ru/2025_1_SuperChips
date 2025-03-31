@@ -66,7 +66,7 @@ func TestLoginHandler(t *testing.T) {
 			returnLoginToken: hashPassword(t, "qwerty123"),
 			returnLoginError: nil,
 
-			expectGetUserId:      true,
+			expectGetUserId:      false,
 			returnGetUserId:      42,
 			returnGetUserIdError: nil,
 
@@ -92,7 +92,7 @@ func TestLoginHandler(t *testing.T) {
 			returnLoginToken: hashPassword(t, "qwerty123"),
 			returnLoginError: nil,
 
-			expectGetUserId:      true,
+			expectGetUserId:      false,
 			returnGetUserId:      42,
 			returnGetUserIdError: nil,
 
@@ -166,7 +166,7 @@ func TestLoginHandler(t *testing.T) {
 			if tt.expectLoginUser {
 				mockUserRepo.EXPECT().
 					GetHash(tt.email, tt.password).
-					Return(tt.returnLoginToken, tt.returnLoginError)
+					Return(tt.returnGetUserId, tt.returnLoginToken, tt.returnLoginError)
 			}
 			if tt.expectGetUserId {
 				mockUserRepo.EXPECT().
