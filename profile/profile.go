@@ -1,12 +1,17 @@
 package profile
 
-import "github.com/go-park-mail-ru/2025_1_SuperChips/domain"
+import (
+	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/security"
+)
 
 type ProfileRepository interface {
 	GetUserPublicInfoByEmail(email string) (domain.User, error)
 	GetUserPublicInfoByUsername(username string) (domain.User, error)
 	SaveUserAvatar(email string, avatar string) error
 	UpdateUserData(user domain.User, oldEmail string) error
+	GetHashedPassword(email string) (string, error)
+	SetNewPassword(email string, newPassword string) (int, error)
 }
 
 type ProfileService struct {
@@ -69,4 +74,31 @@ func (p *ProfileService) UpdateUserData(user domain.User, oldEmail string) error
 	}
 
 	return nil
+}
+
+func (p *ProfileService) ChangeUserPassword(email, oldPassword, newPassword string) (int, error) {
+	if err := domain.ValidatePassword(newPassword); err != nil {
+		return 0, err
+	}
+
+	hash, err := p.repo.GetHashedPassword(email)
+	if err != nil {
+		return 0, err
+	}
+
+	if !security.ComparePassword(oldPassword, hash) {
+		return 0, domain.ErrInvalidCredentials
+	}
+
+	newHash, err := security.HashPassword(newPassword)
+	if err != nil {
+		return 0, err
+	}
+
+	id, err := p.repo.SetNewPassword(email, newHash)
+	if err != nil {
+		return 0, err
+	}
+
+	return id, nil
 }

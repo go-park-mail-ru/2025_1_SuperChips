@@ -7,7 +7,6 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
 
-
 type pgProfileStorage struct {
 	db *sql.DB
 }
@@ -93,4 +92,31 @@ func (p *pgProfileStorage) UpdateUserData(user domain.User, oldEmail string) err
 	}
 
 	return nil
+}
+
+func (p *pgProfileStorage) GetHashedPassword(email string) (string, error) {
+	var password string
+	err := p.db.QueryRow(`
+	SELECT password
+	FROM flow_user
+	WHERE email = $1`, email).Scan(&password)
+	if err != nil {
+		return "", err
+	}
+
+	return password, nil
+}
+
+func (p *pgProfileStorage) SetNewPassword(email string, newPassword string) (int, error) {
+	var id int
+	err := p.db.QueryRow(`
+	UPDATE flow_user
+	SET password = $1
+	WHERE email = $2
+	RETURNING id`, newPassword, email).Scan(&id)
+	if err != nil {
+		return 0, err
+	}
+
+	return id, nil
 }

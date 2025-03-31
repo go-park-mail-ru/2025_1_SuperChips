@@ -131,8 +131,9 @@ func main() {
 	mux.HandleFunc("/api/v1/auth/logout", middleware.CorsMiddleware(authHandler.LogoutHandler, config, allowedPostOptions))
 
 	mux.HandleFunc("/api/v1/profile", middleware.CorsMiddleware(profileHandler.CurrentUserProfileHandler, config, allowedGetPatchOptions))
-	mux.HandleFunc("/api/v1/profile/{username}", middleware.CorsMiddleware(profileHandler.PublicProfileHandler, config, allowedGetOptions))
+	mux.HandleFunc("/api/v1/user/{username}", middleware.CorsMiddleware(profileHandler.PublicProfileHandler, config, allowedGetOptions))
 	mux.HandleFunc("/api/v1/profile/avatar", middleware.CorsMiddleware(profileHandler.UserAvatarHandler, config, allowedPostOptions))
+	mux.HandleFunc("/api/v1/profile/password", middleware.CorsMiddleware(profileHandler.ChangeUserPasswordHandler, config, allowedPostOptions))
 
 	server := http.Server{
 		Addr:    config.Port,

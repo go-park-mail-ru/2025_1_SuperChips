@@ -2,6 +2,7 @@ package rest
 
 import (
 	"errors"
+	"fmt"
 	"mime/multipart"
 	"net/http"
 
@@ -21,11 +22,17 @@ var allowedTypes = map[string]bool{
 	"image/tiff": true,
 }
 
+type passwordChange struct {
+	OldPassword string `json:"old_password"`
+	NewPassword string `json:"new_password"`
+}
+
 type ProfileService interface {
 	GetUserPublicInfoByEmail(email string) (domain.User, error)
 	GetUserPublicInfoByUsername(username string) (domain.User, error)
 	SaveUserAvatar(email string, avatar string) error
 	UpdateUserData(user domain.User, oldEmail string) error
+	ChangeUserPassword(email, oldPassword, newPassword string) (int, error)
 }
 
 type ProfileHandler struct {
@@ -113,7 +120,7 @@ func (h *ProfileHandler) UserAvatarHandler(w http.ResponseWriter, r *http.Reques
 	defer file.Close()
 
 	if handler.Size > maxAvatarSize {
-		handleProfileError(w, multipart.ErrMessageTooLarge)
+		handleProfileError(w, fmt.Errorf("%v: file too large", multipart.ErrMessageTooLarge))
 		return
 	}
 
@@ -139,6 +146,41 @@ func (h *ProfileHandler) UserAvatarHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	ServerGenerateJSONResponse(w, response, http.StatusCreated)
+}
+
+func (h *ProfileHandler) ChangeUserPasswordHandler(w http.ResponseWriter, r *http.Request) {
+	claims, err := CheckAuth(r, h.JwtManager)
+	if errors.Is(err, auth.ErrorExpiredToken) {
+		HttpErrorToJson(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	} else if err != nil {
+		handleProfileError(w, err)
+		return
+	}
+
+	var passwordStruct passwordChange
+
+	if err := DecodeData(w, r.Body, &passwordStruct); err != nil {
+		handleProfileError(w, err)
+		return
+	}
+
+	id, err := h.ProfileService.ChangeUserPassword(claims.Email, passwordStruct.OldPassword, passwordStruct.NewPassword)
+	if err != nil {
+		handleProfileError(w, err)
+		return
+	}
+
+	if err := updateAuthToken(w, h.JwtManager, h.Config, claims.Email, id); err != nil {
+		handleProfileError(w, err)
+		return
+	}
+
+	resp := ServerResponse{
+		Description: "OK",
+	}
+
+	ServerGenerateJSONResponse(w, resp, http.StatusOK)
 }
 
 func (h *ProfileHandler) updateUserProfileHandler(w http.ResponseWriter, r *http.Request) {
@@ -180,20 +222,20 @@ func (h *ProfileHandler) updateUserProfileHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	response := ServerResponse{
-		Description: "OK",
-	}
-
 	// в будущем!! 
 	// обновить версию токена в бд,
 	// тем самым обнулив все предыдущие токены
-	token, err := h.JwtManager.CreateJWT(user.Email, int(bufUser.Id))
-	if err != nil {
-		HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
+	// имеет смысл это делать только при смене мыла
+	if user.Email != claims.Email {
+		if err := updateAuthToken(w, h.JwtManager, h.Config, user.Email, int(bufUser.Id)); err != nil {
+			handleProfileError(w, err)
+			return	
+		}
 	}
-
-	setCookie(w, h.Config, auth.AuthToken, token, true)
+	
+	response := ServerResponse{
+		Description: "OK",
+	}
 
 	ServerGenerateJSONResponse(w, response, http.StatusOK)
 }
@@ -212,8 +254,22 @@ func handleProfileError(w http.ResponseWriter, err error) {
 		HttpErrorToJson(w, "invalid birthday", http.StatusBadRequest)
 	case errors.Is(err, http.ErrNoCookie):
 		HttpErrorToJson(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+	case errors.Is(err, auth.ErrorExpiredToken):
+		HttpErrorToJson(w, "session expired", http.StatusUnauthorized)
+	case errors.Is(err, domain.ErrInvalidCredentials):
+		HttpErrorToJson(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 	default:
 		HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
+}
+
+func updateAuthToken(w http.ResponseWriter, mngr auth.JWTManager, config configs.Config, email string, id int) error {
+	token, err := mngr.CreateJWT(email, id)
+	if err != nil {
+		return err
+	}
+	setCookie(w, config, auth.AuthToken, token, true)
+
+	return nil
 }
