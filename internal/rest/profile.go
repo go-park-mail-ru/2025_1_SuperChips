@@ -2,7 +2,7 @@ package rest
 
 import (
 	"errors"
-	"fmt"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"time"
@@ -26,6 +26,14 @@ var allowedTypes = map[string]bool{
 type passwordChange struct {
 	OldPassword string `json:"old_password"`
 	NewPassword string `json:"new_password"`
+}
+
+type UserUpdateRequest struct {
+    Username   *string    `json:"username"`
+    Email      *string    `json:"email"`
+    Birthday   *time.Time `json:"birthday"`
+    About      *string    `json:"about"`
+    PublicName *string    `json:"public_name"`
 }
 
 type ProfileService interface {
@@ -113,6 +121,7 @@ func (h *ProfileHandler) UserAvatarHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err := r.ParseMultipartForm(maxAvatarSize); err != nil {
+		println(err.Error())
 		handleProfileError(w, err)
 		return
 	}
@@ -125,7 +134,7 @@ func (h *ProfileHandler) UserAvatarHandler(w http.ResponseWriter, r *http.Reques
 	defer file.Close()
 
 	if handler.Size > maxAvatarSize {
-		handleProfileError(w, fmt.Errorf("%v: file too large", multipart.ErrMessageTooLarge))
+		HttpErrorToJson(w, "image is too large", http.StatusRequestEntityTooLarge)
 		return
 	}
 
@@ -166,7 +175,6 @@ func (h *ProfileHandler) ChangeUserPasswordHandler(w http.ResponseWriter, r *htt
 	var passwordStruct passwordChange
 
 	if err := DecodeData(w, r.Body, &passwordStruct); err != nil {
-		handleProfileError(w, err)
 		return
 	}
 
@@ -194,65 +202,61 @@ func (h *ProfileHandler) ChangeUserPasswordHandler(w http.ResponseWriter, r *htt
 }
 
 func (h *ProfileHandler) patchUserProfile(w http.ResponseWriter, r *http.Request) {
-	claims, err := CheckAuth(r, h.JwtManager)
-	if errors.Is(err, auth.ErrorExpiredToken) {
-		HttpErrorToJson(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		return
-	} else if err != nil {
-		handleProfileError(w, err)
-		return
-	}
+    claims, err := CheckAuth(r, h.JwtManager)
+    if err != nil {
+        handleProfileError(w, err)
+        return
+    }
 
-	bufUser, err := h.ProfileService.GetUserPublicInfoByEmail(claims.Email)
-	if err != nil {
-		handleProfileError(w, err)
-		return
-	}
+    var updateReq UserUpdateRequest
+    if err := DecodeData(w, r.Body, &updateReq); err != nil {
+        return
+    }
 
-	if err := DecodeData(w, r.Body, &bufUser); err != nil {
-		handleProfileError(w, err)
-		return
-	}
+	existingUser, err := h.ProfileService.GetUserPublicInfoByEmail(claims.Email)
+    if err != nil {
+        handleProfileError(w, err)
+        return
+    }
 
-	if err := bufUser.ValidateUserNoPassword(); err != nil {
-		HttpErrorToJson(w, "validation failed", http.StatusBadRequest)
-		return
-	}
+    if updateReq.Username != nil {
+        existingUser.Username = *updateReq.Username
+    }
+    if updateReq.Email != nil {
+        existingUser.Email = *updateReq.Email
+    }
+    if updateReq.Birthday != nil {
+        existingUser.Birthday = *updateReq.Birthday
+    }
+    if updateReq.About != nil {
+        existingUser.About = *updateReq.About
+    }
+    if updateReq.PublicName != nil {
+        existingUser.PublicName = *updateReq.PublicName
+    }
 
-	user := domain.User{
-		Username:   bufUser.Username,
-		Email:      bufUser.Email,
-		Birthday:   bufUser.Birthday,
-		About:      bufUser.About,
-		PublicName: bufUser.PublicName,
-	}
+    if err := existingUser.ValidateUserNoPassword(); err != nil {
+        HttpErrorToJson(w, "validation failed", http.StatusBadRequest)
+        return
+    }
 
-	if err := h.ProfileService.UpdateUserData(user, claims.Email); err != nil {
-		handleProfileError(w, err)
-		return
-	}
+    if err := h.ProfileService.UpdateUserData(existingUser, claims.Email); err != nil {
+        handleProfileError(w, err)
+        return
+    }
 
-	conf := configs.Config{
-		ExpirationTime: h.ExpirationTime,
-		CookieSecure:   h.CookieSecure,
-	}
+    if updateReq.Email != nil && *updateReq.Email != claims.Email {
+        conf := configs.Config{
+            ExpirationTime: h.ExpirationTime,
+            CookieSecure:   h.CookieSecure,
+        }
+        if err := updateAuthToken(w, h.JwtManager, conf, existingUser.Email, int(existingUser.Id)); err != nil {
+            handleProfileError(w, err)
+            return
+        }
+    }
 
-	// в будущем!!
-	// обновить версию токена в бд,
-	// тем самым обнулив все предыдущие токены
-	// имеет смысл это делать только при смене мыла
-	if user.Email != claims.Email {
-		if err := updateAuthToken(w, h.JwtManager, conf, user.Email, int(bufUser.Id)); err != nil {
-			handleProfileError(w, err)
-			return
-		}
-	}
-
-	response := ServerResponse{
-		Description: "OK",
-	}
-
-	ServerGenerateJSONResponse(w, response, http.StatusOK)
+    ServerGenerateJSONResponse(w, ServerResponse{Description: "OK"}, http.StatusOK)
 }
 
 func handleProfileError(w http.ResponseWriter, err error) {
@@ -267,12 +271,18 @@ func handleProfileError(w http.ResponseWriter, err error) {
 		HttpErrorToJson(w, "invalid username", http.StatusBadRequest)
 	case errors.Is(err, domain.ErrInvalidBirthday):
 		HttpErrorToJson(w, "invalid birthday", http.StatusBadRequest)
+	case errors.Is(err, domain.ErrNoPassword):
+		HttpErrorToJson(w, "cannot use empty password", http.StatusBadRequest)
+	case errors.Is(err, domain.ErrPasswordTooLong):
+		HttpErrorToJson(w, "password too long", http.StatusBadRequest)
 	case errors.Is(err, http.ErrNoCookie):
 		HttpErrorToJson(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 	case errors.Is(err, auth.ErrorExpiredToken):
 		HttpErrorToJson(w, "session expired", http.StatusUnauthorized)
 	case errors.Is(err, domain.ErrInvalidCredentials):
 		HttpErrorToJson(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+	case errors.Is(err, io.EOF):
+		HttpErrorToJson(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 	default:
 		HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}

@@ -102,3 +102,4 @@ func (p *ProfileService) ChangeUserPassword(email, oldPassword, newPassword stri
 
 	return id, nil
 }
+

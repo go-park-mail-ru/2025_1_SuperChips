@@ -14,6 +14,8 @@ mocks:
 	@mkdir -p $(MOCK_DST)/pin $(MOCK_DST)/user
 	$(MOCKGEN) -source=./pin/service.go -destination=$(MOCK_DST)/pin/service.go
 	$(MOCKGEN) -source=./user/service.go -destination=$(MOCK_DST)/user/service.go
+	$(MOCKGEN) -source=./profile/service.go -destination=$(MOCK_DST)/profile/service.go
+	$(MOCKGEN) -source=./internal/rest/profile.go -destination=$(MOCK_DST)/rest/profile.go
 
 test: mocks
 	go test $(TESTED_DIRS) -coverprofile=$(COVERAGE_FILE)
