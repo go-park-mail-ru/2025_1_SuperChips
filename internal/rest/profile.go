@@ -55,14 +55,6 @@ type ProfileHandler struct {
 }
 
 func (h *ProfileHandler) CurrentUserProfileHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPatch {
-		h.patchUserProfile(w, r)
-		return
-	} else if r.Method != http.MethodGet {
-		HttpErrorToJson(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	cookie, err := r.Cookie(auth.AuthToken)
 	if err != nil {
 		HttpErrorToJson(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
@@ -201,7 +193,7 @@ func (h *ProfileHandler) ChangeUserPasswordHandler(w http.ResponseWriter, r *htt
 	ServerGenerateJSONResponse(w, resp, http.StatusOK)
 }
 
-func (h *ProfileHandler) patchUserProfile(w http.ResponseWriter, r *http.Request) {
+func (h *ProfileHandler) PatchUserProfileHandler(w http.ResponseWriter, r *http.Request) {
     claims, err := CheckAuth(r, h.JwtManager)
     if err != nil {
         handleProfileError(w, err)

@@ -115,7 +115,7 @@ func main() {
 
 	allowedGetOptions := []string{http.MethodGet, http.MethodOptions}
 	allowedPostOptions := []string{http.MethodPost, http.MethodOptions}
-	allowedGetPatchOptions := []string{http.MethodGet, http.MethodPatch, http.MethodOptions}
+	allowedPatchOptions := []string{http.MethodPatch, http.MethodOptions}
 
 	fs := http.FileServer(http.Dir("." + config.StaticBaseDir))
 
@@ -131,8 +131,9 @@ func main() {
 	mux.HandleFunc("/api/v1/auth/registration", middleware.CorsMiddleware(authHandler.RegistrationHandler, config, allowedPostOptions))
 	mux.HandleFunc("/api/v1/auth/logout", middleware.CorsMiddleware(authHandler.LogoutHandler, config, allowedPostOptions))
 
-	mux.HandleFunc("/api/v1/profile", middleware.CorsMiddleware(profileHandler.CurrentUserProfileHandler, config, allowedGetPatchOptions))
+	mux.HandleFunc("/api/v1/profile", middleware.CorsMiddleware(profileHandler.CurrentUserProfileHandler, config, allowedGetOptions))
 	mux.HandleFunc("/api/v1/user/{username}", middleware.CorsMiddleware(profileHandler.PublicProfileHandler, config, allowedGetOptions))
+	mux.HandleFunc("/api/v1/profile/update", middleware.CorsMiddleware(profileHandler.PatchUserProfileHandler, config, allowedPatchOptions))
 	mux.HandleFunc("/api/v1/profile/avatar", middleware.CorsMiddleware(profileHandler.UserAvatarHandler, config, allowedPostOptions))
 	mux.HandleFunc("/api/v1/profile/password", middleware.CorsMiddleware(profileHandler.ChangeUserPasswordHandler, config, allowedPostOptions))
 
