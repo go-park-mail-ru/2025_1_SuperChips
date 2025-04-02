@@ -19,6 +19,8 @@ type Config struct {
 	IpAddress      string
 	ImageBaseDir   string
 	StaticBaseDir  string
+	AvatarDir      string
+	BaseUrl		string
 	PageSize       int
 	AllowedOrigins []string
 }
@@ -116,6 +118,12 @@ func (config *Config) LoadConfigFromEnv() error {
 	staticBaseDir, _ := getEnvHelper("STATIC_BASE_DIR", "/static/")
 	config.StaticBaseDir = staticBaseDir
 
+	avatarDir, _ := getEnvHelper("AVATAR_DIR", "avatars")
+	config.AvatarDir = avatarDir
+
+	baseUrl, _ := getEnvHelper("BASE_URL", "https://yourflow.ru")
+	config.BaseUrl = baseUrl
+
 	printConfig(*config)
 
 	return nil
@@ -132,6 +140,9 @@ func printConfig(cfg Config) {
 	log.Printf("Image dir: %s\n", cfg.ImageBaseDir)
 	log.Printf("PageSize: %d\n", cfg.PageSize)
 	log.Printf("Allowed origins: %s\n", strings.Join(cfg.AllowedOrigins, ", "))
+	log.Printf("Static base dir: %s\n", cfg.StaticBaseDir)
+	log.Printf("Avatar folder: %s\n", cfg.AvatarDir)
+	log.Printf("Base URL: %s\n", cfg.BaseUrl)
 	log.Println("-----------------------------------------------")
 }
 

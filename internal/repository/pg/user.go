@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	user "github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	_ "github.com/jmoiron/sqlx"
 )
@@ -37,13 +36,13 @@ func NewPGUserStorage(db *sql.DB) (*pgUserStorage, error) {
 func (p *pgUserStorage) AddUser(userInfo user.User) (uint64, error) {
 	var id uint64
 	err := p.db.QueryRow(`
-        INSERT INTO flow_user (username, avatar, public_name, email, password)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO flow_user (username, avatar, public_name, email, password, birthday)
+        VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (email, username) DO NOTHING
 		RETURNING id
-    `, userInfo.Username, userInfo.Avatar, userInfo.PublicName, userInfo.Email, userInfo.Password).Scan(&id)
+    `, userInfo.Username, userInfo.Avatar, userInfo.PublicName, userInfo.Email, userInfo.Password, userInfo.Birthday).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
-		return 0, domain.ErrConflict
+		return 0, user.ErrConflict
 	} else if err != nil {
 		return 0, err
 	}
@@ -71,7 +70,8 @@ func (p *pgUserStorage) GetUserPublicInfo(email string) (user.PublicUser, error)
 	var userDB userDB
 
 	err := p.db.QueryRow(`
-        SELECT username, email, avatar, birthday FROM flow_user WHERE email = $1
+        SELECT username, email, avatar, birthday, about, public_name,
+		FROM flow_user WHERE email = $1
     `, email).Scan(&userDB.Username, &userDB.Email, &userDB.Avatar, &userDB.Birthday)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return user.PublicUser{}, user.ErrInvalidCredentials
