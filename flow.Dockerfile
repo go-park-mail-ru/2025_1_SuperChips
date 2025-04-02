@@ -1,14 +1,21 @@
-FROM golang:1.24
+FROM golang:1.24 AS builder
 
 WORKDIR /app
 
-# pre-copy/cache go.mod for pre-downloading dependencies and only redownloading them in subsequent builds if they change
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN go build -v -o main ./app/main.go
 
-EXPOSE $PORT
+RUN CGO_ENABLED=0 GOOS=linux go build -v -o main ./app/main.go
+
+FROM alpine:latest
+
+WORKDIR /app
+
+COPY --from=builder /app/main .
+COPY --from=builder /app/database/migrations ./database/migrations
+
+EXPOSE 8080
 
 ENTRYPOINT ["./main"]
