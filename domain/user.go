@@ -2,7 +2,6 @@ package domain
 
 import (
 	"errors"
-	"fmt"
 	"regexp"
 	"time"
 )
@@ -73,10 +72,6 @@ func (u User) ValidateUser() error {
 	}
 
 	return nil
-}
-
-func WrapError(base error, err error) error {
-	return fmt.Errorf("%w: %w", base, err)
 }
 
 func isValidEmail(email string) bool {

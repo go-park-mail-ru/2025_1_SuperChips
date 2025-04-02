@@ -1,5 +1,7 @@
 package domain
 
+import "fmt"
+
 type StatusError interface {
 	error
 	StatusCode() int
@@ -25,3 +27,7 @@ var (
 	ErrNotFound     = &StatusCodeError{Code: 404, Msg: "resource not found"}
 	ErrInternal     = &StatusCodeError{Code: 500, Msg: "internal server error"}
 )
+
+func WrapError(base error, err error) error {
+	return fmt.Errorf("%w: %w", base, err)
+}
