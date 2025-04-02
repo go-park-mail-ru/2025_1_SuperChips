@@ -146,7 +146,7 @@ func setCookie(w http.ResponseWriter, config configs.Config, name string, value 
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
 		Value:    value,
-		Domain:   "yourflow.ru",
+		// Domain:   "yourflow.ru",
 		Path:     "/",
 		HttpOnly: httpOnly,
 		Secure:   config.CookieSecure,

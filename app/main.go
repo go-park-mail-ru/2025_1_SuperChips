@@ -15,7 +15,7 @@ import (
 	pgStorage "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
-	middleware "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/middleware"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/middleware"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/pin"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/profile"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/user"
@@ -123,19 +123,38 @@ func main() {
 
 	mux.Handle("GET /static/", http.StripPrefix(config.StaticBaseDir, fs))
 
-	mux.HandleFunc("/health", middleware.CorsMiddleware(rest.HealthCheckHandler, config, allowedGetOptions))
+	mux.HandleFunc("/health",
+		middleware.ChainMiddleware(rest.HealthCheckHandler, middleware.CorsMiddleware(config, allowedGetOptions)))
 
-	mux.HandleFunc("/api/v1/feed", middleware.CorsMiddleware(pinsHandler.FeedHandler, config, allowedGetOptions))
+	mux.HandleFunc("/api/v1/feed",
+		middleware.ChainMiddleware(pinsHandler.FeedHandler, middleware.CorsMiddleware(config, allowedGetOptions)))
 
-	mux.HandleFunc("/api/v1/auth/login", middleware.CorsMiddleware(authHandler.LoginHandler, config, allowedPostOptions))
-	mux.HandleFunc("/api/v1/auth/registration", middleware.CorsMiddleware(authHandler.RegistrationHandler, config, allowedPostOptions))
-	mux.HandleFunc("/api/v1/auth/logout", middleware.CorsMiddleware(authHandler.LogoutHandler, config, allowedPostOptions))
+	mux.HandleFunc("/api/v1/auth/login",
+		middleware.ChainMiddleware(authHandler.LoginHandler, middleware.CorsMiddleware(config, allowedPostOptions)))
+	mux.HandleFunc("/api/v1/auth/registration",
+		middleware.ChainMiddleware(authHandler.RegistrationHandler, middleware.CorsMiddleware(config, allowedPostOptions)))
+	mux.HandleFunc("/api/v1/auth/logout",
+		middleware.ChainMiddleware(authHandler.LogoutHandler, middleware.CorsMiddleware(config, allowedPostOptions)))
 
-	mux.HandleFunc("/api/v1/profile", middleware.CorsMiddleware(profileHandler.CurrentUserProfileHandler, config, allowedGetOptions))
-	mux.HandleFunc("/api/v1/user/{username}", middleware.CorsMiddleware(profileHandler.PublicProfileHandler, config, allowedGetOptions))
-	mux.HandleFunc("/api/v1/profile/update", middleware.CorsMiddleware(profileHandler.PatchUserProfileHandler, config, allowedPatchOptions))
-	mux.HandleFunc("/api/v1/profile/avatar", middleware.CorsMiddleware(profileHandler.UserAvatarHandler, config, allowedPostOptions))
-	mux.HandleFunc("/api/v1/profile/password", middleware.CorsMiddleware(profileHandler.ChangeUserPasswordHandler, config, allowedPostOptions))
+	mux.HandleFunc("/api/v1/profile",
+		middleware.ChainMiddleware(profileHandler.CurrentUserProfileHandler,
+			middleware.AuthMiddleware(jwtManager),
+			middleware.CorsMiddleware(config, allowedGetOptions)))
+	mux.HandleFunc("/api/v1/user/{username}",
+		middleware.ChainMiddleware(profileHandler.PublicProfileHandler,
+			middleware.CorsMiddleware(config, allowedGetOptions)))
+	mux.HandleFunc("/api/v1/profile/update",
+		middleware.ChainMiddleware(profileHandler.PatchUserProfileHandler,
+			middleware.AuthMiddleware(jwtManager),
+			middleware.CorsMiddleware(config, allowedPatchOptions)))
+	mux.HandleFunc("/api/v1/profile/avatar",
+		middleware.ChainMiddleware(profileHandler.UserAvatarHandler,
+			middleware.AuthMiddleware(jwtManager),
+			middleware.CorsMiddleware(config, allowedPostOptions)))
+	mux.HandleFunc("/api/v1/profile/password",
+		middleware.ChainMiddleware(profileHandler.ChangeUserPasswordHandler,
+			middleware.AuthMiddleware(jwtManager),
+			middleware.CorsMiddleware(config, allowedPostOptions)))
 
 	server := http.Server{
 		Addr:    config.Port,

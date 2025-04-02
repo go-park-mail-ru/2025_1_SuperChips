@@ -55,16 +55,8 @@ type ProfileHandler struct {
 }
 
 func (h *ProfileHandler) CurrentUserProfileHandler(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie(auth.AuthToken)
-	if err != nil {
-		HttpErrorToJson(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		return
-	}
-
-	token := cookie.Value
-
-	claims, err := h.JwtManager.ParseJWTToken(token)
-	if err != nil {
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
+	if !ok {
 		HttpErrorToJson(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
@@ -103,17 +95,13 @@ func (h *ProfileHandler) PublicProfileHandler(w http.ResponseWriter, r *http.Req
 }
 
 func (h *ProfileHandler) UserAvatarHandler(w http.ResponseWriter, r *http.Request) {
-	claims, err := CheckAuth(r, h.JwtManager)
-	if errors.Is(err, auth.ErrorExpiredToken) {
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
+	if !ok {
 		HttpErrorToJson(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		return
-	} else if err != nil {
-		handleProfileError(w, err)
 		return
 	}
 
 	if err := r.ParseMultipartForm(maxAvatarSize); err != nil {
-		println(err.Error())
 		handleProfileError(w, err)
 		return
 	}
@@ -155,12 +143,9 @@ func (h *ProfileHandler) UserAvatarHandler(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *ProfileHandler) ChangeUserPasswordHandler(w http.ResponseWriter, r *http.Request) {
-	claims, err := CheckAuth(r, h.JwtManager)
-	if errors.Is(err, auth.ErrorExpiredToken) {
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
+	if (!ok) {
 		HttpErrorToJson(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		return
-	} else if err != nil {
-		handleProfileError(w, err)
 		return
 	}
 
@@ -194,11 +179,11 @@ func (h *ProfileHandler) ChangeUserPasswordHandler(w http.ResponseWriter, r *htt
 }
 
 func (h *ProfileHandler) PatchUserProfileHandler(w http.ResponseWriter, r *http.Request) {
-    claims, err := CheckAuth(r, h.JwtManager)
-    if err != nil {
-        handleProfileError(w, err)
-        return
-    }
+    claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
+	if !ok {
+		HttpErrorToJson(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
 
     var updateReq UserUpdateRequest
     if err := DecodeData(w, r.Body, &updateReq); err != nil {

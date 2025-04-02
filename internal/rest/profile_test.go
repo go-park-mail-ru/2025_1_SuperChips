@@ -2,6 +2,7 @@ package rest_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"mime/multipart"
 	"net/http"
@@ -20,6 +21,8 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/mock/gomock"
 )
+
+type ContextString string
 
 type TestCase struct {
 	Name         string
@@ -46,7 +49,7 @@ var conf = configs.Config{
 	AllowedOrigins: []string{"http://localhost:8080"},
 }
 
-func generateJWTToken(secret string) (string, error) {
+func generateJWTToken(secret string) (auth.Claims, error) {
 	claims := auth.Claims{
 		UserID: 1,
 		Email:  "email@email.ru",
@@ -56,14 +59,13 @@ func generateJWTToken(secret string) (string, error) {
 			ID:        uuid.New().String(),
 		},
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(secret))
+	return claims, nil
 }
 
 func TestCurrentUserProfileHandler_GET(t *testing.T) {
     base := "/profile"
 
-    validToken, err := generateJWTToken(string(conf.JWTSecret))
+    claims, err := generateJWTToken(string(conf.JWTSecret))
     if err != nil {
         t.Fatalf("failed to generate JWT token: %v", err)
     }
@@ -73,7 +75,7 @@ func TestCurrentUserProfileHandler_GET(t *testing.T) {
             Name:         "Valid request",
             Method:       "GET",
             URL:          base,
-            Token:        validToken,
+            Token:        "yes",
             ExpectedCode: 200,
             ExpectedBody: `{"data":{"username":"JohnDoe","email":"","birthday":"2000-01-01T00:00:00Z"}}`,
         },
@@ -103,10 +105,8 @@ func TestCurrentUserProfileHandler_GET(t *testing.T) {
 
             req := httptest.NewRequest(tc.Method, tc.URL, nil)
             if tc.Token != "" {
-                req.AddCookie(&http.Cookie{
-                    Name:  auth.AuthToken,
-                    Value: tc.Token,
-                })
+				ctx := context.WithValue(req.Context(), auth.ClaimsContextKey, &claims)
+                req = req.WithContext(ctx)
             }
 
             handler := rest.ProfileHandler{
@@ -135,7 +135,7 @@ func TestCurrentUserProfileHandler_GET(t *testing.T) {
 func TestCurrentUserProfileHandler_PATCH(t *testing.T) {
     base := "/profile"
 
-    validToken, err := generateJWTToken(string(conf.JWTSecret))
+    claims, err := generateJWTToken(string(conf.JWTSecret))
     if err != nil {
         t.Fatalf("failed to generate JWT token: %v", err)
     }
@@ -146,7 +146,7 @@ func TestCurrentUserProfileHandler_PATCH(t *testing.T) {
             Method:       "PATCH",
             Body:         `{"public_name":"idk","birthday":"2000-02-01T00:00:00Z","about":"idk","email":"verynice@mail.ru"}`,
             URL:          base,
-            Token:        validToken,
+            Token:        "yes",
             ExpectedCode: 200,
             ExpectedBody: `{"description":"OK"}`,
         },
@@ -155,7 +155,7 @@ func TestCurrentUserProfileHandler_PATCH(t *testing.T) {
             Method:       "PATCH",
             Body:         `{asfsafasfsafsa`,
             URL:          base,
-            Token:        validToken,
+            Token:        "yes",
             ExpectedCode: 400,
             ExpectedBody: `{"description":"Bad Request"}`,
         },
@@ -164,7 +164,7 @@ func TestCurrentUserProfileHandler_PATCH(t *testing.T) {
             Method:       "PATCH",
             Body:         `{"email":"invalidemail","birthday":"2000-02-01T00:00:00Z","about":"idk","public_name":"idk"}`,
             URL:          base,
-            Token:        validToken,
+            Token:        "yes",
             ExpectedCode: 400,
             ExpectedBody: `{"description":"validation failed"}`,
         },
@@ -195,10 +195,8 @@ func TestCurrentUserProfileHandler_PATCH(t *testing.T) {
 
             req := httptest.NewRequest(tc.Method, tc.URL, strings.NewReader(tc.Body))
             if tc.Token != "" {
-                req.AddCookie(&http.Cookie{
-                    Name:  auth.AuthToken,
-                    Value: tc.Token,
-                })
+				ctx := context.WithValue(req.Context(), auth.ClaimsContextKey, &claims)
+                req = req.WithContext(ctx)
             }
 
             handler := rest.ProfileHandler{
@@ -225,7 +223,7 @@ func TestCurrentUserProfileHandler_PATCH(t *testing.T) {
 }
 
 func TestPublicProfileHandler(t *testing.T) {
-	validToken, err := generateJWTToken(string(conf.JWTSecret))
+	claims, err := generateJWTToken(string(conf.JWTSecret))
 	if err != nil {
 		t.Fatalf("failed to generate JWT token: %v", err)
 	}
@@ -235,7 +233,7 @@ func TestPublicProfileHandler(t *testing.T) {
 			Name:         "Valid public profile",
 			Method:       "GET",
 			URL:          "/profile/johndoe",
-			Token:        validToken,
+			Token:        "yes",
 			ExpectedCode: 200,
 			ExpectedBody: `{"data":{"username":"johndoe","email":"","birthday":"0001-01-01T00:00:00Z","about":"Developer","public_name":"John Doe"}`,
 		},
@@ -243,7 +241,7 @@ func TestPublicProfileHandler(t *testing.T) {
 			Name:         "Non-existent user",
 			Method:       "GET",
 			URL:          "/profile/unknown",
-			Token:        validToken,
+			Token:        "yes",
 			ExpectedCode: 404,
 			ExpectedBody: `{"description":"user not found"}`,
 		},
@@ -251,7 +249,7 @@ func TestPublicProfileHandler(t *testing.T) {
 			Name:         "Invalid method",
 			Method:       "POST",
 			URL:          "/profile/johndoe",
-			Token:        validToken,
+			Token:        "yes",
 			ExpectedCode: 405,
 			ExpectedBody: `Method Not Allowed`,
 		},
@@ -271,10 +269,8 @@ func TestPublicProfileHandler(t *testing.T) {
 
 			req := httptest.NewRequest(tc.Method, tc.URL, nil)
 			if tc.Token != "" {
-				req.AddCookie(&http.Cookie{
-					Name:  auth.AuthToken,
-					Value: tc.Token,
-				})
+				ctx := context.WithValue(req.Context(), auth.ClaimsContextKey, &claims)
+                req = req.WithContext(ctx)
 			}
 
 			switch tc.Name {
@@ -304,7 +300,7 @@ func TestPublicProfileHandler(t *testing.T) {
 func TestUserAvatarHandler(t *testing.T) {
 	base := "/profile/avatar"
 
-	validToken, err := generateJWTToken(string(conf.JWTSecret))
+	claims, err := generateJWTToken(string(conf.JWTSecret))
 	if err != nil {
 		t.Fatalf("failed to generate JWT token: %v", err)
 	}
@@ -314,7 +310,7 @@ func TestUserAvatarHandler(t *testing.T) {
 			Name:         "Valid avatar upload",
 			Method:       "POST",
 			URL:          base,
-			Token:        validToken,
+			Token:        "validToken",
 			ExpectedCode: 201,
 			ExpectedBody: `{"description":"Created"}`,
 		},
@@ -322,7 +318,7 @@ func TestUserAvatarHandler(t *testing.T) {
 			Name:         "File too large",
 			Method:       "POST",
 			URL:          base,
-			Token:        validToken,
+			Token:        "validToken",
 			ExpectedCode: 413,
 			ExpectedBody: `{"description":"image is too large"}`,
 		},
@@ -330,7 +326,7 @@ func TestUserAvatarHandler(t *testing.T) {
 			Name:         "Invalid content type",
 			Method:       "POST",
 			URL:          base,
-			Token:        validToken,
+			Token:        "validToken",
 			ExpectedCode: 415,
 			ExpectedBody: `{"description":"unsupported file format"}`,
 		},
@@ -338,7 +334,7 @@ func TestUserAvatarHandler(t *testing.T) {
 			Name:         "No file uploaded",
 			Method:       "POST",
 			URL:          base,
-			Token:        validToken,
+			Token:        "validToken",
 			Body:         "",
 			ExpectedCode: 400,
 			ExpectedBody: `{"description":"Bad Request"}`,
@@ -390,15 +386,8 @@ func TestUserAvatarHandler(t *testing.T) {
 			}
 
 			if tc.Token != "" {
-				req.AddCookie(&http.Cookie{
-					Name:     auth.AuthToken,
-					Value:    tc.Token,
-					Path:     "/",
-					Expires:  time.Now().Add(15 * time.Minute),
-					Secure:   conf.CookieSecure,
-					HttpOnly: true,
-					SameSite: http.SameSiteLaxMode,
-				})
+				ctx := context.WithValue(req.Context(), auth.ClaimsContextKey, &claims)
+                req = req.WithContext(ctx)
 			}
 
 			rr := httptest.NewRecorder()
@@ -417,7 +406,7 @@ func TestUserAvatarHandler(t *testing.T) {
 func TestChangeUserPasswordHandler(t *testing.T) {
 	base := "/profile/password"
 
-	validToken, err := generateJWTToken(string(conf.JWTSecret))
+	claims, err := generateJWTToken(string(conf.JWTSecret))
 	if err != nil {
 		t.Fatalf("failed to generate JWT token: %v", err)
 	}
@@ -427,7 +416,7 @@ func TestChangeUserPasswordHandler(t *testing.T) {
 			Name:         "Valid password change",
 			Method:       "POST",
 			URL:          base,
-			Token:        validToken,
+			Token:        "validToken",
 			Body:         `{"old_password":"oldpass","new_password":"NewPass123!"}`,
 			ExpectedCode: 200,
 			ExpectedBody: `{"description":"OK"}`,
@@ -436,7 +425,7 @@ func TestChangeUserPasswordHandler(t *testing.T) {
 			Name:         "Incorrect old password",
 			Method:       "POST",
 			URL:          base,
-			Token:        validToken,
+			Token:        "validToken",
 			Body:         `{"old_password":"wrongpass","new_password":"NewPass123!"}`,
 			ExpectedCode: 401,
 			ExpectedBody: `{"description":"Unauthorized"}`,
@@ -445,7 +434,7 @@ func TestChangeUserPasswordHandler(t *testing.T) {
 			Name:         "Invalid new password",
 			Method:       "POST",
 			URL:          base,
-			Token:        validToken,
+			Token:        "validToken",
 			Body:         `{"old_password":"oldpass","new_password":""}`,
 			ExpectedCode: 400,
 			ExpectedBody: `{"description":"cannot use empty password"}`,
@@ -454,7 +443,7 @@ func TestChangeUserPasswordHandler(t *testing.T) {
 			Name:         "Missing fields",
 			Method:       "POST",
 			URL:          base,
-			Token:        validToken,
+			Token:        "validToken",
 			Body:         `{"old_password":"oldpass"}`,
 			ExpectedCode: 400,
 			ExpectedBody: `{"description":"cannot use empty password"}`,
@@ -467,10 +456,8 @@ func TestChangeUserPasswordHandler(t *testing.T) {
 			req.Header.Set("Content-Type", "application/json")
 
 			if tc.Token != "" {
-				req.AddCookie(&http.Cookie{
-					Name:  auth.AuthToken,
-					Value: tc.Token,
-				})
+				ctx := context.WithValue(req.Context(), auth.ClaimsContextKey, &claims)
+                req = req.WithContext(ctx)
 			}
 
 			ctrl := gomock.NewController(t)

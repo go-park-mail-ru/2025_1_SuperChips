@@ -1,6 +1,8 @@
 package domain_test
 
 import (
+	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -90,7 +92,7 @@ func TestValidateUser(t *testing.T) {
 				Email:    "test@example.com",
 				Username: "username",
 				Password: "securepassword123",
-				Birthday: time.Now().Add(-200 * 365 * 24 * time.Hour), // More than 150 years old
+				Birthday: time.Now().Add(-200 * 365 * 24 * time.Hour),
 			},
 			wantErr: true,
 		},
@@ -104,4 +106,115 @@ func TestValidateUser(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestValidateUserNoPassword(t *testing.T) {
+	tests := []struct {
+		name    string
+		user    domain.User
+		wantErr bool
+	}{
+		{
+			name: "Сценарий: корректный",
+			user: domain.User{
+				Email:    "test@example.com",
+				Username: "username",
+				Password: "securepassword123",
+				Birthday: time.Date(1990, time.May, 1, 0, 0, 0, 0, time.UTC),
+			},
+			wantErr: false,
+		},
+		{
+			name: "Сценарий: некорректная почта: слишком длинная.",
+			user: domain.User{
+				Email:    "lalalalalalalalalalalalalalalalalalalalalalalalalalalalalalalala@b.c",
+				Username: "username",
+				Password: "securepassword123",
+				Birthday: time.Date(1990, time.May, 1, 0, 0, 0, 0, time.UTC),
+			},
+			wantErr: true,
+		},
+		{
+			name: "Сценарий: некорректная почта: некорректный формат.",
+			user: domain.User{
+				Email:    "invalid-email",
+				Username: "username",
+				Password: "securepassword123",
+				Birthday: time.Date(1990, time.May, 1, 0, 0, 0, 0, time.UTC),
+			},
+			wantErr: true,
+		},
+		{
+			name: "Сценарий: некорректная имя пользователя: слишком короткое.",
+			user: domain.User{
+				Email:    "test@example.com",
+				Username: "a",
+				Password: "securepassword123",
+				Birthday: time.Date(1990, time.May, 1, 0, 0, 0, 0, time.UTC),
+			},
+			wantErr: true,
+		},
+		{
+			name: "Сценарий: некорректная дата рождения: дата из будущего.",
+			user: domain.User{
+				Email:    "test@example.com",
+				Username: "username",
+				Password: "securepassword123",
+				Birthday: time.Now().Add(1 * time.Hour),
+			},
+			wantErr: true,
+		},
+		{
+			name: "Сценарий: некорректная дата рождения: слишком старая дата.",
+			user: domain.User{
+				Email:    "test@example.com",
+				Username: "username",
+				Password: "securepassword123",
+				Birthday: time.Now().Add(-200 * 365 * 24 * time.Hour),
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.user.ValidateUserNoPassword()
+			if (err != nil) != tt.wantErr {
+				tu.PrintDifference(t, "ValidateUserNoPassword", err, tt.wantErr)
+			}
+		})
+	}
+}
+func TestValidateEmail(t *testing.T) {
+    tests := []struct {
+        name    string
+        email   string
+        wantErr bool
+    }{
+        {"Valid email", "test@example.com", false},
+        {"Too short", "ab", true},
+        {"Too long", strings.Repeat("a", 65) + "@example.com", true},
+        {"Invalid format (no TLD)", "test@example", true},
+        {"Invalid TLD length", "test@example.c", true},
+        {"Valid with special chars", "user+name@example.co.uk", false},
+        {"Invalid domain characters", "user@exa$mple.com", true},
+        {"Valid subdomain", "user@sub.example.com", false},
+        {"Invalid domain (underscore)", "user@domain_with_underscore.com", true},
+        {"Invalid local part", "user#name@example.com", true},
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            err := domain.ValidateEmail(tt.email)
+            if tt.wantErr {
+                if !errors.Is(err, domain.ErrValidation) {
+                    t.Errorf("Expected error of type *Error, got %T", err)
+                }
+            } else {
+				if err != nil {
+					t.Errorf("Expected no error, got: %T", err)
+				}
+            }
+        })
+    }
 }
