@@ -4,6 +4,6 @@ CREATE TABLE IF NOT EXISTS board (
     board_name TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     is_private BOOLEAN NOT NULL DEFAULT FALSE,
-    FOREIGN KEY (author_id) REFERENCES flow_user(id) ON DELETE CASCADE
-    ADD CONSTRAINT unique_author_name UNIQUE (author_id, board_name)
+    FOREIGN KEY (author_id) REFERENCES flow_user(id) ON DELETE CASCADE,
+    UNIQUE (author_id, board_name)
 );

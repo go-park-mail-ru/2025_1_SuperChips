@@ -10,7 +10,7 @@ type Board struct {
 	AuthorID  int       `json:"author_id"`
 	Name      string    `json:"name"`
 	CreatedAt time.Time `json:"-"`
-	IsPrivate bool      `json:"-"`
+	IsPrivate bool      `json:"is_private"`
 }
 
 type BoardPost struct {
@@ -27,6 +27,10 @@ var (
 func (b Board) ValidateBoard() error {
 	if len(b.Name) == 0 {
 		return ErrNoBoardName
+	}
+
+	if b.Id <= 0 || b.AuthorID <= 0 {
+		return ErrValidation
 	}
 
 	return nil
