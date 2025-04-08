@@ -81,6 +81,12 @@ func ValidateUsername(username string) error {
 		return wrapper.WrapError(ErrValidation, ErrInvalidUsername)
 	}
 
+	re := regexp.MustCompile(`^[a-zA-Z0-9._\-@#$%&*!+=?/]+$`)
+
+	if !re.MatchString(username) {
+		return wrapper.WrapError(ErrValidation, ErrInvalidUsername)
+	}
+	
 	return nil
 }
 
