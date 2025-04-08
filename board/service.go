@@ -32,21 +32,21 @@ func NewBoardService(repo BoardRepository) *BoardService {
 	}
 }
 
-func (b *BoardService) CreateBoard(board domain.Board, username string) error {
+func (b *BoardService) CreateBoard(board domain.Board, username string) (int, error) {
 	if err := board.ValidateBoard(); err != nil {
-		return err
+		return 0, err
 	}
 
 	userID, err := b.repo.CreateBoard(&board, username)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	if board.AuthorID != userID {
-		return ErrForbidden
+		return 0, ErrForbidden
 	}
 
-	return nil
+	return board.Id, nil
 }
 
 func (b *BoardService) DeleteBoard(boardID, userID int) error {

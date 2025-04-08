@@ -12,7 +12,7 @@ import (
 )
 
 type BoardService interface {
-	CreateBoard(board domain.Board, username string) error 
+	CreateBoard(board domain.Board, username string) (int, error)
 	DeleteBoard(boardID, userID int) error
 	UpdateBoard(boardID, userID int, newName string, isPrivate bool) error 
 	AddToBoard(boardID, userID, flowID int) error      // == update board
@@ -51,13 +51,21 @@ func (b *BoardHandler) CreateBoardHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if err := b.BoardService.CreateBoard(board, username); err != nil {
+	id, err := b.BoardService.CreateBoard(board, username)
+	if err != nil {
 		handleBoardError(w, err)
 		return
 	}
 
+	type boardId struct {
+		BoardID int `json:"board_id"`
+	}
+
+	data := boardId{BoardID: id}
+
 	response := ServerResponse{
 		Description: "OK",
+		Data: data,
 	}
 
 	ServerGenerateJSONResponse(w, response, http.StatusOK)
