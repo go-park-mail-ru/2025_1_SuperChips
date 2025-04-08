@@ -1,5 +1,13 @@
+CREATE SEQUENCE IF NOT EXISTS flow_board_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
 CREATE TABLE IF NOT EXISTS board (
-    id INTEGER DEFAULT NEXT VALUE FOR flow_id_seq PRIMARY KEY,
+    id INTEGER DEFAULT nextval('flow_board_id_seq') PRIMARY KEY,
     author_id INTEGER NOT NULL,
     board_name TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

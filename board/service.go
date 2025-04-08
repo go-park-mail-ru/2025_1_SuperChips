@@ -7,15 +7,15 @@ import (
 )
 
 type BoardRepository interface {
-	CreateBoard(board domain.Board) error
+	CreateBoard(board *domain.Board, username string) (int, error)
 	DeleteBoard(boardID, userID int) error
 	AddToBoard(boardID, userID, flowID int) error      // == update board
 	DeleteFromBoard(boardID, userID, flowID int) error // == update board
-	UpdateBoard(board domain.Board, userID int, newName *string, isPrivate *bool) error
-	GetBoard(name string, authorID int) (domain.Board, error) // == get board
-	GetBoardByID(boardID int) (domain.Board, error)
-	GetUserPublicBoards(userID int) ([]domain.Board, error)   // == get board
+	UpdateBoard(boardID, userID int, newName string, isPrivate bool) error
+	GetBoard(boardID int) (domain.Board, error)
+	GetUserPublicBoards(username string) ([]domain.Board, error)   // == get board
 	GetUserAllBoards(userID int) ([]domain.Board, error)
+	GetBoardFlow(boardID, userID, page int) ([]domain.PinData, error)
 }
 
 type BoardService struct {
@@ -26,13 +26,24 @@ var (
 	ErrForbidden = errors.New("forbidden")
 )
 
-func (b *BoardService) CreateBoard(board domain.Board) error {
+func NewBoardService(repo BoardRepository) *BoardService {
+	return &BoardService{
+		repo: repo,
+	}
+}
+
+func (b *BoardService) CreateBoard(board domain.Board, username string) error {
 	if err := board.ValidateBoard(); err != nil {
 		return err
 	}
 
-	if err := b.repo.CreateBoard(board); err != nil {
+	userID, err := b.repo.CreateBoard(&board, username)
+	if err != nil {
 		return err
+	}
+
+	if board.AuthorID != userID {
+		return ErrForbidden
 	}
 
 	return nil
@@ -42,7 +53,6 @@ func (b *BoardService) DeleteBoard(boardID, userID int) error {
 	if boardID <= 0 || userID <= 0 {
         return domain.ErrValidation
     }
-
 
 	if err := b.repo.DeleteBoard(boardID, userID); err != nil {
 		return err
@@ -63,22 +73,16 @@ func (b *BoardService) AddToBoard(boardID, userID, flowID int) error {
 	return nil
 }
 
-func (b *BoardService) UpdateBoard(board domain.Board, userID int, newName *string, isPrivate *bool) error {
-	if err := board.ValidateBoard(); err != nil {
-		return err
+func (b *BoardService) UpdateBoard(boardID, userID int, newName string, isPrivate bool) error {
+	if boardID <= 0 || userID <= 0 {
+		return domain.ErrValidation
 	}
 
-	newBoard := domain.Board{
-		Name: *newName,
-		AuthorID: board.AuthorID,
-		IsPrivate: *isPrivate,
+	if newName == "" {
+		return domain.ErrNoBoardName
 	}
 
-	if err := newBoard.ValidateBoard(); err != nil {
-		return err
-	}
-
-	if err := b.repo.UpdateBoard(board, userID, newName, isPrivate); err != nil {
+	if err := b.repo.UpdateBoard(boardID, userID, newName, isPrivate); err != nil {
 		return err
 	}
 
@@ -97,41 +101,47 @@ func (b *BoardService) DeleteFromBoard(boardID, userID, flowID int) error {
 	return nil
 }
 
-func (b *BoardService) GetBoard(name string, authorID, userID int) (domain.Board, error) {
-	board := domain.Board{
-		Name:     name,
-		AuthorID: authorID,
+func (b *BoardService) GetBoard(boardID, userID int, authorized bool) (domain.Board, error) {
+	if boardID <= 0 || userID < 0 {
+		return domain.Board{}, domain.ErrValidation
 	}
 
-	if err := board.ValidateBoard(); err != nil {
-		return domain.Board{}, err
-	}
-
-	board, err := b.repo.GetBoard(name, authorID)
+	board, err := b.repo.GetBoard(boardID)
 	if err != nil {
 		return domain.Board{}, err
 	}
 
-	return board, nil
-}
-
-func (b *BoardService) GetBoardByID(boardID, userID int) (domain.Board, error) {
-	board, err := b.repo.GetBoardByID(boardID)
-	if err != nil {
-		return domain.Board{}, err
-	}
-
-	if board.AuthorID != userID {
-		return domain.Board{}, ErrForbidden
+	if board.IsPrivate {
+		if !authorized {
+			return domain.Board{}, ErrForbidden
+		} else {
+			if board.AuthorID != userID {
+				return domain.Board{}, ErrForbidden
+			}
+		}
 	}
 
 	return board, nil
 }
  
-func (b *BoardService) GetUserPublicBoards(userID int) ([]domain.Board, error) {
-	return b.repo.GetUserPublicBoards(userID)
+func (b *BoardService) GetUserPublicBoards(username string) ([]domain.Board, error) {
+	return b.repo.GetUserPublicBoards(username)
 }
 
 func (b *BoardService) GetUserAllBoards(userID int) ([]domain.Board, error) {
 	return b.repo.GetUserAllBoards(userID)
 }
+
+func (b *BoardService) GetBoardFlow(boardID, userID, page int, authorized bool) ([]domain.PinData, error) {
+	if boardID <= 0 || userID < 0 || page <= 0 {
+		return nil, domain.ErrValidation
+	}
+
+	flows, err := b.repo.GetBoardFlow(boardID, userID, page)
+	if err != nil {
+		return nil, err
+	}
+
+	return flows, nil
+}
+

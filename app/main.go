@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-park-mail-ru/2025_1_SuperChips/board"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/pg"
 	pgStorage "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
@@ -22,6 +24,15 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+)
+
+var (
+	allowedGetOptions = []string{http.MethodGet, http.MethodOptions}
+	allowedPostOptions = []string{http.MethodPost, http.MethodOptions}
+	allowedPatchOptions = []string{http.MethodPatch, http.MethodOptions}
+	allowedDeleteOptions = []string{http.MethodDelete, http.MethodOptions}
+	allowedPutOptions = []string{http.MethodPut, http.MethodOptions}
+	allowedOptions = []string{http.MethodOptions}
 )
 
 // @title flow API
@@ -59,7 +70,7 @@ func main() {
 	}
 
 	m, err := migrate.NewWithDatabaseInstance(
-		"file://database/migrations",
+		"file://db/migrations",
 		"postgres",
 		driver,
 	)
@@ -67,7 +78,7 @@ func main() {
 		log.Fatalf("Failed to create migration instance: %s", err)
 	}
 
-	if err := m.Up(); err != nil {
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		log.Fatalf("Failed to apply migrations: %s", err)
 	}
 
@@ -86,11 +97,14 @@ func main() {
 		log.Fatalf("Cannot launch due to profile storage db error: %s", err)
 	}
 
+	boardStorage := pgStorage.NewBoardStorage(db, config.PageSize)
+
 	jwtManager := auth.NewJWTManager(config)
 
 	userService := user.NewUserService(userStorage)
 	pinService := pin.NewPinService(pinStorage)
 	profileService := profile.NewProfileService(profileStorage)
+	boardService := board.NewBoardService(boardStorage)
 
 	authHandler := rest.AuthHandler{
 		Config:      config,
@@ -113,9 +127,9 @@ func main() {
 		CookieSecure:   config.CookieSecure,
 	}
 
-	allowedGetOptions := []string{http.MethodGet, http.MethodOptions}
-	allowedPostOptions := []string{http.MethodPost, http.MethodOptions}
-	allowedPatchOptions := []string{http.MethodPatch, http.MethodOptions}
+	boardHandler := rest.BoardHandler{
+		BoardService: boardService,
+	}
 
 	fs := http.FileServer(http.Dir("." + config.StaticBaseDir))
 
@@ -155,6 +169,74 @@ func main() {
 		middleware.ChainMiddleware(profileHandler.ChangeUserPasswordHandler,
 			middleware.AuthMiddleware(jwtManager),
 			middleware.CorsMiddleware(config, allowedPostOptions)))
+	
+	mux.HandleFunc("/api/v1/boards/{id}/flow", 
+	middleware.ChainMiddleware(boardHandler.AddToBoardHandler, 
+		middleware.AuthMiddleware(jwtManager),
+		middleware.CorsMiddleware(config, allowedPostOptions)))
+				
+	mux.HandleFunc("/api/v1/boards/{board_id}/flows",
+	middleware.ChainMiddleware(boardHandler.GetBoardFlowsHandler,
+		middleware.AuthMiddleware(jwtManager),
+		middleware.CorsMiddleware(config, allowedGetOptions)))
+	
+	mux.HandleFunc("/api/v1/boards/{board_id}/flow/{id}", 
+	middleware.ChainMiddleware(boardHandler.DeleteFromBoardHandler, 
+		middleware.AuthMiddleware(jwtManager),
+		middleware.CorsMiddleware(config, allowedDeleteOptions)))
+
+
+	mux.HandleFunc("/api/v1/boards/{board_id}", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodDelete:
+			middleware.ChainMiddleware(boardHandler.DeleteBoardHandler,
+				middleware.AuthMiddleware(jwtManager),
+				middleware.CorsMiddleware(config, allowedDeleteOptions))(w, r)
+	
+		case http.MethodPut:
+			middleware.ChainMiddleware(boardHandler.UpdateBoardHandler,
+				middleware.AuthMiddleware(jwtManager),
+				middleware.CorsMiddleware(config, allowedPutOptions))(w, r)
+	
+		case http.MethodGet:
+			middleware.ChainMiddleware(boardHandler.GetBoardHandler,
+				middleware.AuthMiddleware(jwtManager),
+				middleware.CorsMiddleware(config, allowedGetOptions))(w, r)
+		
+		case http.MethodOptions:
+			middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
+				return
+			}, middleware.CorsMiddleware(config, allowedOptions))(w, r)
+		
+		default:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/api/v1/user/{username}/boards", func(w http.ResponseWriter, r *http.Request)  {
+		switch r.Method {
+		case http.MethodGet:
+			middleware.ChainMiddleware(boardHandler.GetUserPublicHandler, 
+				middleware.CorsMiddleware(config, allowedGetOptions))(w, r)
+		case http.MethodPost:
+			middleware.ChainMiddleware(boardHandler.CreateBoardHandler, 
+				middleware.AuthMiddleware(jwtManager),
+				middleware.CorsMiddleware(config, allowedPostOptions))(w, r)
+
+		case http.MethodOptions:
+			middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
+				return
+			}, middleware.CorsMiddleware(config, allowedOptions))(w, r)
+		
+		default:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/api/v1/profile/boards",
+		middleware.ChainMiddleware(boardHandler.GetUserAllBoardsHandler,
+			middleware.AuthMiddleware(jwtManager),
+			middleware.CorsMiddleware(config, allowedGetOptions)))
 
 	server := http.Server{
 		Addr:    config.Port,

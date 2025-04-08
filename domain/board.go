@@ -6,7 +6,7 @@ import (
 )
 
 type Board struct {
-	Id        int       `json:"-"`
+	Id        int       `json:"id"`
 	AuthorID  int       `json:"author_id"`
 	Name      string    `json:"name"`
 	CreatedAt time.Time `json:"-"`
@@ -29,7 +29,7 @@ func (b Board) ValidateBoard() error {
 		return ErrNoBoardName
 	}
 
-	if b.Id <= 0 || b.AuthorID <= 0 {
+	if b.AuthorID <= 0 {
 		return ErrValidation
 	}
 
