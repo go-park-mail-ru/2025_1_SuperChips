@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS board (
     board_name TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     is_private BOOLEAN NOT NULL DEFAULT FALSE,
+    flow_count INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (author_id) REFERENCES flow_user(id) ON DELETE CASCADE,
     UNIQUE (author_id, board_name)
 );

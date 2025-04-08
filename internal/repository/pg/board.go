@@ -71,50 +71,99 @@ func (p *pgBoardStorage) DeleteBoard(boardID, userID int) error {
 }
 
 func (p *pgBoardStorage) AddToBoard(boardID, userID, flowID int) error {
-	var insertedID int
-	err := p.db.QueryRow(`
-        WITH board_check AS (
-            SELECT id
-            FROM board
-            WHERE id = $1 AND author_id = $2
-        )
+    tx, err := p.db.Begin()
+    if err != nil {
+        return err
+    }
+    defer tx.Rollback()
+
+    result, err := tx.Exec(`
+        UPDATE board
+        SET flow_count = flow_count + 1
+        WHERE id = $1 AND author_id = $2
+    `, boardID, userID)
+    if err != nil {
+        return err
+    }
+
+    rowsAffected, err := result.RowsAffected()
+    if err != nil {
+        return err
+    }
+    if rowsAffected == 0 {
+        return ErrNotFound 
+    }
+
+    var insertedID int
+    err = tx.QueryRow(`
         INSERT INTO board_post (board_id, flow_id)
-        SELECT $1, $3
-        WHERE EXISTS (SELECT 1 FROM board_check)
-        RETURNING *
-    `, boardID, userID, flowID).Scan(&insertedID)
-	if err == sql.ErrNoRows {
-		return ErrNotFound
-	} else if err != nil {
+        VALUES ($1, $2)
+        RETURNING board_id
+    `, boardID, flowID).Scan(&insertedID)
+    if errors.Is(err, sql.ErrNoRows) {
+        return ErrNotFound
+    } else if err != nil {
 		return err
 	}
 
-	return err
+    if err := tx.Commit(); err != nil {
+        return err
+    }
+
+    return nil
 }
 
 func (p *pgBoardStorage) DeleteFromBoard(boardID, userID, flowID int) error {
-	var checkID int
-	err := p.db.QueryRow(`
-        WITH board_check AS (
-            SELECT id
-            FROM board
+    tx, err := p.db.Begin()
+    if err != nil {
+        return err
+    }
+    defer tx.Rollback()
+
+    var boardExists bool
+    err = tx.QueryRow(`
+        SELECT EXISTS(
+            SELECT 1 FROM board 
             WHERE id = $1 AND author_id = $2
         )
+    `, boardID, userID).Scan(&boardExists)
+    if err != nil {
+        return err
+    }
+    if !boardExists {
+        return ErrNotFound
+    }
+
+    result, err := tx.Exec(`
         DELETE FROM board_post
-        WHERE board_id = $1 AND flow_id = $3
-          AND EXISTS (SELECT 1 FROM board_check)
-		RETURNING board_id
-    `, boardID, userID, flowID).
-		Scan(&checkID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return ErrNotFound
-		}
+        WHERE board_id = $1 AND flow_id = $2
+    `, boardID, flowID)
+    if err != nil {
+        return err
+    }
 
-		return err
-	}
+    rowsAffected, err := result.RowsAffected()
+    if err != nil {
+        return err
+    }
+    if rowsAffected == 0 {
+        return ErrNotFound
+    }
 
-	return nil
+    _, err = tx.Exec(`
+        UPDATE board
+        SET flow_count = flow_count - 1
+        WHERE id = $1
+    `, boardID)
+    if err != nil {
+        return err
+    }
+
+    if err := tx.Commit(); err != nil {
+        return err
+    }
+
+    return nil
 }
 
 func (p *pgBoardStorage) UpdateBoard(boardID, userID int, newName string, isPrivate bool) error {
@@ -141,7 +190,7 @@ func (p *pgBoardStorage) UpdateBoard(boardID, userID int, newName string, isPriv
 func (p *pgBoardStorage) GetBoard(boardID int) (domain.Board, error) {
 	var board domain.Board
 	err := p.db.QueryRow(`
-        SELECT id, author_id, board_name, created_at, is_private 
+        SELECT id, author_id, board_name, created_at, is_private, flow_count 
         FROM board 
         WHERE id = $1
     `, boardID).Scan(
@@ -150,6 +199,7 @@ func (p *pgBoardStorage) GetBoard(boardID int) (domain.Board, error) {
 		&board.Name,
 		&board.CreatedAt,
 		&board.IsPrivate,
+		&board.FlowCount,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -157,6 +207,13 @@ func (p *pgBoardStorage) GetBoard(boardID int) (domain.Board, error) {
 		}
 		return domain.Board{}, err
 	}
+
+	flows, err := p.fetchFirstNFlowsForBoard(board.Id, board.AuthorID, 3, 0)
+	if err != nil {
+		return domain.Board{}, err
+	}
+	board.Preview = flows
+
 	return board, nil
 }
 
@@ -175,7 +232,7 @@ func (p *pgBoardStorage) GetUserPublicBoards(username string) ([]domain.Board, e
 	}
 
 	rows, err := p.db.Query(`
-        SELECT id, author_id, board_name, created_at, is_private 
+        SELECT id, author_id, board_name, created_at, is_private, flow_count
         FROM board 
         WHERE author_id = $1 AND is_private = false
     `, userID)
@@ -193,10 +250,18 @@ func (p *pgBoardStorage) GetUserPublicBoards(username string) ([]domain.Board, e
 			&board.Name,
 			&board.CreatedAt,
 			&board.IsPrivate,
+			&board.FlowCount,
 		)
 		if err != nil {
 			return nil, err
 		}
+
+		flows, err := p.fetchFirstNFlowsForBoard(board.Id, userID, 3, 0)
+		if err != nil {
+			return nil, err
+		}
+		board.Preview = flows
+
 		boards = append(boards, board)
 	}
 	return boards, nil
@@ -204,7 +269,7 @@ func (p *pgBoardStorage) GetUserPublicBoards(username string) ([]domain.Board, e
 
 func (p *pgBoardStorage) GetUserAllBoards(userID int) ([]domain.Board, error) {
 	rows, err := p.db.Query(`
-        SELECT id, author_id, board_name, created_at, is_private 
+        SELECT id, author_id, board_name, created_at, is_private, flow_count 
         FROM board 
         WHERE author_id = $1
     `, userID)
@@ -222,12 +287,21 @@ func (p *pgBoardStorage) GetUserAllBoards(userID int) ([]domain.Board, error) {
 			&board.Name,
 			&board.CreatedAt,
 			&board.IsPrivate,
+			&board.FlowCount,
 		)
 		if err != nil {
 			return nil, err
 		}
+
+		flows, err := p.fetchFirstNFlowsForBoard(board.Id, userID, 3, 0)
+		if err != nil {
+			return nil, err
+		}
+		board.Preview = flows
+
 		boards = append(boards, board)
 	}
+
 	return boards, nil
 }
 
@@ -237,7 +311,11 @@ func (p *pgBoardStorage) GetBoardFlow(boardID, userID, page int) ([]domain.PinDa
 		offset = 0
 	}
 
-	query := `
+	return p.fetchFirstNFlowsForBoard(boardID, userID, p.pageSize, offset)
+}
+
+func (p *pgBoardStorage) fetchFirstNFlowsForBoard(boardID, userID, pageSize, offset int) ([]domain.PinData, error) {
+    rows, err := p.db.Query(`
         SELECT f.id, f.title, f.description, f.author_id, f.created_at, 
                f.updated_at, f.is_private, f.media_url, f.like_count
         FROM flow f
@@ -246,13 +324,11 @@ func (p *pgBoardStorage) GetBoardFlow(boardID, userID, page int) ([]domain.PinDa
           AND (f.is_private = false OR f.author_id = $2)
         ORDER BY bp.saved_at DESC
         LIMIT $3 OFFSET $4
-    `
-
-	rows, err := p.db.Query(query, boardID, userID, p.pageSize, offset)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute query: %w", err)
-	}
-	defer rows.Close()
+    `, boardID, userID, pageSize, offset)
+    if err != nil {
+        return nil, fmt.Errorf("failed to fetch flows: %w", err)
+    }
+    defer rows.Close()
 
 	type middlePinData struct {
 		Header      sql.NullString
@@ -261,33 +337,33 @@ func (p *pgBoardStorage) GetBoardFlow(boardID, userID, page int) ([]domain.PinDa
 
 	middlePin := middlePinData{}
 
-	var flows []domain.PinData
-	for rows.Next() {
-		var flow domain.PinData
-		err := rows.Scan(
-			&flow.FlowID,
-			&middlePin.Header,
-			&middlePin.Description,
-			&flow.AuthorID,
-			&flow.CreatedAt,
-			&flow.UpdatedAt,
-			&flow.IsPrivate,
-			&flow.MediaURL,
-			&flow.LikeCount,
-		)
+    var flows []domain.PinData
+    for rows.Next() {
+        var flow domain.PinData
+        err := rows.Scan(
+            &flow.FlowID,
+            &middlePin.Header,
+            &middlePin.Description,
+            &flow.AuthorID,
+            &flow.CreatedAt,
+            &flow.UpdatedAt,
+            &flow.IsPrivate,
+            &flow.MediaURL,
+            &flow.LikeCount,
+        )
+        if err != nil {
+            return nil, fmt.Errorf("failed to scan flow: %w", err)
+        }
 
 		flow.Header = middlePin.Header.String
 		flow.Description = middlePin.Description.String
 
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan flow: %w", err)
-		}
-		flows = append(flows, flow)
-	}
+        flows = append(flows, flow)
+    }
 
-	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during row iteration: %w", err)
-	}
+    if err = rows.Err(); err != nil {
+        return nil, fmt.Errorf("error during flow iteration: %w", err)
+    }
 
-	return flows, nil
+    return flows, nil
 }
