@@ -11,15 +11,17 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/pg"
 	pgStorage "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
 	middleware "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/middleware"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/pg"
+	pincrudDelivery "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/pincrud"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/pin"
+	pincrudService "github.com/go-park-mail-ru/2025_1_SuperChips/pincrud"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/user"
 	"github.com/golang-migrate/migrate/v4"
-    "github.com/golang-migrate/migrate/v4/database/postgres"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
@@ -38,7 +40,7 @@ func main() {
 	}
 
 	log.Println("Waiting for database to start...")
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second * 10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 
 	defer cancel()
 
@@ -75,7 +77,7 @@ func main() {
 		log.Fatalf("Cannot launch due to user storage db error: %s", err)
 	}
 
-	pinStorage, err := pgStorage.NewPGPinStorage(db)
+	pinStorage, err := pgStorage.NewPGPinStorage(db, config.ImageBaseDir)
 	if err != nil {
 		log.Fatalf("Cannot launch due to pin storage db error: %s", err)
 	}
@@ -84,6 +86,7 @@ func main() {
 
 	userService := user.NewUserService(userStorage)
 	pinService := pin.NewPinService(pinStorage)
+	pinCRUDService := pincrudService.NewPinCRUDService(pinStorage)
 
 	authHandler := rest.AuthHandler{
 		Config:      config,
@@ -96,8 +99,15 @@ func main() {
 		PinService: pinService,
 	}
 
+	pinCRUDHandler := pincrudDelivery.PinCRUDHandler{
+		Config:     config,
+		PinService: pinCRUDService,
+	}
+
 	allowedGetOptions := []string{http.MethodGet, http.MethodOptions}
 	allowedPostOptions := []string{http.MethodPost, http.MethodOptions}
+	allowedDeleteOptions := []string{http.MethodDelete, http.MethodOptions}
+	allowedPutOptions := []string{http.MethodPut, http.MethodOptions}
 
 	fs := http.FileServer(http.Dir("." + config.StaticBaseDir))
 
@@ -111,6 +121,11 @@ func main() {
 	mux.HandleFunc("/api/v1/auth/registration", middleware.CorsMiddleware(authHandler.RegistrationHandler, config, allowedPostOptions))
 	mux.HandleFunc("/api/v1/auth/logout", middleware.CorsMiddleware(authHandler.LogoutHandler, config, allowedPostOptions))
 	mux.HandleFunc("/api/v1/auth/user", middleware.CorsMiddleware(authHandler.UserDataHandler, config, allowedGetOptions))
+
+	mux.HandleFunc("GET /api/v1/flow", middleware.CorsMiddleware(pinCRUDHandler.ReadHandler, config, allowedGetOptions))
+	mux.HandleFunc("DELETE /api/v1/flow", middleware.CorsMiddleware(pinCRUDHandler.DeleteHandler, config, allowedDeleteOptions))
+	mux.HandleFunc("PUT /api/v1/flow", middleware.CorsMiddleware(pinCRUDHandler.UpdateHandler, config, allowedPutOptions))
+	mux.HandleFunc("POST /api/v1/flow", middleware.CorsMiddleware(pinCRUDHandler.CreateHandler, config, allowedPostOptions))
 
 	server := http.Server{
 		Addr:    config.Port,
