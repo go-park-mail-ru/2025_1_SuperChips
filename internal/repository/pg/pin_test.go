@@ -34,7 +34,7 @@ func TestGetPins(t *testing.T) {
 			AddRow(2, "title2", "description2", 2, true, "media_url2").
 			AddRow(3, "title3", "description3", 3, false, "media_url3"))
 
-	repo, err := pg.NewPGPinStorage(db)
+	repo, err := pg.NewPGPinStorage(db, "")
 	require.NoError(t, err)
 
 	pins, err := repo.GetPins(page, pageSize)
