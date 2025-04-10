@@ -21,5 +21,4 @@ type PinCRUDServiceInterface interface {
 type PinCRUDHandler struct {
 	Config     configs.Config
 	PinService PinCRUDServiceInterface
-	// [TODO] Подключить сервис аутентификации.
 }

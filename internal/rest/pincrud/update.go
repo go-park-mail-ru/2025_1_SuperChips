@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
+	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/pincrud"
 )
 
@@ -26,13 +27,12 @@ import (
 // @Failure 500 string serverResponse.Description "untracked error: ${error}"
 // @Router PUT /api/v1/flows
 func (app PinCRUDHandler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
-	// [TODO] Выяснение, залогинен ли пользователь, через сервис аутентификации.
-	var isLogged bool = true
-	var userID uint64 = 42
-	if !isLogged {
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
+	if !ok {
 		rest.HttpErrorToJson(w, "user is not authorized", http.StatusUnauthorized)
 		return
 	}
+	userID := uint64(claims.UserID)
 
 	data := domain.PinDataUpdate{}
 	if err := rest.DecodeData(w, r.Body, &data); err != nil {

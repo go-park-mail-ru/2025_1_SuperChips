@@ -171,15 +171,19 @@ func main() {
 			middleware.CorsMiddleware(config, allowedGetOptions)))
 	mux.HandleFunc("GET /api/v1/flows",
 		middleware.ChainMiddleware(pinCRUDHandler.ReadHandler,
+			middleware.AuthSoftMiddleware(jwtManager),
 			middleware.CorsMiddleware(config, allowedGetOptions)))
 	mux.HandleFunc("DELETE /api/v1/flows",
 		middleware.ChainMiddleware(pinCRUDHandler.DeleteHandler,
+			middleware.AuthMiddleware(jwtManager),
 			middleware.CorsMiddleware(config, allowedDeleteOptions)))
 	mux.HandleFunc("PUT /api/v1/flows",
 		middleware.ChainMiddleware(pinCRUDHandler.UpdateHandler,
+			middleware.AuthMiddleware(jwtManager),
 			middleware.CorsMiddleware(config, allowedPutOptions)))
 	mux.HandleFunc("POST /api/v1/flows",
 		middleware.ChainMiddleware(pinCRUDHandler.CreateHandler,
+			middleware.AuthMiddleware(jwtManager),
 			middleware.CorsMiddleware(config, allowedPostOptions)))
 
 	server := http.Server{

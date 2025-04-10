@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
+	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/pincrud"
 )
 
@@ -21,19 +22,17 @@ import (
 // @Failure 500 string serverResponse.Description "untracked error: ${error}"
 // @Router GET /api/v1/flows
 func (app PinCRUDHandler) ReadHandler(w http.ResponseWriter, r *http.Request) {
+	claims, isAuthorized := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
+
 	pinID, err := parsePinID(r.URL.Query().Get("id"))
 	if err != nil {
 		rest.HttpErrorToJson(w, "invalid query parameter [id]", http.StatusBadRequest)
 		return
 	}
 
-	// [TODO] Выяснение, залогинен ли пользователь, через сервис аутентификации.
-	var isLogged bool = true
-	var userID uint64 = 42
-
 	var data domain.PinData
-	if isLogged {
-		data, err = app.PinService.GetAnyPin(pinID, userID)
+	if isAuthorized {
+		data, err = app.PinService.GetAnyPin(pinID, uint64(claims.UserID))
 	} else {
 		data, err = app.PinService.GetPublicPin(pinID)
 	}
