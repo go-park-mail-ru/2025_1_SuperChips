@@ -59,10 +59,10 @@ func (s *PinCRUDService) UpdatePin(patch domain.PinDataUpdate, userID uint64) er
 	return nil
 }
 
-func (s *PinCRUDService) CreatePin(data domain.PinDataCreate, file multipart.File, header *multipart.FileHeader, userID uint64) error {
-	err := s.rep.CreatePin(data, file, header, userID)
+func (s *PinCRUDService) CreatePin(data domain.PinDataCreate, file multipart.File, header *multipart.FileHeader, userID uint64) (uint64, error) {
+	pinID, err := s.rep.CreatePin(data, file, header, userID)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	return nil
+	return pinID, nil
 }

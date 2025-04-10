@@ -151,9 +151,9 @@ func (p *pgPinStorage) UpdatePin(patch domain.PinDataUpdate, userID uint64) erro
 	return nil
 }
 
-func (p *pgPinStorage) CreatePin(data domain.PinDataCreate, file multipart.File, header *multipart.FileHeader, userID uint64) error {
+func (p *pgPinStorage) CreatePin(data domain.PinDataCreate, file multipart.File, header *multipart.FileHeader, userID uint64) (uint64, error) {
 	if !image.IsImageFile(header.Filename) || filepath.Ext(header.Filename) == "" {
-		return pincrudService.ErrInvalidImageExt
+		return 0, pincrudService.ErrInvalidImageExt
 	}
 
 	var cancel bool = true
@@ -166,7 +166,7 @@ func (p *pgPinStorage) CreatePin(data domain.PinDataCreate, file multipart.File,
 
 	err := row.Scan(&pinID)
 	if err != nil {
-		return domain.WrapError(pincrudService.ErrUntracked, err)
+		return 0, domain.WrapError(pincrudService.ErrUntracked, err)
 	}
 	defer func() {
 		if !cancel {
@@ -183,12 +183,12 @@ func (p *pgPinStorage) CreatePin(data domain.PinDataCreate, file multipart.File,
 	imgPath := filepath.Join(p.pinDir, imgName)
 	dst, err := os.Create(imgPath)
 	if err != nil {
-		return domain.WrapError(pincrudService.ErrUntracked, err)
+		return 0, domain.WrapError(pincrudService.ErrUntracked, err)
 	}
 	defer dst.Close()
 
 	if _, err := io.Copy(dst, file); err != nil {
-		return domain.WrapError(pincrudService.ErrUntracked, err)
+		return 0, domain.WrapError(pincrudService.ErrUntracked, err)
 	}
 
 	res, err := p.db.Exec(`
@@ -197,13 +197,13 @@ func (p *pgPinStorage) CreatePin(data domain.PinDataCreate, file multipart.File,
 		WHERE id = $2 AND author_id = $3
 	`, imgName, pinID, userID)
 	if err != nil {
-		return domain.WrapError(pincrudService.ErrUntracked, err)
+		return 0, domain.WrapError(pincrudService.ErrUntracked, err)
 	}
 	count, err := res.RowsAffected()
 	if err != nil || count < 1 {
-		return domain.WrapError(pincrudService.ErrUntracked, err)
+		return 0, domain.WrapError(pincrudService.ErrUntracked, err)
 	}
 
 	cancel = false
-	return nil
+	return pinID, nil
 }

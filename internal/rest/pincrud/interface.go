@@ -15,7 +15,7 @@ type PinCRUDServiceInterface interface {
 
 	UpdatePin(data domain.PinDataUpdate, userID uint64) error
 
-	CreatePin(data domain.PinDataCreate, file multipart.File, header *multipart.FileHeader, userID uint64) error
+	CreatePin(data domain.PinDataCreate, file multipart.File, header *multipart.FileHeader, userID uint64) (uint64, error)
 }
 
 type PinCRUDHandler struct {

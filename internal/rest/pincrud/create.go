@@ -68,7 +68,7 @@ func (app PinCRUDHandler) CreateHandler(w http.ResponseWriter, r *http.Request) 
 		data.IsPrivate = boolValue
 	}
 
-	err = app.PinService.CreatePin(data, file, header, userID)
+	pinID, err := app.PinService.CreatePin(data, file, header, userID)
 	if err != nil {
 		var msg string
 		var status int
@@ -84,8 +84,13 @@ func (app PinCRUDHandler) CreateHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	type DataReturn struct {
+		FlowID uint64 `json:"flow_id"`
+	}
+
 	response := rest.ServerResponse{
 		Description: "OK",
+		Data:        DataReturn{FlowID: pinID},
 	}
 	rest.ServerGenerateJSONResponse(w, response, http.StatusCreated)
 }
