@@ -2,7 +2,6 @@ package repository
 
 import (
 	"database/sql"
-	"path/filepath"
 
 	pin "github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
@@ -19,14 +18,16 @@ type flowPinDB struct {
 }
 
 type pgPinStorage struct {
-	db     *sql.DB
-	pinDir string
+	db       *sql.DB
+	pinDir   string
+	imageURL string
 }
 
-func NewPGPinStorage(db *sql.DB, pinDir string) (*pgPinStorage, error) {
+func NewPGPinStorage(db *sql.DB, pinDir string, imageURL string) (*pgPinStorage, error) {
 	storage := &pgPinStorage{
 		db:     db,
 		pinDir: pinDir,
+		imageURL: imageURL,
 	}
 
 	return storage, nil
@@ -58,7 +59,7 @@ func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
 			FlowID:      flowPinDB.Id,
 			Description: flowPinDB.Description.String,
 			Header:      flowPinDB.Title.String,
-			MediaURL:    filepath.Join(p.pinDir, flowPinDB.MediaURL),
+			MediaURL:    flowPinDB.MediaURL,
 			AuthorID:    flowPinDB.AuthorId,
 		}
 		pins = append(pins, pin)

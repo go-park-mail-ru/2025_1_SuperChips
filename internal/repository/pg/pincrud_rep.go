@@ -7,12 +7,12 @@ import (
 	"mime/multipart"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	pincrudService "github.com/go-park-mail-ru/2025_1_SuperChips/pincrud"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/utils/image"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
 
@@ -41,7 +41,7 @@ func (p *pgPinStorage) GetPin(pinID uint64) (domain.PinData, error) {
 		Header:      flowPinDB.Title.String,
 		AuthorID:    flowPinDB.AuthorId,
 		Description: flowPinDB.Description.String,
-		MediaURL:    p.pinDir + flowPinDB.MediaURL,
+		MediaURL:    flowPinDB.MediaURL,
 		IsPrivate:   flowPinDB.IsPrivate,
 	}
 
@@ -55,8 +55,8 @@ func (p *pgPinStorage) DeletePinByID(pinID uint64, userID uint64) error {
 		WHERE id = $1 AND author_id = $2
 	`, pinID, userID)
 
-	var imgName string
-	err := row.Scan(&imgName)
+	var imgURL string
+	err := row.Scan(&imgURL)
 	if err != nil {
 		var errToService error
 		switch {
@@ -68,7 +68,7 @@ func (p *pgPinStorage) DeletePinByID(pinID uint64, userID uint64) error {
 		return errToService
 	}
 
-	imgPath := filepath.Join(p.pinDir, imgName)
+	imgPath := filepath.Join(p.pinDir, imgURL)
 	_, err = os.Stat(imgPath)
 	if os.IsNotExist(err) {
 		return domain.WrapError(pincrudService.ErrUntracked, err)
@@ -156,31 +156,9 @@ func (p *pgPinStorage) CreatePin(data domain.PinDataCreate, file multipart.File,
 		return 0, pincrudService.ErrInvalidImageExt
 	}
 
-	var cancel bool = true
-	var pinID uint64
-	row := p.db.QueryRow(`
-        INSERT INTO flow (title, description, author_id, is_private)
-        VALUES ($1, $2, $3, $4)
-		RETURNING id
-    `, data.Header, data.Description, userID, data.IsPrivate)
-
-	err := row.Scan(&pinID)
-	if err != nil {
-		return 0, domain.WrapError(pincrudService.ErrUntracked, err)
-	}
-	defer func() {
-		if !cancel {
-			return
-		}
-		p.db.Exec(`
-			DELETE 
-			FROM flow
-			WHERE id=$1 AND author_id=$2
-		`, pinID, userID)
-	}()
-
-	imgName := strconv.FormatUint(pinID, 10) + filepath.Ext(header.Filename)
-	imgPath := filepath.Join(p.pinDir, imgName)
+	imgUUID := uuid.New()
+	imgURL := p.imageURL + strings.ReplaceAll(p.pinDir, ".", "") + "/" + imgUUID.String()
+	imgPath := filepath.Join(p.pinDir, imgUUID.String())
 	dst, err := os.Create(imgPath)
 	if err != nil {
 		return 0, domain.WrapError(pincrudService.ErrUntracked, err)
@@ -191,19 +169,15 @@ func (p *pgPinStorage) CreatePin(data domain.PinDataCreate, file multipart.File,
 		return 0, domain.WrapError(pincrudService.ErrUntracked, err)
 	}
 
-	res, err := p.db.Exec(`
-		UPDATE flow 
-		SET media_url = $1 
-		WHERE id = $2 AND author_id = $3
-	`, imgName, pinID, userID)
+	var pinID uint64
+	err = p.db.QueryRow(`
+        INSERT INTO flow (title, description, author_id, is_private, media_url)
+        VALUES ($1, $2, $3, $4, $5)
+		RETURNING id
+    `, data.Header, data.Description, userID, data.IsPrivate, imgURL).Scan(&pinID)
 	if err != nil {
-		return 0, domain.WrapError(pincrudService.ErrUntracked, err)
-	}
-	count, err := res.RowsAffected()
-	if err != nil || count < 1 {
-		return 0, domain.WrapError(pincrudService.ErrUntracked, err)
+		return 0, domain.WrapError(domain.ErrInternal, err)
 	}
 
-	cancel = false
 	return pinID, nil
 }
