@@ -166,16 +166,16 @@ func main() {
 			middleware.AuthMiddleware(jwtManager),
 			middleware.CorsMiddleware(config, allowedPostOptions)))
 
-	mux.HandleFunc("GET /api/v1/flow",
+	mux.HandleFunc("GET /api/v1/flows",
 		middleware.ChainMiddleware(pinCRUDHandler.ReadHandler,
 			middleware.CorsMiddleware(config, allowedGetOptions)))
-	mux.HandleFunc("DELETE /api/v1/flow",
+	mux.HandleFunc("DELETE /api/v1/flows",
 		middleware.ChainMiddleware(pinCRUDHandler.DeleteHandler,
 			middleware.CorsMiddleware(config, allowedDeleteOptions)))
-	mux.HandleFunc("PUT /api/v1/flow",
+	mux.HandleFunc("PUT /api/v1/flows",
 		middleware.ChainMiddleware(pinCRUDHandler.UpdateHandler,
 			middleware.CorsMiddleware(config, allowedPutOptions)))
-	mux.HandleFunc("POST /api/v1/flow",
+	mux.HandleFunc("POST /api/v1/flows",
 		middleware.ChainMiddleware(pinCRUDHandler.CreateHandler,
 			middleware.CorsMiddleware(config, allowedPostOptions)))
 
