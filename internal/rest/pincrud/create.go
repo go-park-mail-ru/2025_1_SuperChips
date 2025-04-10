@@ -25,7 +25,7 @@ import (
 // @Failure 400 string serverResponse.Description "invalid image extension"
 // @Failure 401 string serverResponse.Description "user is not authorized"
 // @Failure 500 string serverResponse.Description "untracked error: ${error}"
-// @Router POST /api/v1/flow
+// @Router POST /api/v1/flows
 func (app PinCRUDHandler) CreateHandler(w http.ResponseWriter, r *http.Request) {
 	// [TODO] Выяснение, залогинен ли пользователь, через сервис аутентификации.
 	var isLogged bool = true

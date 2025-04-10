@@ -18,7 +18,7 @@ import (
 // @Failure 403 string serverResponse.Description "access to private pin is forbidden"
 // @Failure 404 string serverResponse.Description "no pin with given id"
 // @Failure 500 string serverResponse.Description "untracked error: ${error}"
-// @Router DELETE /api/v1/flow
+// @Router DELETE /api/v1/flows
 func (app PinCRUDHandler) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	pinID, err := parsePinID(r.URL.Query().Get("id"))
 	if err != nil {

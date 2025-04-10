@@ -24,7 +24,7 @@ import (
 // @Failure 403 string serverResponse.Description "access to private pin is forbidden"
 // @Failure 404 string serverResponse.Description "no pin with given id"
 // @Failure 500 string serverResponse.Description "untracked error: ${error}"
-// @Router PUT /api/v1/flow
+// @Router PUT /api/v1/flows
 func (app PinCRUDHandler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	// [TODO] Выяснение, залогинен ли пользователь, через сервис аутентификации.
 	var isLogged bool = true
