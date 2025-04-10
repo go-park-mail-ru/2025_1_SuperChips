@@ -25,15 +25,11 @@ func (p *pgPinStorage) GetPin(pinID uint64) (domain.PinData, error) {
 
 	var flowPinDB flowPinDB
 	err := row.Scan(&flowPinDB.Id, &flowPinDB.Title, &flowPinDB.Description, &flowPinDB.AuthorId, &flowPinDB.IsPrivate, &flowPinDB.MediaURL)
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.PinData{}, pincrudService.ErrPinNotFound
+	}
 	if err != nil {
-		var errToService error
-		switch {
-		case errors.Is(err, sql.ErrNoRows):
-			errToService = pincrudService.ErrPinNotFound
-		default:
-			errToService = domain.WrapError(pincrudService.ErrUntracked, err)
-		}
-		return domain.PinData{}, errToService
+		return domain.PinData{}, pincrudService.ErrUntracked
 	}
 
 	pin := domain.PinData{
@@ -57,25 +53,22 @@ func (p *pgPinStorage) DeletePinByID(pinID uint64, userID uint64) error {
 
 	var imgURL string
 	err := row.Scan(&imgURL)
+	if errors.Is(err, sql.ErrNoRows) {
+		return pincrudService.ErrPinNotFound
+	}
 	if err != nil {
-		var errToService error
-		switch {
-		case errors.Is(err, sql.ErrNoRows):
-			errToService = pincrudService.ErrPinNotFound
-		default:
-			errToService = domain.WrapError(pincrudService.ErrUntracked, err)
-		}
-		return errToService
+		return pincrudService.ErrUntracked
 	}
 
 	imgPath := filepath.Join(p.pinDir, imgURL)
 	_, err = os.Stat(imgPath)
 	if os.IsNotExist(err) {
-		return domain.WrapError(pincrudService.ErrUntracked, err)
+		return pincrudService.ErrUntracked
 	}
+
 	err = os.Remove(imgPath)
 	if err != nil {
-		return domain.WrapError(pincrudService.ErrUntracked, err)
+		return pincrudService.ErrUntracked
 	}
 
 	res, err := p.db.Exec(`
@@ -84,12 +77,12 @@ func (p *pgPinStorage) DeletePinByID(pinID uint64, userID uint64) error {
 		WHERE id=$1 AND author_id=$2
 	`, pinID, userID)
 	if err != nil {
-		return domain.WrapError(pincrudService.ErrUntracked, err)
+		return pincrudService.ErrUntracked
 	}
 
 	count, err := res.RowsAffected()
 	if err != nil {
-		return domain.WrapError(pincrudService.ErrUntracked, err)
+		return pincrudService.ErrUntracked
 	}
 	if count < 1 {
 		return pincrudService.ErrPinNotFound
@@ -137,12 +130,12 @@ func (p *pgPinStorage) UpdatePin(patch domain.PinDataUpdate, userID uint64) erro
 
 	res, err := p.db.Exec(sqlQuery, values...)
 	if err != nil {
-		return domain.WrapError(pincrudService.ErrUntracked, err)
+		return pincrudService.ErrUntracked
 	}
 
 	count, err := res.RowsAffected()
 	if err != nil {
-		return domain.WrapError(pincrudService.ErrUntracked, err)
+		return pincrudService.ErrUntracked
 	}
 	if count < 1 {
 		return pincrudService.ErrPinNotFound
@@ -161,22 +154,24 @@ func (p *pgPinStorage) CreatePin(data domain.PinDataCreate, file multipart.File,
 	imgPath := filepath.Join(p.pinDir, imgUUID.String())
 	dst, err := os.Create(imgPath)
 	if err != nil {
-		return 0, domain.WrapError(pincrudService.ErrUntracked, err)
+		return 0, pincrudService.ErrUntracked
 	}
 	defer dst.Close()
 
 	if _, err := io.Copy(dst, file); err != nil {
-		return 0, domain.WrapError(pincrudService.ErrUntracked, err)
+		return 0, pincrudService.ErrUntracked
 	}
 
-	var pinID uint64
-	err = p.db.QueryRow(`
+	row := p.db.QueryRow(`
         INSERT INTO flow (title, description, author_id, is_private, media_url)
         VALUES ($1, $2, $3, $4, $5)
 		RETURNING id
-    `, data.Header, data.Description, userID, data.IsPrivate, imgURL).Scan(&pinID)
+    `, data.Header, data.Description, userID, data.IsPrivate, imgURL)
+
+	var pinID uint64
+	err = row.Scan(&pinID)
 	if err != nil {
-		return 0, domain.WrapError(domain.ErrInternal, err)
+		return 0, pincrudService.ErrUntracked
 	}
 
 	return pinID, nil

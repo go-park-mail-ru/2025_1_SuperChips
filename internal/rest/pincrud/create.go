@@ -60,7 +60,7 @@ func (app PinCRUDHandler) CreateHandler(w http.ResponseWriter, r *http.Request) 
 		data.Description = r.PostFormValue("description")
 	}
 	if r.PostFormValue("is_private") != "" {
-		boolValue, err := strconv.ParseBool(r.FormValue("is_private"))
+		boolValue, err := strconv.ParseBool(r.PostFormValue("is_private"))
 		if err != nil {
 			rest.HttpErrorToJson(w, "failed to parse the form-data field [is_private]", http.StatusBadRequest)
 			return
@@ -69,18 +69,12 @@ func (app PinCRUDHandler) CreateHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	pinID, err := app.PinService.CreatePin(data, file, header, userID)
+	if errors.Is(err, pincrud.ErrInvalidImageExt) {
+		rest.HttpErrorToJson(w, "invalid image extension", http.StatusBadRequest)
+		return
+	}
 	if err != nil {
-		var msg string
-		var status int
-		switch {
-		case errors.Is(err, pincrud.ErrInvalidImageExt):
-			msg = "invalid image extension"
-			status = http.StatusBadRequest
-		default:
-			msg = err.Error()
-			status = http.StatusInternalServerError
-		}
-		rest.HttpErrorToJson(w, msg, status)
+		rest.HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
