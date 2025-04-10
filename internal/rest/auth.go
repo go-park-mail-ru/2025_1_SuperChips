@@ -141,54 +141,16 @@ func (app AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	ServerGenerateJSONResponse(w, response, http.StatusOK)
 }
 
-// UserDataHandler godoc
-// @Summary Get user data
-// @Description Tries to get current user's data
-// @Produce json
-// @Success 200 body serverResponse.Data
-// @Failure 400 string serverResponse.Description "Bad Request"
-// @Failure 401 string serverResponse.Description "Unauthorized"
-// @Failure 500 string serverResponse.Description "Internal server error"
-// @Router /api/v1/auth/user [get]
-func (app AuthHandler) UserDataHandler(w http.ResponseWriter, r *http.Request) {
-	token, err := r.Cookie(auth.AuthToken)
-	if err != nil {
-		handleAuthError(w, err)
-		return
-	}
-
-	claims, err := app.JWTManager.ParseJWTToken(token.Value)
-	if err != nil {
-		if errors.Is(err, auth.ErrorExpiredToken) {
-			HttpErrorToJson(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-			return
-		}
-
-		handleAuthError(w, err)
-		return
-	}
-
-	userData, err := app.UserService.GetUserPublicInfo(claims.Email)
-	if err != nil {
-		handleAuthError(w, err)
-		return
-	}
-	response := ServerResponse{
-		Data: &userData,
-	}
-
-	ServerGenerateJSONResponse(w, response, http.StatusOK)
-}
 
 func setCookie(w http.ResponseWriter, config configs.Config, name string, value string, httpOnly bool) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
 		Value:    value,
-		Domain:   "yourflow.ru",
+		// Domain:   "yourflow.ru",
 		Path:     "/",
 		HttpOnly: httpOnly,
 		Secure:   config.CookieSecure,
-		SameSite: http.SameSiteNoneMode, // dont forget to change back to LAX when going to prod!!!!!!!!!1111
+		SameSite: http.SameSiteLaxMode,
 		Expires:  time.Now().Add(config.ExpirationTime),
 	})
 }
@@ -202,6 +164,20 @@ func (app AuthHandler) setCookieJWT(w http.ResponseWriter, config configs.Config
 	setCookie(w, config, auth.AuthToken, tokenString, true)
 
 	return nil
+}
+
+func CheckAuth(r *http.Request, manager auth.JWTManager) (*auth.Claims, error) {
+	token, err := r.Cookie(auth.AuthToken)
+	if err != nil {
+		return nil, err
+	}
+
+	claims, err := manager.ParseJWTToken(token.Value)
+	if err != nil {
+		return nil, err
+	}
+
+	return claims, nil
 }
 
 func handleAuthError(w http.ResponseWriter, err error) {
@@ -223,6 +199,9 @@ func handleAuthError(w http.ResponseWriter, err error) {
 		ServerGenerateJSONResponse(w, errorResp, http.StatusBadRequest)
 	case errors.Is(err, domain.ErrInvalidCredentials), errors.Is(err, domain.ErrValidation):
 		errorResp.Description = "invalid credentials"
+		ServerGenerateJSONResponse(w, errorResp, http.StatusUnauthorized)
+	case errors.Is(err, auth.ErrorExpiredToken):
+		errorResp.Description = http.StatusText(http.StatusUnauthorized)
 		ServerGenerateJSONResponse(w, errorResp, http.StatusUnauthorized)
 	default:
 		ServerGenerateJSONResponse(w, errorResp, http.StatusInternalServerError)
