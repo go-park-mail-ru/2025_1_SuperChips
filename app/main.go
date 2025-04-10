@@ -166,6 +166,9 @@ func main() {
 			middleware.AuthMiddleware(jwtManager),
 			middleware.CorsMiddleware(config, allowedPostOptions)))
 
+	mux.HandleFunc("OPTIONS /api/v1/flows",
+		middleware.ChainMiddleware(func(http.ResponseWriter, *http.Request) {},
+			middleware.CorsMiddleware(config, allowedGetOptions)))
 	mux.HandleFunc("GET /api/v1/flows",
 		middleware.ChainMiddleware(pinCRUDHandler.ReadHandler,
 			middleware.CorsMiddleware(config, allowedGetOptions)))
