@@ -6,9 +6,10 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
 
-func NewPinCRUDService(r PinCRUDRepository) *PinCRUDService {
+func NewPinCRUDService(r PinCRUDRepository, imgStrg FileRepository) *PinCRUDService {
 	return &PinCRUDService{
-		rep: r,
+		rep:     r,
+		imgStrg: imgStrg,
 	}
 }
 
@@ -44,6 +45,10 @@ func (s *PinCRUDService) DeletePin(pinID uint64, userID uint64) error {
 	if err != nil {
 		return err
 	}
+	err = s.imgStrg.Delete(data.MediaURL)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -60,7 +65,11 @@ func (s *PinCRUDService) UpdatePin(patch domain.PinDataUpdate, userID uint64) er
 }
 
 func (s *PinCRUDService) CreatePin(data domain.PinDataCreate, file multipart.File, header *multipart.FileHeader, userID uint64) (uint64, error) {
-	pinID, err := s.rep.CreatePin(data, file, header, userID)
+	imgName, err := s.imgStrg.Save(file, header)
+	if err != nil {
+		return 0, err
+	}
+	pinID, err := s.rep.CreatePin(data, imgName, userID)
 	if err != nil {
 		return 0, err
 	}

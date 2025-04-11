@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/pg"
+	osStorage "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/os/pincrud"
 	pgStorage "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
@@ -84,6 +85,11 @@ func main() {
 		log.Fatalf("Cannot launch due to pin storage db error: %s", err)
 	}
 
+	imageStorage, err := osStorage.NewOSImageStorage(config.ImageBaseDir)
+	if err != nil {
+		log.Fatalf("Cannot launch due to pin storage db error: %s", err)
+	}
+
 	profileStorage, err := pgStorage.NewPGProfileStorage(db)
 	if err != nil {
 		log.Fatalf("Cannot launch due to profile storage db error: %s", err)
@@ -94,7 +100,7 @@ func main() {
 	userService := user.NewUserService(userStorage)
 	pinService := pin.NewPinService(pinStorage)
 	profileService := profile.NewProfileService(profileStorage)
-	pinCRUDService := pincrudService.NewPinCRUDService(pinStorage)
+	pinCRUDService := pincrudService.NewPinCRUDService(pinStorage, imageStorage)
 
 	authHandler := rest.AuthHandler{
 		Config:      config,

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"strings"
 
 	pin "github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
@@ -18,19 +19,23 @@ type flowDBSchema struct {
 }
 
 type pgPinStorage struct {
-	db       *sql.DB
-	pinDir   string
-	imageURL string
+	db      *sql.DB
+	imgDir  string
+	baseURL string
 }
 
-func NewPGPinStorage(db *sql.DB, pinDir string, imageURL string) (*pgPinStorage, error) {
+func NewPGPinStorage(db *sql.DB, imgDir, baseURL string) (*pgPinStorage, error) {
 	storage := &pgPinStorage{
-		db:       db,
-		pinDir:   pinDir,
-		imageURL: imageURL,
+		db:      db,
+		imgDir:  imgDir,
+		baseURL: baseURL,
 	}
 
 	return storage, nil
+}
+
+func (p *pgPinStorage) assembleMediaURL(fileName string) string {
+	return p.baseURL + strings.ReplaceAll(p.imgDir, ".", "") + "/" + fileName
 }
 
 func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
@@ -59,7 +64,7 @@ func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
 			FlowID:      flowDBRow.Id,
 			Description: flowDBRow.Description.String,
 			Header:      flowDBRow.Title.String,
-			MediaURL:    flowDBRow.MediaURL,
+			MediaURL:    p.assembleMediaURL(flowDBRow.MediaURL),
 			AuthorID:    flowDBRow.AuthorId,
 		}
 		pins = append(pins, pin)

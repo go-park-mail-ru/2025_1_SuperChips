@@ -13,9 +13,15 @@ type PinCRUDRepository interface {
 
 	UpdatePin(patch domain.PinDataUpdate, userID uint64) error
 
-	CreatePin(data domain.PinDataCreate, file multipart.File, header *multipart.FileHeader, userID uint64) (uint64, error)
+	CreatePin(data domain.PinDataCreate, imgName string, userID uint64) (uint64, error)
+}
+
+type FileRepository interface {
+	Save(file multipart.File, header *multipart.FileHeader) (string, error)
+	Delete(imgName string) error
 }
 
 type PinCRUDService struct {
-	rep PinCRUDRepository
+	rep     PinCRUDRepository
+	imgStrg FileRepository
 }
