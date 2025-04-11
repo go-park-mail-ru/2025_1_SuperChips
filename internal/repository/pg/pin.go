@@ -34,6 +34,7 @@ func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
 	rows, err := p.db.Query(`SELECT id, title, description, author_id, is_private, media_url 
 	FROM flow
 	WHERE is_private = false
+	ORDER BY created_at DESC
 	LIMIT $1
 	OFFSET $2
 	`, pageSize, (page-1)*pageSize)

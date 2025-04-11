@@ -178,6 +178,7 @@ func (h *ProfileHandler) ChangeUserPasswordHandler(w http.ResponseWriter, r *htt
 	ServerGenerateJSONResponse(w, resp, http.StatusOK)
 }
 
+
 func (h *ProfileHandler) PatchUserProfileHandler(w http.ResponseWriter, r *http.Request) {
     claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
 	if !ok || claims == nil {

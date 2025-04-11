@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -21,18 +20,19 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/pin"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/profile"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/user"
-	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/swaggo/http-swagger"
+	_ "github.com/go-park-mail-ru/2025_1_SuperChips/docs"
 )
 
 var (
-	allowedGetOptions = []string{http.MethodGet, http.MethodOptions}
-	allowedPostOptions = []string{http.MethodPost, http.MethodOptions}
-	allowedPatchOptions = []string{http.MethodPatch, http.MethodOptions}
+	allowedGetOptions    = []string{http.MethodGet, http.MethodOptions}
+	allowedPostOptions   = []string{http.MethodPost, http.MethodOptions}
+	allowedPatchOptions  = []string{http.MethodPatch, http.MethodOptions}
 	allowedDeleteOptions = []string{http.MethodDelete, http.MethodOptions}
-	allowedPutOptions = []string{http.MethodPut, http.MethodOptions}
-	allowedOptions = []string{http.MethodOptions}
+	allowedPutOptions    = []string{http.MethodPut, http.MethodOptions}
+	allowedOptions       = []string{http.MethodOptions}
 )
 
 // @title flow API
@@ -63,24 +63,6 @@ func main() {
 	}
 
 	defer db.Close()
-
-	driver, err := postgres.WithInstance(db, &postgres.Config{})
-	if err != nil {
-		log.Fatalf("Failed to initialize migration driver: %s", err)
-	}
-
-	m, err := migrate.NewWithDatabaseInstance(
-		"file://db/migrations",
-		"postgres",
-		driver,
-	)
-	if err != nil {
-		log.Fatalf("Failed to create migration instance: %s", err)
-	}
-
-	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		log.Fatalf("Failed to apply migrations: %s", err)
-	}
 
 	userStorage, err := pgStorage.NewPGUserStorage(db)
 	if err != nil {
@@ -128,12 +110,17 @@ func main() {
 	}
 
 	boardHandler := rest.BoardHandler{
-		BoardService: boardService,
+		BoardService:    boardService,
+		ContextDeadline: 3 * time.Second, // перенести в конфиг
 	}
 
 	fs := http.FileServer(http.Dir("." + config.StaticBaseDir))
 
 	mux := http.NewServeMux()
+
+	if config.Environment == "test" {
+		mux.HandleFunc("/swagger/", httpSwagger.WrapHandler)
+	}
 
 	mux.Handle("GET /static/", http.StripPrefix(config.StaticBaseDir, fs))
 
@@ -154,7 +141,7 @@ func main() {
 		middleware.ChainMiddleware(profileHandler.CurrentUserProfileHandler,
 			middleware.AuthMiddleware(jwtManager),
 			middleware.CorsMiddleware(config, allowedGetOptions)))
-	mux.HandleFunc("/api/v1/user/{username}",
+	mux.HandleFunc("/api/v1/users/{username}",
 		middleware.ChainMiddleware(profileHandler.PublicProfileHandler,
 			middleware.CorsMiddleware(config, allowedGetOptions)))
 	mux.HandleFunc("/api/v1/profile/update",
@@ -169,72 +156,63 @@ func main() {
 		middleware.ChainMiddleware(profileHandler.ChangeUserPasswordHandler,
 			middleware.AuthMiddleware(jwtManager),
 			middleware.CorsMiddleware(config, allowedPostOptions)))
-	
-	mux.HandleFunc("/api/v1/boards/{id}/flow", 
-	middleware.ChainMiddleware(boardHandler.AddToBoardHandler, 
-		middleware.AuthMiddleware(jwtManager),
-		middleware.CorsMiddleware(config, allowedPostOptions)))
-				
-	mux.HandleFunc("/api/v1/boards/{board_id}/flows",
-	middleware.ChainMiddleware(boardHandler.GetBoardFlowsHandler,
-		middleware.AuthMiddleware(jwtManager),
-		middleware.CorsMiddleware(config, allowedGetOptions)))
-	
-	mux.HandleFunc("/api/v1/boards/{board_id}/flow/{id}", 
-	middleware.ChainMiddleware(boardHandler.DeleteFromBoardHandler, 
-		middleware.AuthMiddleware(jwtManager),
-		middleware.CorsMiddleware(config, allowedDeleteOptions)))
 
+	mux.HandleFunc("POST /api/v1/boards/{id}/flows",
+		middleware.ChainMiddleware(boardHandler.AddToBoard,
+			middleware.AuthMiddleware(jwtManager),
+			middleware.CorsMiddleware(config, allowedPostOptions)))
 
-	mux.HandleFunc("/api/v1/boards/{board_id}", func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodDelete:
-			middleware.ChainMiddleware(boardHandler.DeleteBoardHandler,
-				middleware.AuthMiddleware(jwtManager),
-				middleware.CorsMiddleware(config, allowedDeleteOptions))(w, r)
-	
-		case http.MethodPut:
-			middleware.ChainMiddleware(boardHandler.UpdateBoardHandler,
-				middleware.AuthMiddleware(jwtManager),
-				middleware.CorsMiddleware(config, allowedPutOptions))(w, r)
-	
-		case http.MethodGet:
-			middleware.ChainMiddleware(boardHandler.GetBoardHandler,
-				middleware.AuthMiddleware(jwtManager),
-				middleware.CorsMiddleware(config, allowedGetOptions))(w, r)
-		
-		case http.MethodOptions:
-			middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
-				return
-			}, middleware.CorsMiddleware(config, allowedOptions))(w, r)
-		
-		default:
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		}
-	})
+	mux.HandleFunc("GET /api/v1/boards/{board_id}/flows",
+		middleware.ChainMiddleware(boardHandler.GetBoardFlows,
+			middleware.AuthSoftMiddleware(jwtManager),
+			middleware.CorsMiddleware(config, allowedGetOptions)))
 
-	mux.HandleFunc("/api/v1/user/{username}/boards", func(w http.ResponseWriter, r *http.Request)  {
-		switch r.Method {
-		case http.MethodGet:
-			middleware.ChainMiddleware(boardHandler.GetUserPublicHandler, 
-				middleware.CorsMiddleware(config, allowedGetOptions))(w, r)
-		case http.MethodPost:
-			middleware.ChainMiddleware(boardHandler.CreateBoardHandler, 
-				middleware.AuthMiddleware(jwtManager),
-				middleware.CorsMiddleware(config, allowedPostOptions))(w, r)
+	mux.HandleFunc("OPTIONS /api/v1/boards/{board_id}/flows",
+		middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		}, middleware.CorsMiddleware(config, allowedOptions)))
 
-		case http.MethodOptions:
-			middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
-				return
-			}, middleware.CorsMiddleware(config, allowedOptions))(w, r)
-		
-		default:
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		}
-	})
+	mux.HandleFunc("/api/v1/boards/{board_id}/flows/{id}",
+		middleware.ChainMiddleware(boardHandler.DeleteFromBoard,
+			middleware.AuthMiddleware(jwtManager),
+			middleware.CorsMiddleware(config, allowedDeleteOptions)))
+
+	mux.HandleFunc("DELETE /api/v1/boards/{board_id}",
+		middleware.ChainMiddleware(boardHandler.DeleteBoard,
+			middleware.AuthMiddleware(jwtManager),
+			middleware.CorsMiddleware(config, allowedDeleteOptions)))
+
+	mux.HandleFunc("PUT /api/v1/boards/{board_id}",
+		middleware.ChainMiddleware(boardHandler.UpdateBoard,
+			middleware.AuthMiddleware(jwtManager),
+			middleware.CorsMiddleware(config, allowedPutOptions)))
+
+	mux.HandleFunc("GET /api/v1/boards/{board_id}",
+		middleware.ChainMiddleware(boardHandler.GetBoard,
+			middleware.AuthSoftMiddleware(jwtManager),
+			middleware.CorsMiddleware(config, allowedGetOptions)))
+
+	mux.HandleFunc("OPTIONS /api/v1/boards/{board_id}",
+		middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		}, middleware.CorsMiddleware(config, allowedOptions)))
+
+	mux.HandleFunc("GET /api/v1/users/{username}/boards",
+		middleware.ChainMiddleware(boardHandler.GetUserPublic,
+			middleware.CorsMiddleware(config, allowedGetOptions)))
+
+	mux.HandleFunc("POST /api/v1/users/{username}/boards",
+		middleware.ChainMiddleware(boardHandler.CreateBoard,
+			middleware.AuthMiddleware(jwtManager),
+			middleware.CorsMiddleware(config, allowedPostOptions)))
+
+	mux.HandleFunc("OPTIONS /api/v1/users/{username}/boards",
+		middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		}, middleware.CorsMiddleware(config, allowedOptions)))
 
 	mux.HandleFunc("/api/v1/profile/boards",
-		middleware.ChainMiddleware(boardHandler.GetUserAllBoardsHandler,
+		middleware.ChainMiddleware(boardHandler.GetUserAllBoards,
 			middleware.AuthMiddleware(jwtManager),
 			middleware.CorsMiddleware(config, allowedGetOptions)))
 
