@@ -6,7 +6,7 @@ import (
 	pin "github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
 
-type flowPinDB struct {
+type flowDBSchema struct {
 	Id          uint64
 	Title       sql.NullString
 	Description sql.NullString
@@ -25,8 +25,8 @@ type pgPinStorage struct {
 
 func NewPGPinStorage(db *sql.DB, pinDir string, imageURL string) (*pgPinStorage, error) {
 	storage := &pgPinStorage{
-		db:     db,
-		pinDir: pinDir,
+		db:       db,
+		pinDir:   pinDir,
 		imageURL: imageURL,
 	}
 
@@ -49,18 +49,18 @@ func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
 	var pins []pin.PinData
 
 	for rows.Next() {
-		var flowPinDB flowPinDB
-		err := rows.Scan(&flowPinDB.Id, &flowPinDB.Title, &flowPinDB.Description, &flowPinDB.AuthorId, &flowPinDB.IsPrivate, &flowPinDB.MediaURL)
+		var flowDBRow flowDBSchema
+		err := rows.Scan(&flowDBRow.Id, &flowDBRow.Title, &flowDBRow.Description, &flowDBRow.AuthorId, &flowDBRow.IsPrivate, &flowDBRow.MediaURL)
 		if err != nil {
 			return []pin.PinData{}, err
 		}
 
 		pin := pin.PinData{
-			FlowID:      flowPinDB.Id,
-			Description: flowPinDB.Description.String,
-			Header:      flowPinDB.Title.String,
-			MediaURL:    flowPinDB.MediaURL,
-			AuthorID:    flowPinDB.AuthorId,
+			FlowID:      flowDBRow.Id,
+			Description: flowDBRow.Description.String,
+			Header:      flowDBRow.Title.String,
+			MediaURL:    flowDBRow.MediaURL,
+			AuthorID:    flowDBRow.AuthorId,
 		}
 		pins = append(pins, pin)
 	}

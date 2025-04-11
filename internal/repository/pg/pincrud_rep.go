@@ -23,8 +23,8 @@ func (p *pgPinStorage) GetPin(pinID uint64) (domain.PinData, error) {
 		WHERE id=$1
 	`, pinID)
 
-	var flowPinDB flowPinDB
-	err := row.Scan(&flowPinDB.Id, &flowPinDB.Title, &flowPinDB.Description, &flowPinDB.AuthorId, &flowPinDB.IsPrivate, &flowPinDB.MediaURL)
+	var flowDBRow flowDBSchema
+	err := row.Scan(&flowDBRow.Id, &flowDBRow.Title, &flowDBRow.Description, &flowDBRow.AuthorId, &flowDBRow.IsPrivate, &flowDBRow.MediaURL)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.PinData{}, pincrudService.ErrPinNotFound
 	}
@@ -33,12 +33,12 @@ func (p *pgPinStorage) GetPin(pinID uint64) (domain.PinData, error) {
 	}
 
 	pin := domain.PinData{
-		FlowID:      flowPinDB.Id,
-		Header:      flowPinDB.Title.String,
-		AuthorID:    flowPinDB.AuthorId,
-		Description: flowPinDB.Description.String,
-		MediaURL:    flowPinDB.MediaURL,
-		IsPrivate:   flowPinDB.IsPrivate,
+		FlowID:      flowDBRow.Id,
+		Header:      flowDBRow.Title.String,
+		AuthorID:    flowDBRow.AuthorId,
+		Description: flowDBRow.Description.String,
+		MediaURL:    flowDBRow.MediaURL,
+		IsPrivate:   flowDBRow.IsPrivate,
 	}
 
 	return pin, nil
