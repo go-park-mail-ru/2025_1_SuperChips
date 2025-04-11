@@ -78,7 +78,13 @@ func ValidateEmailAndPassword(email, password string) error {
 
 func ValidateUsername(username string) error {
 	if len(username) > 32 || len(username) < 2 {
-		return wrapper.WrapError(ErrValidation, ErrInvalidUsername)
+		return ErrInvalidUsername
+	}
+
+	re := regexp.MustCompile(`^[a-zA-Z0-9._\-@#$%&*!+=?/]+$`)
+
+	if !re.MatchString(username) {
+		return ErrInvalidUsername
 	}
 
 	return nil

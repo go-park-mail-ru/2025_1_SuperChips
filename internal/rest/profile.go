@@ -96,7 +96,7 @@ func (h *ProfileHandler) PublicProfileHandler(w http.ResponseWriter, r *http.Req
 
 func (h *ProfileHandler) UserAvatarHandler(w http.ResponseWriter, r *http.Request) {
 	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
-	if !ok {
+	if !ok || claims == nil {
 		HttpErrorToJson(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
@@ -144,7 +144,7 @@ func (h *ProfileHandler) UserAvatarHandler(w http.ResponseWriter, r *http.Reques
 
 func (h *ProfileHandler) ChangeUserPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
-	if (!ok) {
+	if !ok || claims == nil {
 		HttpErrorToJson(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
@@ -180,7 +180,7 @@ func (h *ProfileHandler) ChangeUserPasswordHandler(w http.ResponseWriter, r *htt
 
 func (h *ProfileHandler) PatchUserProfileHandler(w http.ResponseWriter, r *http.Request) {
     claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
-	if !ok {
+	if !ok || claims == nil {
 		HttpErrorToJson(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
