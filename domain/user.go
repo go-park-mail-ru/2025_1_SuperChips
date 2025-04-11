@@ -2,9 +2,9 @@ package domain
 
 import (
 	"errors"
-	"regexp"
 	"time"
 
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/validator"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/utils/wrapper"
 )
 
@@ -41,7 +41,9 @@ var (
 )
 
 func ValidateEmail(email string) error {
-	if len(email) > 64 || len(email) < 3 {
+	v := validator.New()
+
+	if v.Check(len(email) > 64 || len(email) < 3, "email", "cannot be shorter than 3 symbols or longer than 64 symbols") {
 		return wrapper.WrapError(ErrValidation, ErrInvalidEmail)
 	}
 
@@ -53,11 +55,12 @@ func ValidateEmail(email string) error {
 }
 
 func ValidatePassword(password string) error {
-	if password == "" {
+	v := validator.New()
+	if v.Check(password == "", "password", "cannot be empty") {
 		return wrapper.WrapError(ErrValidation, ErrNoPassword)
 	}
 
-	if len(password) > 96 {
+	if v.Check(len(password) > 96, "password", "cannot be longer than 96 symbols") {
 		return wrapper.WrapError(ErrValidation, ErrPasswordTooLong)
 	}
 
@@ -77,13 +80,13 @@ func ValidateEmailAndPassword(email, password string) error {
 }
 
 func ValidateUsername(username string) error {
-	if len(username) > 32 || len(username) < 2 {
+	v := validator.New()
+
+	if v.Check(len(username) > 32 || len(username) < 2, "username", "username cannot be shorter than 2 symbols or longer than 32 symbols") {
 		return ErrInvalidUsername
 	}
 
-	re := regexp.MustCompile(`^[a-zA-Z0-9._\-@#$%&*!+=?/]+$`)
-
-	if !re.MatchString(username) {
+	if !validator.Matches(username, validator.UsernameRX) {
 		return ErrInvalidUsername
 	}
 
@@ -91,6 +94,8 @@ func ValidateUsername(username string) error {
 }
 
 func (u User) ValidateUser() error {
+	v := validator.New()
+
 	if err := ValidateEmailAndPassword(u.Email, u.Password); err != nil {
 		return wrapper.WrapError(ErrValidation, err)
 	}
@@ -99,7 +104,7 @@ func (u User) ValidateUser() error {
 		return wrapper.WrapError(ErrValidation, err)
 	}
 
-	if u.Birthday.After(time.Now()) || time.Since(u.Birthday) > 150*365*24*time.Hour {
+	if v.Check(u.Birthday.After(time.Now()) || time.Since(u.Birthday) > 150*365*24*time.Hour, "birthday", "cannot be too old") {
 		return wrapper.WrapError(ErrValidation, ErrInvalidBirthday)
 	}
 
@@ -107,6 +112,8 @@ func (u User) ValidateUser() error {
 }
 
 func (u User) ValidateUserNoPassword() error {
+	v := validator.New()
+
 	if err := ValidateEmail(u.Email); err != nil {
 		return wrapper.WrapError(ErrValidation, err)
 	}
@@ -115,7 +122,7 @@ func (u User) ValidateUserNoPassword() error {
 		return wrapper.WrapError(ErrValidation, err)
 	}
 
-	if u.Birthday.After(time.Now()) || time.Since(u.Birthday) > 150*365*24*time.Hour {
+	if v.Check(u.Birthday.After(time.Now()) || time.Since(u.Birthday) > 150*365*24*time.Hour, "birthday", "cannot be too old") {
 		return wrapper.WrapError(ErrValidation, ErrInvalidBirthday)
 	}
 
@@ -123,7 +130,5 @@ func (u User) ValidateUserNoPassword() error {
 }
 
 func isValidEmail(email string) bool {
-	var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
-
-	return emailRegex.MatchString(email)
+	return validator.Matches(email, validator.EmailRX)
 }

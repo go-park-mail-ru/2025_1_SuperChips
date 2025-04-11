@@ -135,8 +135,17 @@ func (h *ProfileHandler) UserAvatarHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	type imageURL struct {
+		MediaURL string `json:"media_url"`
+	}
+
+	imgURL := imageURL{
+		MediaURL: url,
+	}
+
 	response := ServerResponse{
 		Description: "Created",
+		Data: imgURL,
 	}
 
 	ServerGenerateJSONResponse(w, response, http.StatusCreated)
@@ -177,6 +186,7 @@ func (h *ProfileHandler) ChangeUserPasswordHandler(w http.ResponseWriter, r *htt
 
 	ServerGenerateJSONResponse(w, resp, http.StatusOK)
 }
+
 
 func (h *ProfileHandler) PatchUserProfileHandler(w http.ResponseWriter, r *http.Request) {
     claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
