@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -15,8 +16,10 @@ import (
 	pgStorage "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/middleware"
+	middleware "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/middleware"
+	pincrudDelivery "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/pincrud"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/pin"
+	pincrudService "github.com/go-park-mail-ru/2025_1_SuperChips/pincrud"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/profile"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/user"
 	"github.com/golang-migrate/migrate/v4"
@@ -67,7 +70,7 @@ func main() {
 		log.Fatalf("Failed to create migration instance: %s", err)
 	}
 
-	if err := m.Up(); err != nil {
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		log.Fatalf("Failed to apply migrations: %s", err)
 	}
 
@@ -76,7 +79,7 @@ func main() {
 		log.Fatalf("Cannot launch due to user storage db error: %s", err)
 	}
 
-	pinStorage, err := pgStorage.NewPGPinStorage(db)
+	pinStorage, err := pgStorage.NewPGPinStorage(db, config.ImageBaseDir, config.BaseUrl)
 	if err != nil {
 		log.Fatalf("Cannot launch due to pin storage db error: %s", err)
 	}
@@ -91,6 +94,7 @@ func main() {
 	userService := user.NewUserService(userStorage)
 	pinService := pin.NewPinService(pinStorage)
 	profileService := profile.NewProfileService(profileStorage)
+	pinCRUDService := pincrudService.NewPinCRUDService(pinStorage)
 
 	authHandler := rest.AuthHandler{
 		Config:      config,
@@ -113,9 +117,16 @@ func main() {
 		CookieSecure:   config.CookieSecure,
 	}
 
+	pinCRUDHandler := pincrudDelivery.PinCRUDHandler{
+		Config:     config,
+		PinService: pinCRUDService,
+	}
+
 	allowedGetOptions := []string{http.MethodGet, http.MethodOptions}
 	allowedPostOptions := []string{http.MethodPost, http.MethodOptions}
 	allowedPatchOptions := []string{http.MethodPatch, http.MethodOptions}
+	allowedDeleteOptions := []string{http.MethodDelete, http.MethodOptions}
+	allowedPutOptions := []string{http.MethodPut, http.MethodOptions}
 
 	fs := http.FileServer(http.Dir("." + config.StaticBaseDir))
 
@@ -153,6 +164,26 @@ func main() {
 			middleware.CorsMiddleware(config, allowedPostOptions)))
 	mux.HandleFunc("/api/v1/profile/password",
 		middleware.ChainMiddleware(profileHandler.ChangeUserPasswordHandler,
+			middleware.AuthMiddleware(jwtManager),
+			middleware.CorsMiddleware(config, allowedPostOptions)))
+
+	mux.HandleFunc("OPTIONS /api/v1/flows",
+		middleware.ChainMiddleware(func(http.ResponseWriter, *http.Request) {},
+			middleware.CorsMiddleware(config, allowedGetOptions)))
+	mux.HandleFunc("GET /api/v1/flows",
+		middleware.ChainMiddleware(pinCRUDHandler.ReadHandler,
+			middleware.AuthSoftMiddleware(jwtManager),
+			middleware.CorsMiddleware(config, allowedGetOptions)))
+	mux.HandleFunc("DELETE /api/v1/flows",
+		middleware.ChainMiddleware(pinCRUDHandler.DeleteHandler,
+			middleware.AuthMiddleware(jwtManager),
+			middleware.CorsMiddleware(config, allowedDeleteOptions)))
+	mux.HandleFunc("PUT /api/v1/flows",
+		middleware.ChainMiddleware(pinCRUDHandler.UpdateHandler,
+			middleware.AuthMiddleware(jwtManager),
+			middleware.CorsMiddleware(config, allowedPutOptions)))
+	mux.HandleFunc("POST /api/v1/flows",
+		middleware.ChainMiddleware(pinCRUDHandler.CreateHandler,
 			middleware.AuthMiddleware(jwtManager),
 			middleware.CorsMiddleware(config, allowedPostOptions)))
 

@@ -1,12 +1,13 @@
 package domain
 
 type PinData struct {
-	FlowID      uint64 `json:"-"`
+	FlowID      uint64 `json:"flow_id,omitempty"`
 	Header      string `json:"header,omitempty"`
-	Description string `json:"description,omitempty"`
-	MediaURL    string `json:"image,omitempty"`
 	AuthorID    uint64 `json:"author_id"`
-	IsPrivate   bool   `json:"-"`
+	Description string `json:"description,omitempty"`
+	MediaURL    string `json:"media_url,omitempty"`
+	IsPrivate   bool   `json:"is_private"`
 	Created_at  string `json:"-"`
-	Updated_at  string `json:"-"`
+	IsLiked     bool   `json:"is_liked"`
+	LikeCount   int    `json:"like_count"`
 }
