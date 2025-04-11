@@ -27,7 +27,7 @@ for FILE in "$IMAGE_DIR"/*.{jpg,jpeg,png,gif}; do
 
   HEADER=$(basename "$FILE" | cut -f1 -d.)
   
-  URL="https://yourflow.ru/static/img/$(basename "$FILE")"
+  URL="$(basename "$FILE")"
   
   QUERY="
     INSERT INTO flow (title, media_url, author_id)
