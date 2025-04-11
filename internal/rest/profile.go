@@ -135,8 +135,17 @@ func (h *ProfileHandler) UserAvatarHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	type imageURL struct {
+		MediaURL string `json:"media_url"`
+	}
+
+	imgURL := imageURL{
+		MediaURL: url,
+	}
+
 	response := ServerResponse{
 		Description: "Created",
+		Data: imgURL,
 	}
 
 	ServerGenerateJSONResponse(w, response, http.StatusCreated)
