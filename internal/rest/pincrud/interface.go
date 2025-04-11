@@ -11,7 +11,7 @@ type PinCRUDServiceInterface interface {
 	GetPublicPin(pinID uint64) (domain.PinData, error)
 	GetAnyPin(pinID uint64, userID uint64) (domain.PinData, error)
 
-	DeletePinByID(pinID uint64, userID uint64) error
+	DeletePin(pinID uint64, userID uint64) error
 
 	UpdatePin(data domain.PinDataUpdate, userID uint64) error
 

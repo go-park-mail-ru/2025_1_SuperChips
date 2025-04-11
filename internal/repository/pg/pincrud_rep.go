@@ -44,7 +44,7 @@ func (p *pgPinStorage) GetPin(pinID uint64) (domain.PinData, error) {
 	return pin, nil
 }
 
-func (p *pgPinStorage) DeletePinByID(pinID uint64, userID uint64) error {
+func (p *pgPinStorage) DeletePin(pinID uint64, userID uint64) error {
 	row := p.db.QueryRow(`
 		SELECT media_url
 		FROM flow

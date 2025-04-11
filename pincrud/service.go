@@ -35,12 +35,12 @@ func (s *PinCRUDService) GetAnyPin(pinID uint64, userID uint64) (domain.PinData,
 	return data, nil
 }
 
-func (s *PinCRUDService) DeletePinByID(pinID uint64, userID uint64) error {
+func (s *PinCRUDService) DeletePin(pinID uint64, userID uint64) error {
 	data, err := s.rep.GetPin(pinID)
 	if data.AuthorID != userID {
 		return ErrForbidden
 	}
-	err = s.rep.DeletePinByID(pinID, userID)
+	err = s.rep.DeletePin(pinID, userID)
 	if err != nil {
 		return err
 	}

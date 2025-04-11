@@ -34,7 +34,7 @@ func (app PinCRUDHandler) DeleteHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	err = app.PinService.DeletePinByID(pinID, userID)
+	err = app.PinService.DeletePin(pinID, userID)
 	if errors.Is(err, pincrud.ErrForbidden) {
 		rest.HttpErrorToJson(w, "access to private pin is forbidden", http.StatusForbidden)
 		return
