@@ -1,7 +1,7 @@
 package domain
 
 type PinData struct {
-	FlowID      uint64 `json:"-"`
+	FlowID      uint64 `json:"flow_id,omitempty"`
 	Header      string `json:"header,omitempty"`
 	Description string `json:"description,omitempty"`
 	MediaURL    string `json:"media_url"`
