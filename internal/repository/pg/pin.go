@@ -4,27 +4,30 @@ import (
 	"database/sql"
 
 	pin "github.com/go-park-mail-ru/2025_1_SuperChips/domain"
-	_ "github.com/jmoiron/sqlx"
 )
 
 type flowPinDB struct {
-	Id          uint64         `db:"id"`
-	Title       sql.NullString `db:"title"`
-	Description sql.NullString `db:"description"`
-	AuthorId    uint64         `db:"author_id"`
-	CreatedAt   sql.NullTime   `db:"created_at"`
-	UpdatedAt   sql.NullTime   `db:"updated_at"`
-	IsPrivate   bool           `db:"is_private"`
-	MediaURL    string         `db:"media_url"`
+	Id          uint64
+	Title       sql.NullString
+	Description sql.NullString
+	AuthorId    uint64
+	CreatedAt   sql.NullTime
+	UpdatedAt   sql.NullTime
+	IsPrivate   bool
+	MediaURL    string
 }
 
 type pgPinStorage struct {
-	db      *sql.DB
+	db       *sql.DB
+	pinDir   string
+	imageURL string
 }
 
-func NewPGPinStorage(db *sql.DB) (*pgPinStorage, error) {
+func NewPGPinStorage(db *sql.DB, pinDir string, imageURL string) (*pgPinStorage, error) {
 	storage := &pgPinStorage{
-		db: db,
+		db:     db,
+		pinDir: pinDir,
+		imageURL: imageURL,
 	}
 
 	return storage, nil
