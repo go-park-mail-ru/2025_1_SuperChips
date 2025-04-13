@@ -3,6 +3,8 @@ package repository
 import (
 	"context"
 	"database/sql"
+
+	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
 
 type pgLikeStorage struct {
@@ -19,20 +21,33 @@ func (pg *pgLikeStorage) LikeFlow(ctx context.Context, pinID, userID int) (strin
     var action string
 
     err := pg.db.QueryRowContext(ctx, `
-        WITH deleted AS (
+        WITH access_check AS (
+            SELECT 
+                CASE 
+                    WHEN f.is_private = false OR f.author_id = $1 THEN true
+                    ELSE false
+                END AS has_access
+            FROM flow f
+            WHERE f.id = $2
+        ),
+        deleted AS (
             DELETE FROM flow_like
             WHERE user_id = $1 AND flow_id = $2
+              AND (SELECT has_access FROM access_check) = true
             RETURNING 'delete' AS action
         ),
         inserted AS (
             INSERT INTO flow_like (user_id, flow_id)
             SELECT $1, $2
             WHERE NOT EXISTS (SELECT 1 FROM deleted)
+              AND (SELECT has_access FROM access_check) = true
             RETURNING 'insert' AS action
         )
         SELECT COALESCE((SELECT action FROM inserted), (SELECT action FROM deleted)) AS action;
     `, userID, pinID).Scan(&action)
-
+    if err == sql.ErrNoRows {
+        return "", domain.ErrForbidden
+    }
     if err != nil {
         return "", err
     }

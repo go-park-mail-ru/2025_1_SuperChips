@@ -20,8 +20,8 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/pin"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/profile"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/user"
-	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
@@ -53,24 +53,6 @@ func main() {
 	}
 
 	defer db.Close()
-
-	driver, err := postgres.WithInstance(db, &postgres.Config{})
-	if err != nil {
-		log.Fatalf("Failed to initialize migration driver: %s", err)
-	}
-
-	m, err := migrate.NewWithDatabaseInstance(
-		"file://database/migrations",
-		"postgres",
-		driver,
-	)
-	if err != nil {
-		log.Fatalf("Failed to create migration instance: %s", err)
-	}
-
-	if err := m.Up(); err != nil {
-		log.Fatalf("Failed to apply migrations: %s", err)
-	}
 
 	userStorage, err := pgStorage.NewPGUserStorage(db)
 	if err != nil {
@@ -168,7 +150,7 @@ func main() {
 	mux.HandleFunc("POST /api/v1/like",
 		middleware.ChainMiddleware(likeHandler.LikeFlow, 
 			middleware.AuthMiddleware(jwtManager),
-			middleware.CorsMiddleware(config, allowedGetOptions)))
+			middleware.CorsMiddleware(config, allowedPostOptions)))
 
 	mux.HandleFunc("OPTIONS /api/v1/like", middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
