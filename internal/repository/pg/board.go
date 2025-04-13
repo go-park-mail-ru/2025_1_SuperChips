@@ -301,6 +301,20 @@ func (p *pgBoardStorage) GetBoardFlow(ctx context.Context, boardID, userID, page
 		offset = 0
 	}
 
+	var scanID int
+
+	err := p.db.QueryRowContext(ctx, `
+	SELECT id
+	FROM board
+	WHERE id = $1 AND (is_private = false
+	OR author_id = $2)`, boardID, userID).Scan(&scanID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, boardService.ErrForbidden
+	}
+	if err != nil {
+		return nil, err
+	}
+
 	return p.fetchFirstNFlowsForBoard(ctx, boardID, userID, pageSize, offset)
 }
 
@@ -310,7 +324,7 @@ func (p *pgBoardStorage) fetchFirstNFlowsForBoard(ctx context.Context, boardID, 
                f.updated_at, f.is_private, f.media_url, f.like_count
         FROM flow f
         JOIN board_post bp ON f.id = bp.flow_id
-        WHERE bp.board_id = $1 AND (bp.is_private = false OR bp.author_id = $2)
+        WHERE bp.board_id = $1
           AND (f.is_private = false OR f.author_id = $2)
         ORDER BY bp.saved_at DESC
         LIMIT $3 OFFSET $4
