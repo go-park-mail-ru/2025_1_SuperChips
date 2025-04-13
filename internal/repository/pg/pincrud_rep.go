@@ -10,23 +10,31 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (p *pgPinStorage) GetPin(pinID uint64) (domain.PinData, uint64, error) {
+func (p *pgPinStorage) GetPin(pinID, userID uint64) (domain.PinData, uint64, error) {
 	row := p.db.QueryRow(`
-	SELECT 
-		f.id, 
-		f.title, 
-		f.description, 
-		f.author_id, 
-		f.is_private, 
-		f.media_url,
-		fu.username
-	FROM flow f
-	JOIN flow_user fu ON f.author_id = fu.id
-	WHERE f.id = $1;
-	`, pinID)
+        SELECT 
+            f.id, 
+            f.title, 
+            f.description, 
+            f.author_id, 
+            f.is_private, 
+            f.media_url,
+            f.like_count,
+            fu.username,
+            CASE 
+                WHEN fl.user_id IS NOT NULL THEN true
+                ELSE false
+            END AS is_liked
+        FROM flow f
+        JOIN flow_user fu ON f.author_id = fu.id
+        LEFT JOIN flow_like fl ON fl.flow_id = f.id AND fl.user_id = $2
+        WHERE f.id = $1;
+    `, pinID, userID)
 
+	var isLiked bool
 	var flowDBRow flowDBSchema
-	err := row.Scan(&flowDBRow.Id, &flowDBRow.Title, &flowDBRow.Description, &flowDBRow.AuthorId, &flowDBRow.IsPrivate, &flowDBRow.MediaURL, &flowDBRow.AuthorUsername)
+	err := row.Scan(&flowDBRow.Id, &flowDBRow.Title, &flowDBRow.Description,
+		&flowDBRow.AuthorId, &flowDBRow.IsPrivate, &flowDBRow.MediaURL, &flowDBRow.AuthorUsername, &flowDBRow.LikeCount, &isLiked)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.PinData{}, 0, pincrudService.ErrPinNotFound
 	}
@@ -41,6 +49,8 @@ func (p *pgPinStorage) GetPin(pinID uint64) (domain.PinData, uint64, error) {
 		Description:    flowDBRow.Description.String,
 		MediaURL:       p.assembleMediaURL(flowDBRow.MediaURL),
 		IsPrivate:      flowDBRow.IsPrivate,
+		LikeCount:      flowDBRow.LikeCount,
+		IsLiked:        isLiked,
 	}
 
 	return pin, flowDBRow.AuthorId, nil
