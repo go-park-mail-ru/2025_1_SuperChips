@@ -30,7 +30,7 @@ func (s *PinCRUDService) GetAnyPin(pinID uint64, userID uint64) (domain.PinData,
 	if err != nil {
 		return domain.PinData{}, err
 	}
-	if data.AuthorID != userID {
+	if data.AuthorID != userID && data.IsPrivate {
 		return domain.PinData{}, ErrForbidden
 	}
 	return data, nil
