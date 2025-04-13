@@ -17,6 +17,7 @@ type flowDBSchema struct {
 	CreatedAt      sql.NullTime
 	UpdatedAt      sql.NullTime
 	IsPrivate      bool
+	LikeCount      int
 	MediaURL       string
 }
 

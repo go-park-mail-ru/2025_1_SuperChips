@@ -10,28 +10,36 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (p *pgPinStorage) GetPin(pinID uint64) (domain.PinData, error) {
+func (p *pgPinStorage) GetPin(pinID, userID uint64) (domain.PinData, uint64, error) {
 	row := p.db.QueryRow(`
-	SELECT 
-		f.id, 
-		f.title, 
-		f.description, 
-		f.author_id, 
-		f.is_private, 
-		f.media_url,
-		fu.username
-	FROM flow f
-	JOIN flow_user fu ON f.author_id = fu.id
-	WHERE f.id = $1;
-	`, pinID)
+        SELECT 
+            f.id, 
+            f.title, 
+            f.description, 
+            f.author_id, 
+            f.is_private, 
+            f.media_url,
+            f.like_count,
+            fu.username,
+            CASE 
+                WHEN fl.user_id IS NOT NULL THEN true
+                ELSE false
+            END AS is_liked
+        FROM flow f
+        JOIN flow_user fu ON f.author_id = fu.id
+        LEFT JOIN flow_like fl ON fl.flow_id = f.id AND fl.user_id = $2
+        WHERE f.id = $1;
+    `, pinID, userID)
 
+	var isLiked bool
 	var flowDBRow flowDBSchema
-	err := row.Scan(&flowDBRow.Id, &flowDBRow.Title, &flowDBRow.Description, &flowDBRow.AuthorId, &flowDBRow.IsPrivate, &flowDBRow.MediaURL, &flowDBRow.AuthorUsername)
+	err := row.Scan(&flowDBRow.Id, &flowDBRow.Title, &flowDBRow.Description,
+		&flowDBRow.AuthorId, &flowDBRow.IsPrivate, &flowDBRow.MediaURL, &flowDBRow.AuthorUsername, &flowDBRow.LikeCount, &isLiked)
 	if errors.Is(err, sql.ErrNoRows) {
-		return domain.PinData{}, pincrudService.ErrPinNotFound
+		return domain.PinData{}, 0, pincrudService.ErrPinNotFound
 	}
 	if err != nil {
-		return domain.PinData{}, pincrudService.ErrUntracked
+		return domain.PinData{}, 0, pincrudService.ErrUntracked
 	}
 
 	pin := domain.PinData{
@@ -41,10 +49,11 @@ func (p *pgPinStorage) GetPin(pinID uint64) (domain.PinData, error) {
 		Description:    flowDBRow.Description.String,
 		MediaURL:       p.assembleMediaURL(flowDBRow.MediaURL),
 		IsPrivate:      flowDBRow.IsPrivate,
-		AuthorID:       flowDBRow.AuthorId,
+		LikeCount:      flowDBRow.LikeCount,
+		IsLiked:        isLiked,
 	}
 
-	return pin, nil
+	return pin, flowDBRow.AuthorId, nil
 }
 
 func (p *pgPinStorage) DeletePin(pinID uint64, userID uint64) error {

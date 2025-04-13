@@ -6,6 +6,8 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
 
+const UnauthorizedID = 0
+
 func NewPinCRUDService(r PinCRUDRepository, imgStrg FileRepository) *PinCRUDService {
 	return &PinCRUDService{
 		rep:     r,
@@ -14,7 +16,7 @@ func NewPinCRUDService(r PinCRUDRepository, imgStrg FileRepository) *PinCRUDServ
 }
 
 func (s *PinCRUDService) GetPublicPin(pinID uint64) (domain.PinData, error) {
-	data, err := s.rep.GetPin(pinID)
+	data, _, err := s.rep.GetPin(pinID, UnauthorizedID)
 	if err != nil {
 		return domain.PinData{}, err
 	}
@@ -26,19 +28,22 @@ func (s *PinCRUDService) GetPublicPin(pinID uint64) (domain.PinData, error) {
 }
 
 func (s *PinCRUDService) GetAnyPin(pinID uint64, userID uint64) (domain.PinData, error) {
-	data, err := s.rep.GetPin(pinID)
+	data, authorID, err := s.rep.GetPin(pinID, userID)
 	if err != nil {
 		return domain.PinData{}, err
 	}
-	if data.IsPrivate && (data.AuthorID != userID) {
+	if data.IsPrivate && (authorID != userID) {
 		return domain.PinData{}, ErrForbidden
 	}
 	return data, nil
 }
 
 func (s *PinCRUDService) DeletePin(pinID uint64, userID uint64) error {
-	data, err := s.rep.GetPin(pinID)
-	if data.AuthorID != userID {
+	data, authorID, err := s.rep.GetPin(pinID, userID)
+	if err != nil {
+		return err
+	}
+	if authorID != userID {
 		return ErrForbidden
 	}
 	err = s.rep.DeletePin(pinID, userID)
@@ -53,8 +58,11 @@ func (s *PinCRUDService) DeletePin(pinID uint64, userID uint64) error {
 }
 
 func (s *PinCRUDService) UpdatePin(patch domain.PinDataUpdate, userID uint64) error {
-	data, err := s.rep.GetPin(*patch.FlowID)
-	if data.AuthorID != userID {
+	_, authorID, err := s.rep.GetPin(*patch.FlowID, userID)
+	if err != nil {
+		return err
+	}
+	if authorID != userID {
 		return ErrForbidden
 	}
 	err = s.rep.UpdatePin(patch, userID)
