@@ -7,7 +7,7 @@ import (
 )
 
 type PinCRUDRepository interface {
-	GetPin(pinID uint64) (domain.PinData, error)
+	GetPin(pinID uint64) (domain.PinData, uint64, error)
 
 	DeletePin(pinID uint64, userID uint64) error
 

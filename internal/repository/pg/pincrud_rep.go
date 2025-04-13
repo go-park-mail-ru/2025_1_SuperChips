@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (p *pgPinStorage) GetPin(pinID uint64) (domain.PinData, error) {
+func (p *pgPinStorage) GetPin(pinID uint64) (domain.PinData, uint64, error) {
 	row := p.db.QueryRow(`
 	SELECT 
 		f.id, 
@@ -28,10 +28,10 @@ func (p *pgPinStorage) GetPin(pinID uint64) (domain.PinData, error) {
 	var flowDBRow flowDBSchema
 	err := row.Scan(&flowDBRow.Id, &flowDBRow.Title, &flowDBRow.Description, &flowDBRow.AuthorId, &flowDBRow.IsPrivate, &flowDBRow.MediaURL, &flowDBRow.AuthorUsername)
 	if errors.Is(err, sql.ErrNoRows) {
-		return domain.PinData{}, pincrudService.ErrPinNotFound
+		return domain.PinData{}, 0, pincrudService.ErrPinNotFound
 	}
 	if err != nil {
-		return domain.PinData{}, pincrudService.ErrUntracked
+		return domain.PinData{}, 0, pincrudService.ErrUntracked
 	}
 
 	pin := domain.PinData{
@@ -43,7 +43,7 @@ func (p *pgPinStorage) GetPin(pinID uint64) (domain.PinData, error) {
 		IsPrivate:      flowDBRow.IsPrivate,
 	}
 
-	return pin, nil
+	return pin, flowDBRow.AuthorId, nil
 }
 
 func (p *pgPinStorage) DeletePin(pinID uint64, userID uint64) error {
