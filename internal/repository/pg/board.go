@@ -310,7 +310,7 @@ func (p *pgBoardStorage) fetchFirstNFlowsForBoard(ctx context.Context, boardID, 
                f.updated_at, f.is_private, f.media_url, f.like_count
         FROM flow f
         JOIN board_post bp ON f.id = bp.flow_id
-        WHERE bp.board_id = $1
+        WHERE bp.board_id = $1 AND (bp.is_private = false OR bp.author_id = $2)
           AND (f.is_private = false OR f.author_id = $2)
         ORDER BY bp.saved_at DESC
         LIMIT $3 OFFSET $4

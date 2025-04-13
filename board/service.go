@@ -38,11 +38,11 @@ func NewBoardService(repo BoardRepository) *BoardService {
 func (b *BoardService) CreateBoard(ctx context.Context, board domain.Board, username string, userID int) (int, error) {
 	v := validator.New()
 
-	if v.Check(board.Name == "", "name", "cannot be empty") {
+	if !v.Check(board.Name != "", "name", "cannot be empty") {
 		return 0, wrapper.WrapError(domain.ErrValidation, v.GetError("name"))
 	}
 
-	if v.Check(len(board.Name) < 64, "name", "cannot be longer 64") {
+	if !v.Check(len(board.Name) < 64, "name", "cannot be longer 64") {
 		return 0, wrapper.WrapError(domain.ErrValidation, v.GetError("name"))
 	}
 
@@ -56,7 +56,7 @@ func (b *BoardService) CreateBoard(ctx context.Context, board domain.Board, user
 func (b *BoardService) DeleteBoard(ctx context.Context, boardID, userID int) error {
 	v := validator.New()
 
-	if v.Check(userID <= 0 || boardID <= 0, "id", "cannot be less or equal to zero") {
+	if !v.Check(userID > 0 && boardID > 0, "id", "cannot be less or equal to zero") {
 		return domain.ErrValidation
 	}
 
@@ -70,7 +70,7 @@ func (b *BoardService) DeleteBoard(ctx context.Context, boardID, userID int) err
 func (b *BoardService) AddToBoard(ctx context.Context, boardID, userID, flowID int) error {
 	v := validator.New()
 
-	if v.Check(flowID <= 0 || boardID <= 0 || userID <= 0, "id", "cannot be less or equal to zero") {
+	if !v.Check(flowID > 0 && boardID > 0 && userID > 0, "id", "cannot be less or equal to zero") {
 		return domain.ErrValidation
 	}
 
@@ -84,11 +84,11 @@ func (b *BoardService) AddToBoard(ctx context.Context, boardID, userID, flowID i
 func (b *BoardService) UpdateBoard(ctx context.Context, boardID, userID int, newName string, isPrivate bool) error {
 	v := validator.New()
 
-	if v.Check(boardID <= 0 || userID <= 0, "id", "cannot be less or equal to zero") {
+	if !v.Check(boardID > 0 && userID > 0, "id", "cannot be less or equal to zero") {
 		return domain.ErrValidation
 	}
 
-	if v.Check(newName == "", "name", "cannot be empty") {
+	if !v.Check(newName != "", "name", "cannot be empty") {
 		return domain.ErrNoBoardName
 	}
 
@@ -102,7 +102,7 @@ func (b *BoardService) UpdateBoard(ctx context.Context, boardID, userID int, new
 func (b *BoardService) DeleteFromBoard(ctx context.Context, boardID, userID, flowID int) error {
 	v := validator.New()
 
-	if v.Check(flowID <= 0 || boardID <= 0 || userID <= 0, "id", "cannot be less or equal to zero") {
+	if !v.Check(flowID > 0 && boardID > 0 && userID > 0, "id", "cannot be less or equal to zero") {
 		return domain.ErrValidation
 	}
 
@@ -116,7 +116,7 @@ func (b *BoardService) DeleteFromBoard(ctx context.Context, boardID, userID, flo
 func (b *BoardService) GetBoard(ctx context.Context, boardID, userID int, authorized bool) (domain.Board, error) {
 	v := validator.New()
 
-	if v.Check(boardID <= 0 || userID < 0, "id", "board id cannot be less or equal to zero or user id cannot be less than zero") {
+	if !v.Check(boardID > 0 && userID >= 0, "id", "board id cannot be less or equal to zero or user id cannot be less than zero") {
 		return domain.Board{}, domain.ErrValidation
 	}
 
@@ -149,11 +149,11 @@ func (b *BoardService) GetUserAllBoards(ctx context.Context, userID int) ([]doma
 func (b *BoardService) GetBoardFlow(ctx context.Context, boardID, userID, page, pageSize int, authorized bool) ([]domain.PinData, error) {
 	v := validator.New()	
 
-	if v.Check(boardID <= 0 || userID < 0 || page <= 0, "id and page", "cannot be less than zero") {
+	if !v.Check(boardID > 0 && userID >= 0 || page > 0, "id and page", "cannot be less than zero") {
 		return nil, domain.ErrValidation
 	}
 
-	if v.Check(pageSize < 1 || pageSize > 30, "page size", "cannot be less than one and more than 30") {
+	if !v.Check(pageSize >= 1 && pageSize <= 30, "page size", "cannot be less than one and more than 30") {
 		return nil, domain.ErrValidation
 	}
 

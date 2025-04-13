@@ -35,8 +35,7 @@ func AuthSoftMiddleware(jwtManager *auth.JWTManager) func(http.HandlerFunc) http
         return func(w http.ResponseWriter, r *http.Request) {
             cookie, err := r.Cookie(auth.AuthToken)
             if err != nil {
-                rest.HttpErrorToJson(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-                return
+                next.ServeHTTP(w, r)
             }
 
             token := cookie.Value

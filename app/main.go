@@ -116,6 +116,7 @@ func main() {
 		BoardService:    boardService,
 		ContextDeadline: 3 * time.Second, // перенести в конфиг
 	}
+	
 	pinCRUDHandler := pincrudDelivery.PinCRUDHandler{
 		Config:     config,
 		PinService: pinCRUDService,
