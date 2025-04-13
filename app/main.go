@@ -95,7 +95,7 @@ func main() {
 	pinService := pin.NewPinService(pinStorage)
 	profileService := profile.NewProfileService(profileStorage)
 	boardService := board.NewBoardService(boardStorage)
-	pinCRUDService := pincrudService.NewPinCRUDService(pinStorage)
+	pinCRUDService := pincrudService.NewPinCRUDService(pinStorage, imageStorage)
 
 	authHandler := rest.AuthHandler{
 		Config:      config,
