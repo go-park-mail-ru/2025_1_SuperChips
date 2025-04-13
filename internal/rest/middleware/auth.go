@@ -36,6 +36,7 @@ func AuthSoftMiddleware(jwtManager *auth.JWTManager) func(http.HandlerFunc) http
             cookie, err := r.Cookie(auth.AuthToken)
             if err != nil {
                 next.ServeHTTP(w, r)
+                return
             }
 
             token := cookie.Value
