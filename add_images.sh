@@ -8,7 +8,7 @@ fi
 
 AUTHOR_ID=$1
 IMAGE_DIR="static/img"
-DB_NAME="postgres"
+DB_NAME="postgres_db"
 DB_USER="admin"
 DB_HOST="localhost"
 DB_PORT="5432"

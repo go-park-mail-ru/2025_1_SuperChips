@@ -29,3 +29,23 @@ func AuthMiddleware(jwtManager *auth.JWTManager) func(http.HandlerFunc) http.Han
         }
     }
 }
+
+func AuthSoftMiddleware(jwtManager *auth.JWTManager) func(http.HandlerFunc) http.HandlerFunc {
+    return func(next http.HandlerFunc) http.HandlerFunc {
+        return func(w http.ResponseWriter, r *http.Request) {
+            cookie, err := r.Cookie(auth.AuthToken)
+            if err != nil {
+                next.ServeHTTP(w, r)
+            }
+
+            token := cookie.Value
+            claims, err := jwtManager.ParseJWTToken(token)
+            if err != nil {
+                claims = nil
+            }
+
+            ctx := context.WithValue(r.Context(), auth.ClaimsContextKey, claims)
+            next.ServeHTTP(w, r.WithContext(ctx))
+        }
+    }
+}
