@@ -5,13 +5,15 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"path/filepath"
+	"strings"
 
-	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	boardService "github.com/go-park-mail-ru/2025_1_SuperChips/board"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
 
 var (
-	ErrNotFound = errors.New("board not found")
+	ErrNotFound  = errors.New("board not found")
 	ErrForbidden = errors.New("forbidden")
 )
 
@@ -22,10 +24,12 @@ const (
 
 type pgBoardStorage struct {
 	db       *sql.DB
+	baseURL  string
+	imageDir string
 }
 
-func NewBoardStorage(db *sql.DB, pageSize int) *pgBoardStorage {
-	return &pgBoardStorage{db: db}
+func NewBoardStorage(db *sql.DB, imageDir string, baseURL string) *pgBoardStorage {
+	return &pgBoardStorage{db: db, baseURL: baseURL, imageDir: imageDir}
 }
 
 func (p *pgBoardStorage) CreateBoard(ctx context.Context, board *domain.Board, username string, userID int) error {
@@ -128,13 +132,13 @@ func (p *pgBoardStorage) AddToBoard(ctx context.Context, boardID, userID, flowID
 }
 
 func (p *pgBoardStorage) DeleteFromBoard(ctx context.Context, boardID, userID, flowID int) error {
-    tx, err := p.db.Begin()
-    if err != nil {
-        return err
-    }
-    defer tx.Rollback()
+	tx, err := p.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
 
-    result, err := tx.ExecContext(ctx, `
+	result, err := tx.ExecContext(ctx, `
         DELETE FROM board_post
         USING board
         WHERE board_post.board_id = $1
@@ -142,28 +146,28 @@ func (p *pgBoardStorage) DeleteFromBoard(ctx context.Context, boardID, userID, f
         AND board.id = $1
         AND board.author_id = $2
     `, boardID, userID, flowID)
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 
-    rowsAffected, err := result.RowsAffected()
-    if err != nil {
-        return err
-    }
-    if rowsAffected == 0 {
-        return ErrNotFound
-    }
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
 
-    _, err = tx.ExecContext(ctx, `
+	_, err = tx.ExecContext(ctx, `
         UPDATE board
         SET flow_count = flow_count - 1
         WHERE id = $1
     `, boardID)
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 
-    return tx.Commit()
+	return tx.Commit()
 }
 
 func (p *pgBoardStorage) UpdateBoard(ctx context.Context, boardID, userID int, newName string, isPrivate bool) error {
@@ -359,6 +363,7 @@ func (p *pgBoardStorage) fetchFirstNFlowsForBoard(ctx context.Context, boardID, 
 			return nil, fmt.Errorf("failed to scan flow: %w", err)
 		}
 
+		flow.MediaURL = p.generateImageURL(flow.MediaURL)
 		flow.Header = middlePin.Header.String
 		flow.Description = middlePin.Description.String
 
@@ -371,3 +376,8 @@ func (p *pgBoardStorage) fetchFirstNFlowsForBoard(ctx context.Context, boardID, 
 
 	return flows, nil
 }
+
+func (p *pgBoardStorage) generateImageURL(filename string) string {
+	return p.baseURL + filepath.Join(strings.ReplaceAll(p.imageDir, ".", ""), filename)
+}
+

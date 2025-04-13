@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"path/filepath"
 	"strings"
 
 	pin "github.com/go-park-mail-ru/2025_1_SuperChips/domain"
@@ -21,14 +22,14 @@ type flowDBSchema struct {
 
 type pgPinStorage struct {
 	db      *sql.DB
-	imgDir  string
+	imageDir  string
 	baseURL string
 }
 
 func NewPGPinStorage(db *sql.DB, imgDir, baseURL string) (*pgPinStorage, error) {
 	storage := &pgPinStorage{
 		db:      db,
-		imgDir:  imgDir,
+		imageDir:  imgDir,
 		baseURL: baseURL,
 	}
 
@@ -36,7 +37,7 @@ func NewPGPinStorage(db *sql.DB, imgDir, baseURL string) (*pgPinStorage, error) 
 }
 
 func (p *pgPinStorage) assembleMediaURL(fileName string) string {
-	return p.baseURL + strings.ReplaceAll(p.imgDir, ".", "") + "/" + fileName
+	return p.baseURL + strings.ReplaceAll(p.imageDir, ".", "") + "/" + fileName
 }
 
 func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
@@ -82,4 +83,8 @@ func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
 	}
 
 	return pins, nil
+}
+
+func (p *pgPinStorage) generateImageURL(filename string) string {
+	return p.baseURL + filepath.Join(strings.ReplaceAll(p.imageDir, ".", ""), filename)
 }

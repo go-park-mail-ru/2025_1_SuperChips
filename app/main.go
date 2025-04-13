@@ -82,12 +82,12 @@ func main() {
 		log.Fatalf("Cannot launch due to pin storage db error: %s", err)
 	}
 
-	profileStorage, err := pgStorage.NewPGProfileStorage(db)
+	profileStorage, err := pgStorage.NewPGProfileStorage(db, config.StaticBaseDir, config.AvatarDir, config.BaseUrl)
 	if err != nil {
 		log.Fatalf("Cannot launch due to profile storage db error: %s", err)
 	}
 
-	boardStorage := pgStorage.NewBoardStorage(db, config.PageSize)
+	boardStorage := pgStorage.NewBoardStorage(db, config.ImageBaseDir, config.BaseUrl)
 
 	jwtManager := auth.NewJWTManager(config)
 
