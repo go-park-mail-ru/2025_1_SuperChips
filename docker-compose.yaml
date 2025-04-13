@@ -10,6 +10,8 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
     ports:
       - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
   backend:
     networks:
       - flow_network
@@ -32,7 +34,12 @@ services:
       - "${PORT}:${PORT}"
     depends_on:
       - database
+    volumes:
+      - ./static:/app/static
 
 networks:
   flow_network:
     driver: bridge
+
+volumes:
+  db_data:
