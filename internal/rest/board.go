@@ -448,6 +448,8 @@ func (b *BoardHandler) GetBoardFlows(w http.ResponseWriter, r *http.Request) {
 	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
 	if !ok || claims == nil {
 		authorized = false
+	} else {
+		userID = claims.UserID
 	}
 
 	ctx := context.Background()

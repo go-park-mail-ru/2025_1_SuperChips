@@ -191,7 +191,7 @@ func (p *pgBoardStorage) UpdateBoard(ctx context.Context, boardID, userID int, n
 	return nil
 }
 
-func (p *pgBoardStorage) GetBoard(ctx context.Context, boardID int) (domain.Board, error) {
+func (p *pgBoardStorage) GetBoard(ctx context.Context, boardID, userID int) (domain.Board, error) {
 	var board domain.Board
 	err := p.db.QueryRowContext(ctx, `
 	SELECT 
@@ -225,7 +225,7 @@ func (p *pgBoardStorage) GetBoard(ctx context.Context, boardID int) (domain.Boar
 		return domain.Board{}, err
 	}
 
-	flows, err := p.fetchFirstNFlowsForBoard(ctx, board.ID, board.AuthorID, previewNum, previewStart)
+	flows, err := p.fetchFirstNFlowsForBoard(ctx, board.ID, userID, previewNum, previewStart)
 	if err != nil {
 		return domain.Board{}, err
 	}
@@ -318,13 +318,13 @@ func (p *pgBoardStorage) GetBoardFlow(ctx context.Context, boardID, userID, page
 		offset = 0
 	}
 
-	var authorID int
+	var scanID int
 
 	err := p.db.QueryRowContext(ctx, `
-	SELECT author_id
+	SELECT id
 	FROM board
 	WHERE id = $1 AND (is_private = false
-	OR author_id = $2)`, boardID, userID).Scan(&authorID)
+	OR author_id = $2)`, boardID, userID).Scan(&scanID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, boardService.ErrForbidden
 	}
@@ -332,7 +332,7 @@ func (p *pgBoardStorage) GetBoardFlow(ctx context.Context, boardID, userID, page
 		return nil, err
 	}
 
-	return p.fetchFirstNFlowsForBoard(ctx, boardID, authorID, pageSize, offset)
+	return p.fetchFirstNFlowsForBoard(ctx, boardID, userID, pageSize, offset)
 }
 
 func (p *pgBoardStorage) fetchFirstNFlowsForBoard(ctx context.Context, boardID, userID, pageSize, offset int) ([]domain.PinData, error) {

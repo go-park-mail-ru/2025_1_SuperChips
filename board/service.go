@@ -10,15 +10,15 @@ import (
 )
 
 type BoardRepository interface {
-	CreateBoard(ctx context.Context, board *domain.Board, username string, userID int) error    // создание доски
-	DeleteBoard(ctx context.Context, boardID, userID int) error                                 // удаление доски
-	AddToBoard(ctx context.Context, boardID, userID, flowID int) error                          // добавление пина в доску
-	DeleteFromBoard(ctx context.Context, boardID, userID, flowID int) error                     // удаление пина из доски
-	UpdateBoard(ctx context.Context, boardID, userID int, newName string, isPrivate bool) error // обновление данных доски
-	GetBoard(ctx context.Context, boardID int) (domain.Board, error)                            // получить доску
-	GetUserPublicBoards(ctx context.Context, username string) ([]domain.Board, error)           // получить публичные доски пользователя
-	GetUserAllBoards(ctx context.Context, userID int) ([]domain.Board, error)                   // получтиь все доски пользователя
-	GetBoardFlow(ctx context.Context, boardID, userID, page, pageSize int) ([]domain.PinData, error)      // получить пины доски (с пагинацией)
+	CreateBoard(ctx context.Context, board *domain.Board, username string, userID int) error         // создание доски
+	DeleteBoard(ctx context.Context, boardID, userID int) error                                      // удаление доски
+	AddToBoard(ctx context.Context, boardID, userID, flowID int) error                               // добавление пина в доску
+	DeleteFromBoard(ctx context.Context, boardID, userID, flowID int) error                          // удаление пина из доски
+	UpdateBoard(ctx context.Context, boardID, userID int, newName string, isPrivate bool) error      // обновление данных доски
+	GetBoard(ctx context.Context, boardID, userID int) (domain.Board, error)                         // получить доску
+	GetUserPublicBoards(ctx context.Context, username string) ([]domain.Board, error)                // получить публичные доски пользователя
+	GetUserAllBoards(ctx context.Context, userID int) ([]domain.Board, error)                        // получтиь все доски пользователя
+	GetBoardFlow(ctx context.Context, boardID, userID, page, pageSize int) ([]domain.PinData, error) // получить пины доски (с пагинацией)
 }
 
 type BoardService struct {
@@ -120,7 +120,7 @@ func (b *BoardService) GetBoard(ctx context.Context, boardID, userID int, author
 		return domain.Board{}, domain.ErrValidation
 	}
 
-	board, err := b.repo.GetBoard(ctx, boardID)
+	board, err := b.repo.GetBoard(ctx, boardID, userID)
 	if err != nil {
 		return domain.Board{}, err
 	}
@@ -147,7 +147,7 @@ func (b *BoardService) GetUserAllBoards(ctx context.Context, userID int) ([]doma
 }
 
 func (b *BoardService) GetBoardFlow(ctx context.Context, boardID, userID, page, pageSize int, authorized bool) ([]domain.PinData, error) {
-	v := validator.New()	
+	v := validator.New()
 
 	if !v.Check(boardID > 0 && userID >= 0 || page > 0, "id and page", "cannot be less than zero") {
 		return nil, domain.ErrValidation
