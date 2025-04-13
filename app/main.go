@@ -19,10 +19,12 @@ import (
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
 	middleware "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/middleware"
 	pincrudDelivery "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/pincrud"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/like"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/pin"
 	pincrudService "github.com/go-park-mail-ru/2025_1_SuperChips/pincrud"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/profile"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/user"
+	_ "github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/swaggo/http-swagger"
@@ -88,6 +90,7 @@ func main() {
 	}
 
 	boardStorage := pgStorage.NewBoardStorage(db, config.ImageBaseDir, config.BaseUrl)
+	likeStorage := pgStorage.NewPgLikeStorage(db)
 
 	jwtManager := auth.NewJWTManager(config)
 
@@ -96,6 +99,7 @@ func main() {
 	profileService := profile.NewProfileService(profileStorage)
 	boardService := board.NewBoardService(boardStorage)
 	pinCRUDService := pincrudService.NewPinCRUDService(pinStorage, imageStorage)
+	likeService := like.NewLikeService(likeStorage)
 
 	authHandler := rest.AuthHandler{
 		Config:      config,
@@ -126,6 +130,10 @@ func main() {
 	pinCRUDHandler := pincrudDelivery.PinCRUDHandler{
 		Config:     config,
 		PinService: pinCRUDService,
+	}
+	likeHandler := rest.LikeHandler{
+		LikeService: likeService,
+		ContextTimeout: time.Second * 3,
 	}
 
 	fs := http.FileServer(http.Dir("." + config.StaticBaseDir))
@@ -249,6 +257,15 @@ func main() {
 		middleware.ChainMiddleware(pinCRUDHandler.CreateHandler,
 			middleware.AuthMiddleware(jwtManager),
 			middleware.CorsMiddleware(config, allowedPostOptions)))
+	
+	mux.HandleFunc("POST /api/v1/like",
+		middleware.ChainMiddleware(likeHandler.LikeFlow, 
+			middleware.AuthMiddleware(jwtManager),
+			middleware.CorsMiddleware(config, allowedPostOptions)))
+	mux.HandleFunc("OPTIONS /api/v1/like", middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}, 
+		middleware.CorsMiddleware(config, allowedGetOptions)))
 
 	server := http.Server{
 		Addr:    config.Port,
