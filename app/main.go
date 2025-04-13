@@ -13,6 +13,7 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/board"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/pg"
+	osStorage "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/os/pincrud"
 	pgStorage "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
@@ -72,6 +73,11 @@ func main() {
 	}
 
 	pinStorage, err := pgStorage.NewPGPinStorage(db, config.ImageBaseDir, config.BaseUrl)
+	if err != nil {
+		log.Fatalf("Cannot launch due to pin storage db error: %s", err)
+	}
+
+	imageStorage, err := osStorage.NewOSImageStorage(config.ImageBaseDir)
 	if err != nil {
 		log.Fatalf("Cannot launch due to pin storage db error: %s", err)
 	}
