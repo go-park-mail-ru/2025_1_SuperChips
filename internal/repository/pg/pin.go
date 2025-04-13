@@ -8,14 +8,15 @@ import (
 )
 
 type flowDBSchema struct {
-	Id          uint64
-	Title       sql.NullString
-	Description sql.NullString
-	AuthorId    uint64
-	CreatedAt   sql.NullTime
-	UpdatedAt   sql.NullTime
-	IsPrivate   bool
-	MediaURL    string
+	Id             uint64
+	Title          sql.NullString
+	Description    sql.NullString
+	AuthorId       uint64
+	AuthorUsername string
+	CreatedAt      sql.NullTime
+	UpdatedAt      sql.NullTime
+	IsPrivate      bool
+	MediaURL       string
 }
 
 type pgPinStorage struct {
@@ -39,9 +40,19 @@ func (p *pgPinStorage) assembleMediaURL(fileName string) string {
 }
 
 func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
-	rows, err := p.db.Query(`SELECT id, title, description, author_id, is_private, media_url 
-	FROM flow
-	WHERE is_private = false
+	rows, err := p.db.Query(`
+	SELECT 
+		f.id, 
+		f.title, 
+		f.description, 
+		f.author_id, 
+		f.is_private, 
+		f.media_url,
+		fu.username
+	FROM flow f
+	JOIN flow_user fu ON f.author_id = fu.id
+	WHERE f.is_private = false
+	ORDER BY f.created_at DESC
 	LIMIT $1
 	OFFSET $2
 	`, pageSize, (page-1)*pageSize)
@@ -55,17 +66,17 @@ func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
 
 	for rows.Next() {
 		var flowDBRow flowDBSchema
-		err := rows.Scan(&flowDBRow.Id, &flowDBRow.Title, &flowDBRow.Description, &flowDBRow.AuthorId, &flowDBRow.IsPrivate, &flowDBRow.MediaURL)
+		err := rows.Scan(&flowDBRow.Id, &flowDBRow.Title, &flowDBRow.Description, &flowDBRow.AuthorId, &flowDBRow.IsPrivate, &flowDBRow.MediaURL, &flowDBRow.AuthorUsername)
 		if err != nil {
 			return []pin.PinData{}, err
 		}
 
 		pin := pin.PinData{
-			FlowID:      flowDBRow.Id,
-			Description: flowDBRow.Description.String,
-			Header:      flowDBRow.Title.String,
-			MediaURL:    p.assembleMediaURL(flowDBRow.MediaURL),
-			AuthorID:    flowDBRow.AuthorId,
+			FlowID:         flowDBRow.Id,
+			Description:    flowDBRow.Description.String,
+			Header:         flowDBRow.Title.String,
+			MediaURL:       p.assembleMediaURL(flowDBRow.MediaURL),
+			AuthorUsername: flowDBRow.AuthorUsername,
 		}
 		pins = append(pins, pin)
 	}

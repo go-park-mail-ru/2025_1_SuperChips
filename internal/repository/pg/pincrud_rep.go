@@ -12,13 +12,21 @@ import (
 
 func (p *pgPinStorage) GetPin(pinID uint64) (domain.PinData, error) {
 	row := p.db.QueryRow(`
-		SELECT id, title, description, author_id, is_private, media_url 
-		FROM flow
-		WHERE id=$1
+	SELECT 
+		f.id, 
+		f.title, 
+		f.description, 
+		f.author_id, 
+		f.is_private, 
+		f.media_url,
+		fu.username
+	FROM flow f
+	JOIN flow_user fu ON f.author_id = fu.id
+	WHERE f.id = $1;
 	`, pinID)
 
 	var flowDBRow flowDBSchema
-	err := row.Scan(&flowDBRow.Id, &flowDBRow.Title, &flowDBRow.Description, &flowDBRow.AuthorId, &flowDBRow.IsPrivate, &flowDBRow.MediaURL)
+	err := row.Scan(&flowDBRow.Id, &flowDBRow.Title, &flowDBRow.Description, &flowDBRow.AuthorId, &flowDBRow.IsPrivate, &flowDBRow.MediaURL, &flowDBRow.AuthorUsername)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.PinData{}, pincrudService.ErrPinNotFound
 	}
@@ -27,12 +35,12 @@ func (p *pgPinStorage) GetPin(pinID uint64) (domain.PinData, error) {
 	}
 
 	pin := domain.PinData{
-		FlowID:      flowDBRow.Id,
-		Header:      flowDBRow.Title.String,
-		AuthorID:    flowDBRow.AuthorId,
-		Description: flowDBRow.Description.String,
-		MediaURL:    p.assembleMediaURL(flowDBRow.MediaURL),
-		IsPrivate:   flowDBRow.IsPrivate,
+		FlowID:         flowDBRow.Id,
+		Header:         flowDBRow.Title.String,
+		AuthorUsername: flowDBRow.AuthorUsername,
+		Description:    flowDBRow.Description.String,
+		MediaURL:       p.assembleMediaURL(flowDBRow.MediaURL),
+		IsPrivate:      flowDBRow.IsPrivate,
 	}
 
 	return pin, nil
