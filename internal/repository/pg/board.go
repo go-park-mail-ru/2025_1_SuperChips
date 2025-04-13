@@ -194,16 +194,29 @@ func (p *pgBoardStorage) UpdateBoard(ctx context.Context, boardID, userID int, n
 func (p *pgBoardStorage) GetBoard(ctx context.Context, boardID int) (domain.Board, error) {
 	var board domain.Board
 	err := p.db.QueryRowContext(ctx, `
-        SELECT id, author_id, board_name, created_at, is_private, flow_count 
-        FROM board 
-        WHERE id = $1
-    `, boardID).Scan(
+	SELECT 
+		board.id, 
+		board.author_id, 
+		board.board_name, 
+		board.created_at, 
+		board.is_private, 
+		board.flow_count,
+		flow_user.username
+	FROM
+		board
+	INNER JOIN 
+		flow_user
+	ON 
+		board.author_id = flow_user.id
+	WHERE 
+    board.id = $1`, boardID).Scan(
 		&board.ID,
 		&board.AuthorID,
 		&board.Name,
 		&board.CreatedAt,
 		&board.IsPrivate,
 		&board.FlowCount,
+		&board.AuthorUsername,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Board{}, ErrNotFound
