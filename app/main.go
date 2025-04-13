@@ -16,6 +16,7 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/middleware"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/like"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/pin"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/profile"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/user"
@@ -86,11 +87,14 @@ func main() {
 		log.Fatalf("Cannot launch due to profile storage db error: %s", err)
 	}
 
+	likeStorage := pgStorage.NewPgLikeStorage(db)
+
 	jwtManager := auth.NewJWTManager(config)
 
 	userService := user.NewUserService(userStorage)
 	pinService := pin.NewPinService(pinStorage)
 	profileService := profile.NewProfileService(profileStorage)
+	likeService := like.NewLikeService(likeStorage)
 
 	authHandler := rest.AuthHandler{
 		Config:      config,
@@ -111,6 +115,11 @@ func main() {
 		BaseUrl:        config.BaseUrl,
 		ExpirationTime: config.ExpirationTime,
 		CookieSecure:   config.CookieSecure,
+	}
+
+	likeHandler := rest.LikeHandler{
+		LikeService: likeService,
+		ContextTimeout: time.Second * 3,
 	}
 
 	allowedGetOptions := []string{http.MethodGet, http.MethodOptions}
@@ -155,6 +164,16 @@ func main() {
 		middleware.ChainMiddleware(profileHandler.ChangeUserPasswordHandler,
 			middleware.AuthMiddleware(jwtManager),
 			middleware.CorsMiddleware(config, allowedPostOptions)))
+
+	mux.HandleFunc("POST /api/v1/like",
+		middleware.ChainMiddleware(likeHandler.LikeFlow, 
+			middleware.AuthMiddleware(jwtManager),
+			middleware.CorsMiddleware(config, allowedGetOptions)))
+
+	mux.HandleFunc("OPTIONS /api/v1/like", middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}, 
+		middleware.CorsMiddleware(config, allowedGetOptions)))
 
 	server := http.Server{
 		Addr:    config.Port,
