@@ -8,7 +8,8 @@ type PinData struct {
 	Description    string `json:"description,omitempty"`
 	MediaURL       string `json:"media_url,omitempty"`
 	IsPrivate      bool   `json:"is_private"`
-	Created_at     string `json:"-"`
+	CreatedAt      string `json:"created_at"`
+	UpdatedAt      string `json:"updated_at"`
 	IsLiked        bool   `json:"is_liked"`
 	LikeCount      int    `json:"like_count"`
 }
