@@ -25,7 +25,7 @@ func TestGetUserPublicInfoByEmail(t *testing.T) {
 		WithArgs(email).
 		WillReturnRows(rows)
 
-	repo, err := pg.NewPGProfileStorage(db)
+	repo, err := pg.NewPGProfileStorage(db, "", "", "")
 	if err != nil {
 		t.Fatalf("failed to create repository: %v", err)
 	}
@@ -61,7 +61,7 @@ func TestGetUserPublicInfoByUsername(t *testing.T) {
 		WithArgs(username).
 		WillReturnRows(rows)
 
-	repo, err := pg.NewPGProfileStorage(db)
+	repo, err := pg.NewPGProfileStorage(db, "", "", "")
 	if err != nil {
 		t.Fatalf("failed to create repository: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestSaveUserAvatar(t *testing.T) {
 		WithArgs(avatarURL, email).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	repo, err := pg.NewPGProfileStorage(db)
+	repo, err := pg.NewPGProfileStorage(db, "", "", "")
 	if err != nil {
 		t.Fatalf("failed to create repository: %v", err)
 	}
@@ -138,7 +138,7 @@ func TestUpdateUserData(t *testing.T) {
 		WithArgs(user.Username, user.Birthday, user.About, user.PublicName, user.Email, oldEmail).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	repo, err := pg.NewPGProfileStorage(db)
+	repo, err := pg.NewPGProfileStorage(db, "", "", "")
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -168,7 +168,7 @@ func TestGetHashedPassword(t *testing.T) {
 		WithArgs(email).
 		WillReturnRows(mock.NewRows([]string{"password"}).AddRow("verymegahash"))
 
-	repo, err := pg.NewPGProfileStorage(db)
+	repo, err := pg.NewPGProfileStorage(db, "", "", "")
 	if err != nil {
 		t.Fatalf("failed to create repository: %v", err)
 	}
@@ -205,7 +205,7 @@ func TestSetNewPassword(t *testing.T) {
 	WithArgs(password, email).
 	WillReturnRows(mock.NewRows([]string{"id"}).AddRow(1))
 
-	repo, err := pg.NewPGProfileStorage(db)
+	repo, err := pg.NewPGProfileStorage(db, "", "", "")
 	if err != nil {
 		t.Fatalf("failed to create repository: %v", err)
 	}

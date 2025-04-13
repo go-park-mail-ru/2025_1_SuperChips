@@ -123,13 +123,13 @@ func (h *ProfileHandler) UserAvatarHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	url, err := image.UploadImage(handler.Filename, h.StaticFolder, h.AvatarFolder, h.BaseUrl, file)
+	filename, url, err := image.UploadImage(handler.Filename, h.StaticFolder, h.AvatarFolder, h.BaseUrl, file)
 	if err != nil {
 		HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	err = h.ProfileService.SaveUserAvatar(claims.Email, url)
+	err = h.ProfileService.SaveUserAvatar(claims.Email, filename)
 	if err != nil {
 		handleProfileError(w, err)
 		return
