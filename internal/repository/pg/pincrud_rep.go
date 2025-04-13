@@ -41,6 +41,7 @@ func (p *pgPinStorage) GetPin(pinID uint64) (domain.PinData, error) {
 		Description:    flowDBRow.Description.String,
 		MediaURL:       p.assembleMediaURL(flowDBRow.MediaURL),
 		IsPrivate:      flowDBRow.IsPrivate,
+		AuthorID:       flowDBRow.AuthorId,
 	}
 
 	return pin, nil
