@@ -94,18 +94,12 @@ func ValidateUsername(username string) error {
 }
 
 func (u User) ValidateUser() error {
-	v := validator.New()
-
 	if err := ValidateEmailAndPassword(u.Email, u.Password); err != nil {
 		return wrapper.WrapError(ErrValidation, err)
 	}
 
 	if err := ValidateUsername(u.Username); err != nil {
 		return wrapper.WrapError(ErrValidation, err)
-	}
-
-	if v.Check(u.Birthday.After(time.Now()) || time.Since(u.Birthday) > 150*365*24*time.Hour, "birthday", "cannot be too old") {
-		return wrapper.WrapError(ErrValidation, ErrInvalidBirthday)
 	}
 
 	return nil
