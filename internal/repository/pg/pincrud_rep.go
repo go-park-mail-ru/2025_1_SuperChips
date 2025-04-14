@@ -62,7 +62,7 @@ func (p *pgPinStorage) GetPinCleanMediaURL(pinID, userID uint64) (string, uint64
 	
 	err := p.db.QueryRow(`
         SELECT 
-            f.media_url
+            f.media_url,
 			f.author_id
         FROM flow f
         JOIN flow_user fu ON f.author_id = fu.id
