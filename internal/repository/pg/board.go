@@ -132,42 +132,54 @@ func (p *pgBoardStorage) AddToBoard(ctx context.Context, boardID, userID, flowID
 }
 
 func (p *pgBoardStorage) DeleteFromBoard(ctx context.Context, boardID, userID, flowID int) error {
-	tx, err := p.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
+    tx, err := p.db.Begin()
+    if err != nil {
+        return err
+    }
+    defer tx.Rollback()
 
-	result, err := tx.ExecContext(ctx, `
+    result, err := tx.ExecContext(ctx, `
         DELETE FROM board_post
-        USING board
-        WHERE board_post.board_id = $1
-        AND board_post.flow_id = $3
-        AND board.id = $1
-        AND board.author_id = $2
+        WHERE board_id = $1
+        AND flow_id = $3
+        AND EXISTS (
+            SELECT 1 FROM board
+            WHERE board.id = $1
+            AND board.author_id = $2
+			FOR UPDATE
+        )
     `, boardID, userID, flowID)
-	if err != nil {
-		return err
-	}
+    if err != nil {
+        return err
+    }
 
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rowsAffected == 0 {
-		return ErrNotFound
-	}
+    rowsAffected, err := result.RowsAffected()
+    if err != nil {
+        return err
+    }
+    if rowsAffected == 0 {
+        return ErrNotFound
+    }
 
-	_, err = tx.ExecContext(ctx, `
+    updateResult, err := tx.ExecContext(ctx, `
         UPDATE board
         SET flow_count = flow_count - 1
         WHERE id = $1
+        AND flow_count > 0
     `, boardID)
-	if err != nil {
-		return err
-	}
+    if err != nil {
+        return err
+    }
 
-	return tx.Commit()
+    updateRows, err := updateResult.RowsAffected()
+    if err != nil {
+        return err
+    }
+    if updateRows == 0 {
+        return errors.New("failed to update flow_count: possible inconsistency")
+    }
+
+    return tx.Commit()
 }
 
 func (p *pgBoardStorage) UpdateBoard(ctx context.Context, boardID, userID int, newName string, isPrivate bool) error {
