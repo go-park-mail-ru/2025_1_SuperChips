@@ -39,7 +39,7 @@ func (s *PinCRUDService) GetAnyPin(pinID uint64, userID uint64) (domain.PinData,
 }
 
 func (s *PinCRUDService) DeletePin(pinID uint64, userID uint64) error {
-	data, authorID, err := s.rep.GetPin(pinID, userID)
+	mediaURL, authorID, err := s.rep.GetPinCleanMediaURL(pinID, userID)
 	if err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func (s *PinCRUDService) DeletePin(pinID uint64, userID uint64) error {
 	if err != nil {
 		return err
 	}
-	err = s.imgStrg.Delete(data.MediaURL)
+	err = s.imgStrg.Delete(mediaURL)
 	if err != nil {
 		return err
 	}

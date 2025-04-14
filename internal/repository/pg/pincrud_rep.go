@@ -56,6 +56,28 @@ func (p *pgPinStorage) GetPin(pinID, userID uint64) (domain.PinData, uint64, err
 	return pin, flowDBRow.AuthorId, nil
 }
 
+func (p *pgPinStorage) GetPinCleanMediaURL(pinID, userID uint64) (string, uint64, error) {
+	var mediaURL string
+	var authorID uint64
+	
+	err := p.db.QueryRow(`
+        SELECT 
+            f.media_url,
+			f.author_id
+        FROM flow f
+        JOIN flow_user fu ON f.author_id = fu.id
+        WHERE f.id = $1
+    `, pinID).Scan(&mediaURL, &authorID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", 0, domain.ErrConflict
+	}
+	if err != nil {
+		return "", 0, err
+	}
+
+	return mediaURL, authorID, nil
+}
+
 func (p *pgPinStorage) DeletePin(pinID uint64, userID uint64) error {
 	res, err := p.db.Exec(`
 		DELETE 
