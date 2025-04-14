@@ -14,6 +14,8 @@ type PinCRUDRepository interface {
 	UpdatePin(patch domain.PinDataUpdate, userID uint64) error
 
 	CreatePin(data domain.PinDataCreate, imgName string, userID uint64) (uint64, error)
+
+	GetPinCleanMediaURL(pinID, userID uint64) (string, uint64, error)
 }
 
 type FileRepository interface {
