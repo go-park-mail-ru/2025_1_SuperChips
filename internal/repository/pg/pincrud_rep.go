@@ -67,7 +67,7 @@ func (p *pgPinStorage) GetPinCleanMediaURL(pinID, userID uint64) (string, uint64
         FROM flow f
         JOIN flow_user fu ON f.author_id = fu.id
         WHERE f.id = $1
-    `, pinID, userID).Scan(&mediaURL, &authorID)
+    `, pinID).Scan(&mediaURL, &authorID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", 0, domain.ErrConflict
 	}
