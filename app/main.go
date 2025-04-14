@@ -123,6 +123,7 @@ func main() {
 	}
 
 	mux.Handle("GET /static/", http.StripPrefix(config.StaticBaseDir, fs))
+	mux.Handle("HEAD /static/", http.StripPrefix(config.StaticBaseDir, fs))
 
 	mux.HandleFunc("/health",
 		middleware.ChainMiddleware(rest.HealthCheckHandler, middleware.CorsMiddleware(config, allowedGetOptions)))
