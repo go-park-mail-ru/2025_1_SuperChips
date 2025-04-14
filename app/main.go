@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/board"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
+	_ "github.com/go-park-mail-ru/2025_1_SuperChips/docs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/pg"
 	pgStorage "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
@@ -23,16 +24,16 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/swaggo/http-swagger"
-	_ "github.com/go-park-mail-ru/2025_1_SuperChips/docs"
 )
 
 var (
-	allowedGetOptions    = []string{http.MethodGet, http.MethodOptions}
-	allowedPostOptions   = []string{http.MethodPost, http.MethodOptions}
-	allowedPatchOptions  = []string{http.MethodPatch, http.MethodOptions}
-	allowedDeleteOptions = []string{http.MethodDelete, http.MethodOptions}
-	allowedPutOptions    = []string{http.MethodPut, http.MethodOptions}
-	allowedOptions       = []string{http.MethodOptions}
+	allowedGetOptions     = []string{http.MethodGet, http.MethodOptions}
+	allowedPostOptions    = []string{http.MethodPost, http.MethodOptions}
+	allowedPatchOptions   = []string{http.MethodPatch, http.MethodOptions}
+	allowedDeleteOptions  = []string{http.MethodDelete, http.MethodOptions}
+	allowedPutOptions     = []string{http.MethodPut, http.MethodOptions}
+	allowedOptions        = []string{http.MethodOptions}
+	allowedGetOptionsHead = []string{http.MethodGet, http.MethodOptions, http.MethodHead}
 )
 
 // @title flow API
@@ -115,6 +116,9 @@ func main() {
 	}
 
 	fs := http.FileServer(http.Dir("." + config.StaticBaseDir))
+	fsHandler := func(w http.ResponseWriter, r *http.Request) {
+        fs.ServeHTTP(w, r)
+    }
 
 	mux := http.NewServeMux()
 
@@ -122,9 +126,10 @@ func main() {
 		mux.HandleFunc("/swagger/", httpSwagger.WrapHandler)
 	}
 
-	mux.Handle("GET /static/", http.StripPrefix(config.StaticBaseDir, fs))
-	mux.Handle("HEAD /static/", http.StripPrefix(config.StaticBaseDir, fs))
-	mux.Handle("OPTIONS /static/", http.StripPrefix(config.StaticBaseDir, fs))
+	mux.Handle("/static/", http.StripPrefix(config.StaticBaseDir, middleware.ChainMiddleware(
+		fsHandler,
+		middleware.CorsMiddleware(config, allowedGetOptionsHead),
+	)))
 
 	mux.HandleFunc("/health",
 		middleware.ChainMiddleware(rest.HealthCheckHandler, middleware.CorsMiddleware(config, allowedGetOptions)))
