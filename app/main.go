@@ -111,7 +111,7 @@ func main() {
 
 	boardHandler := rest.BoardHandler{
 		BoardService:    boardService,
-		ContextDeadline: 3 * time.Second, // перенести в конфиг
+		ContextDeadline: config.ContextExpiration,
 	}
 
 	fs := http.FileServer(http.Dir("." + config.StaticBaseDir))
