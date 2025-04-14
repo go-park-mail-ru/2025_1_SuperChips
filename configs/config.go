@@ -11,18 +11,19 @@ import (
 )
 
 type Config struct {
-	Port           string
-	JWTSecret      []byte
-	ExpirationTime time.Duration
-	CookieSecure   bool
-	Environment    string
-	IpAddress      string
-	ImageBaseDir   string
-	StaticBaseDir  string
-	AvatarDir      string
-	BaseUrl		string
-	PageSize       int
-	AllowedOrigins []string
+	Port              string
+	JWTSecret         []byte
+	ExpirationTime    time.Duration
+	CookieSecure      bool
+	Environment       string
+	IpAddress         string
+	ImageBaseDir      string
+	StaticBaseDir     string
+	AvatarDir         string
+	BaseUrl           string
+	PageSize          int
+	AllowedOrigins    []string
+	ContextExpiration time.Duration
 }
 
 var (
@@ -112,6 +113,18 @@ func (config *Config) LoadConfigFromEnv() error {
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
+
+	contextDuration, err := getEnvHelper("CONTEXT_DURATION", "3s")
+	if err != nil {
+		log.Fatalf("Couldn't parse CONTEXT_DURATION: %s", err.Error())
+	}
+	
+	contextDurationTime, err := time.ParseDuration(contextDuration)
+	if err != nil {
+		log.Fatalf("Couldn't parse CONTEXT_DURATION: %s", err.Error())
+	}
+	
+	config.ContextExpiration = contextDurationTime
 
 	config.AllowedOrigins = strings.Split(allowedOrigins, ",")
 
