@@ -129,5 +129,9 @@ func (p *pgProfileStorage) SetNewPassword(email string, newPassword string) (int
 }
 
 func (p *pgProfileStorage) generateAvatarURL(filename string) string {
+	if filename == "" {
+		return ""
+	}
+
 	return p.baseURL + filepath.Join(p.staticDir, p.avatarDir, filename)
 }
