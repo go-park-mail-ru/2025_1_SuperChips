@@ -101,7 +101,7 @@ func main() {
 
 	likeHandler := rest.LikeHandler{
 		LikeService: likeService,
-		ContextTimeout: time.Second * 3,
+		ContextTimeout: config.ContextExpiration,
 	}
 
 	allowedGetOptions := []string{http.MethodGet, http.MethodOptions}
