@@ -19,8 +19,8 @@ func (p *pgPinStorage) GetPin(pinID, userID uint64) (domain.PinData, uint64, err
             f.author_id, 
             f.is_private, 
             f.media_url,
-            f.like_count,
             fu.username,
+            f.like_count,
             CASE 
                 WHEN fl.user_id IS NOT NULL THEN true
                 ELSE false
