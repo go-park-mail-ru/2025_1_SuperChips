@@ -5,6 +5,8 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
@@ -122,10 +124,37 @@ func (h *ProfileHandler) UserAvatarHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if !allowedTypes[handler.Header.Get("Content-Type")] {
-		HttpErrorToJson(w, "unsupported file format", http.StatusUnsupportedMediaType)
+	buffer := make([]byte, 512)
+	_, err = file.Read(buffer)
+	if err != nil {
+		HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+
+	detected := http.DetectContentType(buffer)
+	contentType := handler.Header.Get("Content-Type")
+
+	if !strings.HasPrefix(detected, strings.Split(contentType, ";")[0]) {
+		HttpErrorToJson(w, "image extension and type are mismatched", http.StatusBadRequest)
+		return
+	}
+
+	if _, ok := allowedTypes[detected]; !ok {
+		HttpErrorToJson(w, "this extension is not supported", http.StatusBadRequest)
+		return
+	}
+
+	if _, err := file.Seek(0, 0); err != nil {
+		HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	filename := filepath.Base(handler.Filename)
+    ext := filepath.Ext(filename)
+    if ext == "" {
+        HttpErrorToJson(w, "invalid file extension", http.StatusBadRequest)
+        return
+    }
 
 	filename, url, err := image.UploadImage(handler.Filename, h.StaticFolder, h.AvatarFolder, h.BaseUrl, file)
 	if err != nil {
