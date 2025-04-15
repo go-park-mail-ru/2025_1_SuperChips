@@ -1,6 +1,8 @@
 package profile
 
 import (
+	"path/filepath"
+
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/security"
 )
@@ -15,12 +17,18 @@ type ProfileRepository interface {
 }
 
 type ProfileService struct {
-	repo ProfileRepository
+	repo      ProfileRepository
+	baseURL   string
+	staticDir string
+	avatarDir string
 }
 
-func NewProfileService(repo ProfileRepository) *ProfileService {
+func NewProfileService(repo ProfileRepository, baseURL, staticDir, avatarDir string) *ProfileService {
 	return &ProfileService{
 		repo: repo,
+		baseURL: baseURL,
+		staticDir: staticDir,
+		avatarDir: avatarDir,
 	}
 }
 
@@ -34,6 +42,8 @@ func (p *ProfileService) GetUserPublicInfoByEmail(email string) (domain.User, er
 		return domain.User{}, err
 	}
 
+	user.Avatar = p.generateAvatarURL(user.Avatar)
+
 	return user, nil
 }
 
@@ -46,6 +56,8 @@ func (p *ProfileService) GetUserPublicInfoByUsername(username string) (domain.Us
 	if err != nil {
 		return domain.User{}, err
 	}
+
+	user.Avatar = p.generateAvatarURL(user.Avatar)
 
 	return user, nil
 }
@@ -103,3 +115,10 @@ func (p *ProfileService) ChangeUserPassword(email, oldPassword, newPassword stri
 	return id, nil
 }
 
+func (p *ProfileService) generateAvatarURL(filename string) string {
+	if filename == "" {
+		return ""
+	}
+
+	return p.baseURL + filepath.Join(p.staticDir, p.avatarDir, filename)
+}

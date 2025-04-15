@@ -11,6 +11,7 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	repository "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/validator"
 )
 
 type BoardService interface {
@@ -69,6 +70,19 @@ func (b *BoardHandler) CreateBoard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	v := validator.New()
+
+	if !v.Check(board.Name != "", "name", "cannot be empty") {
+		HttpErrorToJson(w, v.GetError("name").Error(), http.StatusBadRequest)
+		return
+	}
+
+	if !v.Check(len(board.Name) < 64, "name", "cannot be longer 64") {
+		HttpErrorToJson(w, v.GetError("name").Error(), http.StatusBadRequest)
+		return
+	}
+
+
 	id, err := b.BoardService.CreateBoard(ctx, board, username, claims.UserID)
 	if err != nil {
 		handleBoardError(w, err)
@@ -117,6 +131,13 @@ func (b *BoardHandler) DeleteBoard(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(ctx, b.ContextDeadline)
 	defer cancel()
 
+	v := validator.New()
+
+	if !v.Check(claims.UserID > 0 && boardID > 0, "id", "cannot be less or equal to zero") {
+		HttpErrorToJson(w, v.GetError("id").Error(), http.StatusBadRequest)
+		return
+	}
+
 	err = b.BoardService.DeleteBoard(ctx, boardID, claims.UserID)
 	if err != nil {
 		handleBoardError(w, err)
@@ -162,6 +183,13 @@ func (b *BoardHandler) AddToBoard(w http.ResponseWriter, r *http.Request) {
 
 	var request BoardRequest
 	if err := DecodeData(w, r.Body, &request); err != nil {
+		return
+	}
+
+	v := validator.New()
+
+	if !v.Check(request.FlowID > 0 && boardID > 0 && claims.UserID > 0, "id", "cannot be less or equal to zero") {
+		HttpErrorToJson(w, v.GetError("id").Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -214,6 +242,13 @@ func (b *BoardHandler) DeleteFromBoard(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(ctx, b.ContextDeadline)
 	defer cancel()
 
+	v := validator.New()
+
+	if !v.Check(flowID > 0 && boardID > 0 && claims.UserID > 0, "id", "cannot be less or equal to zero") {
+		HttpErrorToJson(w, v.GetError("id").Error(), http.StatusBadRequest)
+		return
+	}
+
 	if err = b.BoardService.DeleteFromBoard(ctx, boardID, claims.UserID, flowID); err != nil {
 		handleBoardError(w, err)
 		return
@@ -262,6 +297,18 @@ func (b *BoardHandler) UpdateBoard(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	if err := DecodeData(w, r.Body, &updateData); err != nil {
+		return
+	}
+
+	v := validator.New()
+
+	if !v.Check(boardID > 0 && claims.UserID > 0, "id", "cannot be less or equal to zero") {
+		HttpErrorToJson(w, v.GetError("id").Error(), http.StatusBadRequest)
+		return
+	}
+
+	if !v.Check(updateData.Name != "", "name", "cannot be empty") {
+		HttpErrorToJson(w, v.GetError("name").Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -319,6 +366,13 @@ func (b *BoardHandler) GetBoard(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, b.ContextDeadline)
 	defer cancel()
+
+	v := validator.New()
+
+	if !v.Check(boardID > 0 && userID >= 0, "id", "board id cannot be less or equal to zero or user id cannot be less than zero") {
+		HttpErrorToJson(w, v.GetError("id").Error(), http.StatusBadRequest)
+		return
+	}
 
 	board, err := b.BoardService.GetBoard(ctx, boardID, userID, authorized)
 	if err != nil {
@@ -455,6 +509,18 @@ func (b *BoardHandler) GetBoardFlows(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, b.ContextDeadline)
 	defer cancel()
+
+	v := validator.New()
+
+	if !v.Check(boardID > 0 && userID >= 0 || page > 0, "id and page", "cannot be less than zero") {
+		HttpErrorToJson(w, v.GetError("id and page").Error(), http.StatusBadRequest)
+		return
+	}
+
+	if !v.Check(pageSize >= 1 && pageSize <= 30, "page size", "cannot be less than one and more than 30") {
+		HttpErrorToJson(w, v.GetError("page size").Error(), http.StatusBadRequest)
+		return
+	}
 
 	flows, err := b.BoardService.GetBoardFlow(ctx, boardID, userID, page, pageSize, authorized)
 	if err != nil {

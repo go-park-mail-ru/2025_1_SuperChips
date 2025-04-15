@@ -43,8 +43,8 @@ var (
 func ValidateEmail(email string) error {
 	v := validator.New()
 
-	if v.Check(len(email) > 64 || len(email) < 3, "email", "cannot be shorter than 3 symbols or longer than 64 symbols") {
-		return wrapper.WrapError(ErrValidation, ErrInvalidEmail)
+	if !v.Check(len(email) <= 64 && len(email) > 3, "email", "cannot be shorter than 3 symbols or longer than 64 symbols") {
+		return wrapper.WrapError(ErrValidation, v.GetError("email"))
 	}
 
 	if !isValidEmail(email) {
@@ -56,12 +56,12 @@ func ValidateEmail(email string) error {
 
 func ValidatePassword(password string) error {
 	v := validator.New()
-	if v.Check(password == "", "password", "cannot be empty") {
-		return wrapper.WrapError(ErrValidation, ErrNoPassword)
+	if !v.Check(password != "", "password", "cannot be empty") {
+		return wrapper.WrapError(ErrValidation, v.GetError("password"))
 	}
 
-	if v.Check(len(password) > 96, "password", "cannot be longer than 96 symbols") {
-		return wrapper.WrapError(ErrValidation, ErrPasswordTooLong)
+	if !v.Check(len(password) <= 96, "password", "cannot be longer than 96 symbols") {
+		return wrapper.WrapError(ErrValidation, v.GetError("password"))
 	}
 
 	return nil
@@ -82,12 +82,12 @@ func ValidateEmailAndPassword(email, password string) error {
 func ValidateUsername(username string) error {
 	v := validator.New()
 
-	if v.Check(len(username) > 32 || len(username) < 2, "username", "username cannot be shorter than 2 symbols or longer than 32 symbols") {
-		return ErrInvalidUsername
+	if !v.Check(len(username) <= 32 && len(username) > 2, "username", "username cannot be shorter than 2 symbols or longer than 32 symbols") {
+		return wrapper.WrapError(ErrValidation, v.GetError("username"))
 	}
 
 	if !validator.Matches(username, validator.UsernameRX) {
-		return ErrInvalidUsername
+		return ErrInvalidUsername 
 	}
 
 	return nil
@@ -117,7 +117,7 @@ func (u User) ValidateUserNoPassword() error {
 	}
 
 	if v.Check(u.Birthday.After(time.Now()) || time.Since(u.Birthday) > 150*365*24*time.Hour, "birthday", "cannot be too old") {
-		return wrapper.WrapError(ErrValidation, ErrInvalidBirthday)
+		return wrapper.WrapError(ErrValidation, v.GetError("birthday"))
 	}
 
 	return nil

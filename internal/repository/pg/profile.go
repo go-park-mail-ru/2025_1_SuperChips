@@ -3,24 +3,17 @@ package repository
 import (
 	"database/sql"
 	"errors"
-	"path/filepath"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
 
 type pgProfileStorage struct {
 	db        *sql.DB
-	baseURL   string
-	avatarDir string
-	staticDir string
 }
 
-func NewPGProfileStorage(db *sql.DB, staticDir, avatarDir, baseURL string) (*pgProfileStorage, error) {
+func NewPGProfileStorage(db *sql.DB) (*pgProfileStorage, error) {
 	storage := &pgProfileStorage{
 		db:        db,
-		staticDir: staticDir,
-		avatarDir: avatarDir,
-		baseURL:   baseURL,
 	}
 
 	return storage, nil
@@ -43,7 +36,7 @@ func (p *pgProfileStorage) GetUserPublicInfoByEmail(email string) (domain.User, 
 		Id:         userDB.Id,
 		Username:   userDB.Username,
 		Email:      userDB.Email,
-		Avatar:     p.generateAvatarURL(userDB.Avatar.String),
+		Avatar:     userDB.Avatar.String,
 		Birthday:   userDB.Birthday.Time,
 		PublicName: userDB.PublicName,
 		About:      userDB.About.String,
@@ -69,7 +62,7 @@ func (p *pgProfileStorage) GetUserPublicInfoByUsername(username string) (domain.
 		Id:         userDB.Id,
 		Username:   userDB.Username,
 		Email:      userDB.Email,
-		Avatar:     p.generateAvatarURL(userDB.Avatar.String),
+		Avatar:     userDB.Avatar.String,
 		Birthday:   userDB.Birthday.Time,
 		PublicName: userDB.PublicName,
 		About:      userDB.About.String,
@@ -128,10 +121,3 @@ func (p *pgProfileStorage) SetNewPassword(email string, newPassword string) (int
 	return id, nil
 }
 
-func (p *pgProfileStorage) generateAvatarURL(filename string) string {
-	if filename == "" {
-		return ""
-	}
-
-	return p.baseURL + filepath.Join(p.staticDir, p.avatarDir, filename)
-}

@@ -42,8 +42,8 @@ func AuthSoftMiddleware(jwtManager *auth.JWTManager) func(http.HandlerFunc) http
             token := cookie.Value
             claims, err := jwtManager.ParseJWTToken(token)
             if err != nil {
-                claims = nil
-            }
+                return
+            }   
 
             ctx := context.WithValue(r.Context(), auth.ClaimsContextKey, claims)
             next.ServeHTTP(w, r.WithContext(ctx))

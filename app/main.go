@@ -70,24 +70,24 @@ func main() {
 		log.Fatalf("Cannot launch due to user storage db error: %s", err)
 	}
 
-	pinStorage, err := pgStorage.NewPGPinStorage(db, config.ImageBaseDir, config.BaseUrl)
+	pinStorage, err := pgStorage.NewPGPinStorage(db)
 	if err != nil {
 		log.Fatalf("Cannot launch due to pin storage db error: %s", err)
 	}
 
-	profileStorage, err := pgStorage.NewPGProfileStorage(db, config.StaticBaseDir, config.AvatarDir, config.BaseUrl)
+	profileStorage, err := pgStorage.NewPGProfileStorage(db)
 	if err != nil {
 		log.Fatalf("Cannot launch due to profile storage db error: %s", err)
 	}
 
-	boardStorage := pgStorage.NewBoardStorage(db, config.ImageBaseDir, config.BaseUrl)
+	boardStorage := pgStorage.NewBoardStorage(db)
 
 	jwtManager := auth.NewJWTManager(config)
 
 	userService := user.NewUserService(userStorage)
-	pinService := pin.NewPinService(pinStorage)
-	profileService := profile.NewProfileService(profileStorage)
-	boardService := board.NewBoardService(boardStorage)
+	pinService := pin.NewPinService(pinStorage, config.BaseUrl, config.ImageBaseDir)
+	profileService := profile.NewProfileService(profileStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
+	boardService := board.NewBoardService(boardStorage, config.BaseUrl, config.ImageBaseDir)
 
 	authHandler := rest.AuthHandler{
 		Config:      config,

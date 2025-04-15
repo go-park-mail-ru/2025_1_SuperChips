@@ -5,9 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"path/filepath"
-	"strings"
-
 	boardService "github.com/go-park-mail-ru/2025_1_SuperChips/board"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
@@ -17,22 +14,15 @@ var (
 	ErrForbidden = errors.New("forbidden")
 )
 
-const (
-	previewNum   = 3 // количество изображений для превью
-	previewStart = 0 // смещение от начала доски для превью
-)
-
 type pgBoardStorage struct {
 	db       *sql.DB
-	baseURL  string
-	imageDir string
 }
 
-func NewBoardStorage(db *sql.DB, imageDir string, baseURL string) *pgBoardStorage {
-	return &pgBoardStorage{db: db, baseURL: baseURL, imageDir: imageDir}
+func NewBoardStorage(db *sql.DB) *pgBoardStorage {
+	return &pgBoardStorage{db: db}
 }
 
-func (p *pgBoardStorage) CreateBoard(ctx context.Context, board *domain.Board, username string, userID int) error {
+func (p *pgBoardStorage) GetUsernameID(ctx context.Context, username string, userID int) (int, error) {
 	var userCheckID int
 	err := p.db.QueryRowContext(ctx, `
         SELECT id 
@@ -40,18 +30,18 @@ func (p *pgBoardStorage) CreateBoard(ctx context.Context, board *domain.Board, u
         WHERE username = $1
     `, username).Scan(&userCheckID)
 	if errors.Is(err, sql.ErrNoRows) {
-		return ErrNotFound
+		return 0, ErrNotFound
 	}
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	if userCheckID != userID {
-		return boardService.ErrForbidden
-	}
+	return userCheckID, nil
+}
 
+func (p *pgBoardStorage) CreateBoard(ctx context.Context, board *domain.Board, username string, userID int) error {
 	var id int
-	err = p.db.QueryRowContext(ctx, `
+	err := p.db.QueryRowContext(ctx, `
         INSERT INTO board (author_id, board_name, is_private)
         VALUES ($1, $2, $3)
         ON CONFLICT (author_id, board_name) DO NOTHING
@@ -203,7 +193,7 @@ func (p *pgBoardStorage) UpdateBoard(ctx context.Context, boardID, userID int, n
 	return nil
 }
 
-func (p *pgBoardStorage) GetBoard(ctx context.Context, boardID, userID int) (domain.Board, error) {
+func (p *pgBoardStorage) GetBoard(ctx context.Context, boardID, userID, previewNum, previewStart int) (domain.Board, error) {
 	var board domain.Board
 	err := p.db.QueryRowContext(ctx, `
 	SELECT 
@@ -246,7 +236,7 @@ func (p *pgBoardStorage) GetBoard(ctx context.Context, boardID, userID int) (dom
 	return board, nil
 }
 
-func (p *pgBoardStorage) GetUserPublicBoards(ctx context.Context, username string) ([]domain.Board, error) {
+func (p *pgBoardStorage) GetUserPublicBoards(ctx context.Context, username string, previewNum, previewStart int) ([]domain.Board, error) {
 	var userID int
 	rows, err := p.db.QueryContext(ctx, `
     SELECT b.id, b.author_id, b.board_name, b.created_at, b.is_private, b.flow_count
@@ -286,7 +276,7 @@ func (p *pgBoardStorage) GetUserPublicBoards(ctx context.Context, username strin
 	return boards, nil
 }
 
-func (p *pgBoardStorage) GetUserAllBoards(ctx context.Context, userID int) ([]domain.Board, error) {
+func (p *pgBoardStorage) GetUserAllBoards(ctx context.Context, userID, previewNum, previewStart int) ([]domain.Board, error) {
 	rows, err := p.db.QueryContext(ctx, `
         SELECT id, author_id, board_name, created_at, is_private, flow_count 
         FROM board 
@@ -388,7 +378,6 @@ func (p *pgBoardStorage) fetchFirstNFlowsForBoard(ctx context.Context, boardID, 
 			return nil, fmt.Errorf("failed to scan flow: %w", err)
 		}
 
-		flow.MediaURL = p.generateImageURL(flow.MediaURL)
 		flow.Header = middlePin.Header.String
 		flow.Description = middlePin.Description.String
 
@@ -402,7 +391,4 @@ func (p *pgBoardStorage) fetchFirstNFlowsForBoard(ctx context.Context, boardID, 
 	return flows, nil
 }
 
-func (p *pgBoardStorage) generateImageURL(filename string) string {
-	return p.baseURL + filepath.Join(strings.ReplaceAll(p.imageDir, ".", ""), filename)
-}
 
