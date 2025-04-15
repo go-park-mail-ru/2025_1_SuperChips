@@ -21,23 +21,25 @@ type flowDBSchema struct {
 }
 
 type pgPinStorage struct {
-	db      *sql.DB
-	imgDir  string
-	baseURL string
+	db         *sql.DB
+	imgDir     string
+	baseURL    string
+	imgStrgURL string
 }
 
 func NewPGPinStorage(db *sql.DB, imgDir, baseURL string) (*pgPinStorage, error) {
 	storage := &pgPinStorage{
-		db:      db,
-		imgDir:  imgDir,
-		baseURL: baseURL,
+		db:         db,
+		imgDir:     imgDir,
+		baseURL:    baseURL,
+		imgStrgURL: baseURL + strings.ReplaceAll(imgDir, ".", ""),
 	}
 
 	return storage, nil
 }
 
 func (p *pgPinStorage) assembleMediaURL(fileName string) string {
-	return p.baseURL + strings.ReplaceAll(p.imgDir, ".", "") + "/" + fileName
+	return p.imgStrgURL + "/" + fileName
 }
 
 func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
