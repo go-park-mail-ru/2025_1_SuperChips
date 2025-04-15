@@ -4,3 +4,4 @@ variables.env
 static/img/*
 *.out
 auto_restart.sh
+static/

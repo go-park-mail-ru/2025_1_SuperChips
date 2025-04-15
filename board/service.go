@@ -122,9 +122,9 @@ func (b *BoardService) GetUserPublicBoards(ctx context.Context, username string)
 		return []domain.Board{}, err
 	}
 
-	for _, board := range boards {
-		for _, flow := range board.Preview {
-			flow.MediaURL = b.generateImageURL(flow.MediaURL)
+	for i := range boards {
+		for j := range boards[i].Preview {
+			boards[i].Preview[j].MediaURL = b.generateImageURL(boards[i].Preview[j].MediaURL)
 		}
 	}
 
@@ -138,9 +138,9 @@ func (b *BoardService) GetUserAllBoards(ctx context.Context, userID int) ([]doma
 		return []domain.Board{}, err
 	}
 
-	for _, board := range boards {
-		for _, flow := range board.Preview {
-			flow.MediaURL = b.generateImageURL(flow.MediaURL)
+	for i := range boards {
+		for j := range boards[i].Preview {
+			boards[i].Preview[j].MediaURL = b.generateImageURL(boards[i].Preview[j].MediaURL)
 		}
 	}
 
@@ -153,8 +153,8 @@ func (b *BoardService) GetBoardFlow(ctx context.Context, boardID, userID, page, 
 		return nil, err
 	}
 
-	for _, v := range flows {
-		v.MediaURL = b.generateImageURL(v.MediaURL)
+	for i := range flows {
+		flows[i].MediaURL = b.generateImageURL(flows[i].MediaURL)
 	}
 
 	return flows, nil
