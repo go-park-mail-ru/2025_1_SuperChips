@@ -2,8 +2,9 @@ package domain
 
 import (
 	"errors"
-	"html"
 	"time"
+
+	"github.com/microcosm-cc/bluemonday"
 )
 
 type Board struct {
@@ -18,7 +19,9 @@ type Board struct {
 }
 
 func (b *Board) Sanitize() {
-	b.Name = html.EscapeString(b.Name)
+	p := bluemonday.UGCPolicy()
+
+	b.Name = p.Sanitize(b.Name)
 }
 
 type BoardPost struct {
