@@ -15,7 +15,7 @@ type PinCRUDRepository interface {
 
 	CreatePin(data domain.PinDataCreate, imgName string, userID uint64) (uint64, error)
 
-	GetPinCleanMediaURL(pinID, userID uint64) (string, uint64, error)
+	GetPinCleanMediaURL(pinID uint64) (string, uint64, error)
 }
 
 type FileRepository interface {

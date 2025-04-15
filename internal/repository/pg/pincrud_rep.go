@@ -56,10 +56,10 @@ func (p *pgPinStorage) GetPin(pinID, userID uint64) (domain.PinData, uint64, err
 	return pin, flowDBRow.AuthorId, nil
 }
 
-func (p *pgPinStorage) GetPinCleanMediaURL(pinID, userID uint64) (string, uint64, error) {
+func (p *pgPinStorage) GetPinCleanMediaURL(pinID uint64) (string, uint64, error) {
 	var mediaURL string
 	var authorID uint64
-	
+
 	err := p.db.QueryRow(`
         SELECT 
             f.media_url,
