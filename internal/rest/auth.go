@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/csrf"
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
 )
 
@@ -19,6 +20,10 @@ type AuthHandler struct {
 	Config      configs.Config
 	UserService UserUsecaseInterface
 	JWTManager  auth.JWTManager
+}
+
+type CSRFResponse struct {
+	CSRFToken string `json:"csrf_token"`
 }
 
 // LoginHandler godoc
@@ -52,7 +57,20 @@ func (app AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	token, err := csrf.GenerateCSRF()
+	if err != nil {
+		handleAuthError(w, err)
+		return
+	}
+
+	app.setCookieCSRF(w, app.Config, token)
+
+	csrfData := CSRFResponse{
+		CSRFToken: token,
+	}
+
 	response.Description = "OK"
+	response.Data = csrfData
 	ServerGenerateJSONResponse(w, response, http.StatusOK)
 }
 
@@ -130,6 +148,20 @@ func (app AuthHandler) RegistrationHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	token, err := csrf.GenerateCSRF()
+	if err != nil {
+		handleAuthError(w, err)
+		return
+	}
+
+	app.setCookieCSRF(w, app.Config, token)
+
+	data := CSRFResponse{
+		CSRFToken: token,
+	}
+
+	response.Data = data
+
 	ServerGenerateJSONResponse(w, response, statusCode)
 }
 
@@ -144,6 +176,7 @@ func (app AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	changedConfig.ExpirationTime = -time.Hour * 24 * 365
 
 	setCookie(w, changedConfig, auth.AuthToken, "", true)
+	setCookie(w, changedConfig, csrf.CSRFToken, "", true)
 
 	response := ServerResponse{
 		Description: "logged out",
@@ -175,6 +208,10 @@ func (app AuthHandler) setCookieJWT(w http.ResponseWriter, config configs.Config
 	setCookie(w, config, auth.AuthToken, tokenString, true)
 
 	return nil
+}
+
+func (app AuthHandler) setCookieCSRF(w http.ResponseWriter, config configs.Config, token string) {
+	setCookie(w, config, csrf.CSRFToken, token, true)
 }
 
 func CheckAuth(r *http.Request, manager auth.JWTManager) (*auth.Claims, error) {
