@@ -112,6 +112,10 @@ func (b *BoardService) GetBoard(ctx context.Context, boardID, userID int, author
 		}
 	}
 
+	for i := range board.Preview {
+		board.Preview[i].MediaURL = b.generateImageURL(board.Preview[i].MediaURL)
+	}
+
 	return board, nil
 }
 
