@@ -2,6 +2,7 @@ package domain
 
 import (
 	"errors"
+	"html"
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/validator"
@@ -9,22 +10,24 @@ import (
 )
 
 type User struct {
-	Id         uint64    `json:"user_id,omitempty"`
-	Username   string    `json:"username"`
-	Password   string    `json:"password,omitempty"`
-	Email      string    `json:"email"`
-	Avatar     string    `json:"avatar,omitempty"`
+	Id         uint64     `json:"user_id,omitempty"`
+	Username   string     `json:"username"`
+	Password   string     `json:"password,omitempty"`
+	Email      string     `json:"email"`
+	Avatar     string     `json:"avatar,omitempty"`
 	Birthday   time.Time `json:"birthday,omitempty"`
-	About      string    `json:"about,omitempty"`
-	PublicName string    `json:"public_name,omitempty"`
-	JWTVersion uint64    `json:"-"`
+	About      string     `json:"about,omitempty"`
+	PublicName string     `json:"public_name,omitempty"`
+	JWTVersion uint64     `json:"-"`
 }
 
 type PublicUser struct {
-	Username string    `json:"username"`
-	Email    string    `json:"email"`
-	Avatar   string    `json:"avatar,omitempty"`
-	Birthday time.Time `json:"birthday"`
+	Username   string     `json:"username"`
+	Email      string     `json:"email"`
+	Avatar     string     `json:"avatar,omitempty"`
+	Birthday   time.Time `json:"birthday,omitempty"`
+	PublicName string     `json:"public_name,omitempty"`
+	About      string     `json:"about,omitempty"`
 }
 
 var (
@@ -39,6 +42,20 @@ var (
 	ErrInternalError        = errors.New("internal error")
 	ErrUserNotFound         = errors.New("user not found")
 )
+
+func (u *PublicUser) Sanitize() {
+	u.About = html.EscapeString(u.About)
+	u.PublicName = html.EscapeString(u.PublicName)
+	u.Username = html.EscapeString(u.Username)
+	u.Email = html.EscapeString(u.Email)
+}
+
+func (u *User) Sanitize() {
+	u.Username = html.EscapeString(u.Username)
+	u.PublicName = html.EscapeString(u.PublicName)
+	u.Email = html.EscapeString(u.Email)
+	u.About = html.EscapeString(u.About)
+}
 
 func ValidateEmail(email string) error {
 	v := validator.New()
@@ -87,7 +104,7 @@ func ValidateUsername(username string) error {
 	}
 
 	if !validator.Matches(username, validator.UsernameRX) {
-		return ErrInvalidUsername 
+		return ErrInvalidUsername
 	}
 
 	return nil

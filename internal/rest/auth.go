@@ -13,8 +13,6 @@ import (
 type UserUsecaseInterface interface {
 	AddUser(user domain.User) (uint64, error)
 	LoginUser(email, password string) (uint64, error)
-	GetUserPublicInfo(email string) (domain.PublicUser, error)
-	GetUserId(email string) (uint64, error)
 }
   
 type AuthHandler struct {

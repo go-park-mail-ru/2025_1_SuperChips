@@ -2,6 +2,7 @@ package domain
 
 import (
 	"errors"
+	"html"
 	"time"
 )
 
@@ -14,6 +15,10 @@ type Board struct {
 	IsPrivate      bool      `json:"is_private"`
 	FlowCount      int       `json:"flow_count"`
 	Preview        []PinData `json:"preview,omitempty"`
+}
+
+func (b *Board) Sanitize() {
+	b.Name = html.EscapeString(b.Name)
 }
 
 type BoardPost struct {

@@ -1,5 +1,7 @@
 package domain
 
+import "html"
+
 type PinData struct {
 	FlowID         uint64 `json:"flow_id,omitempty"`
 	Header         string `json:"header,omitempty"`
@@ -12,4 +14,9 @@ type PinData struct {
 	UpdatedAt      string `json:"updated_at"`
 	IsLiked        bool   `json:"is_liked"`
 	LikeCount      int    `json:"like_count"`
+}
+
+func (p *PinData) Sanitize() {
+	p.Header = html.EscapeString(p.Header)
+	p.Description = html.EscapeString(p.Description)
 }
