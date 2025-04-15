@@ -47,6 +47,10 @@ func (app PinsHandler) FeedHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	for i := range pagedImages {
+		pagedImages[i].Sanitize()
+	}
+
 	response := ServerResponse{
 		Data: pagedImages,
 	}
