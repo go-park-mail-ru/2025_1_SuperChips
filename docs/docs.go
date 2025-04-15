@@ -172,41 +172,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/auth/user": {
-            "get": {
-                "description": "Tries to get current user's data",
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "Get user data",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "body"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/feed": {
             "get": {
                 "description": "Returns a pageSized number of pins",
@@ -241,6 +206,56 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "page not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/like": {
+            "post": {
+                "description": "Leaves a like on a flow or deletes the like",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Leave a like on a flow",
+                "parameters": [
+                    {
+                        "example": 456,
+                        "description": "flow id",
+                        "name": "pin_id",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
                         "schema": {
                             "type": "string"
                         }
