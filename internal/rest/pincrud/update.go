@@ -43,7 +43,7 @@ func (app PinCRUDHandler) UpdateHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	err := app.PinService.UpdatePin(data, userID)
+	err := app.PinService.UpdatePin(r.Context(), data, userID)
 	if errors.Is(err, pincrud.ErrForbidden) {
 		rest.HttpErrorToJson(w, "access to private pin is forbidden", http.StatusForbidden)
 		return

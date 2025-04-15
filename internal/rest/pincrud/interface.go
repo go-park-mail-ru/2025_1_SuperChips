@@ -1,18 +1,19 @@
 package rest
 
 import (
+	"context"
 	"mime/multipart"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
 
 type PinCRUDServicer interface {
-	GetPublicPin(pinID uint64) (domain.PinData, error)
-	GetAnyPin(pinID uint64, userID uint64) (domain.PinData, error)
+	GetPublicPin(ctx context.Context, pinID uint64) (domain.PinData, error)
+	GetAnyPin(ctx context.Context, pinID uint64, userID uint64) (domain.PinData, error)
 
-	DeletePin(pinID uint64, userID uint64) error
+	DeletePin(ctx context.Context, pinID uint64, userID uint64) error
 
-	UpdatePin(data domain.PinDataUpdate, userID uint64) error
+	UpdatePin(ctx context.Context, data domain.PinDataUpdate, userID uint64) error
 
-	CreatePin(data domain.PinDataCreate, file multipart.File, header *multipart.FileHeader, userID uint64) (uint64, error)
+	CreatePin(ctx context.Context, data domain.PinDataCreate, file multipart.File, header *multipart.FileHeader, userID uint64) (uint64, error)
 }

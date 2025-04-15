@@ -32,9 +32,9 @@ func (app PinCRUDHandler) ReadHandler(w http.ResponseWriter, r *http.Request) {
 
 	var data domain.PinData
 	if isAuthorized {
-		data, err = app.PinService.GetAnyPin(pinID, uint64(claims.UserID))
+		data, err = app.PinService.GetAnyPin(r.Context(), pinID, uint64(claims.UserID))
 	} else {
-		data, err = app.PinService.GetPublicPin(pinID)
+		data, err = app.PinService.GetPublicPin(r.Context(), pinID)
 	}
 	if errors.Is(err, pincrud.ErrForbidden) {
 		rest.HttpErrorToJson(w, "access to private pin is forbidden", http.StatusForbidden)

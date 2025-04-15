@@ -68,7 +68,7 @@ func (app PinCRUDHandler) CreateHandler(w http.ResponseWriter, r *http.Request) 
 		data.IsPrivate = boolValue
 	}
 
-	pinID, err := app.PinService.CreatePin(data, file, header, userID)
+	pinID, err := app.PinService.CreatePin(r.Context(), data, file, header, userID)
 	if errors.Is(err, pincrud.ErrInvalidImageExt) {
 		rest.HttpErrorToJson(w, "invalid image extension", http.StatusBadRequest)
 		return

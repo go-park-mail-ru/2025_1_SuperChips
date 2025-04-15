@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -10,8 +11,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (p *pgPinStorage) GetPin(pinID, userID uint64) (domain.PinData, uint64, error) {
-	row := p.db.QueryRow(`
+func (p *pgPinStorage) GetPin(ctx context.Context, pinID, userID uint64) (domain.PinData, uint64, error) {
+	row := p.db.QueryRowContext(ctx, `
         SELECT 
             f.id, 
             f.title, 
@@ -56,11 +57,11 @@ func (p *pgPinStorage) GetPin(pinID, userID uint64) (domain.PinData, uint64, err
 	return pin, flowDBRow.AuthorId, nil
 }
 
-func (p *pgPinStorage) GetPinCleanMediaURL(pinID uint64) (string, uint64, error) {
+func (p *pgPinStorage) GetPinCleanMediaURL(ctx context.Context, pinID uint64) (string, uint64, error) {
 	var mediaURL string
 	var authorID uint64
 
-	err := p.db.QueryRow(`
+	err := p.db.QueryRowContext(ctx, `
         SELECT 
             f.media_url,
 			f.author_id
@@ -78,8 +79,8 @@ func (p *pgPinStorage) GetPinCleanMediaURL(pinID uint64) (string, uint64, error)
 	return mediaURL, authorID, nil
 }
 
-func (p *pgPinStorage) DeletePin(pinID uint64, userID uint64) error {
-	res, err := p.db.Exec(`
+func (p *pgPinStorage) DeletePin(ctx context.Context, pinID uint64, userID uint64) error {
+	res, err := p.db.ExecContext(ctx, `
 		DELETE 
 		FROM flow
 		WHERE id=$1 AND author_id=$2
@@ -96,7 +97,7 @@ func (p *pgPinStorage) DeletePin(pinID uint64, userID uint64) error {
 	return nil
 }
 
-func (p *pgPinStorage) UpdatePin(patch domain.PinDataUpdate, userID uint64) error {
+func (p *pgPinStorage) UpdatePin(ctx context.Context, patch domain.PinDataUpdate, userID uint64) error {
 	var fields []string
 	var values []any
 	paramCounter := 1
@@ -133,7 +134,7 @@ func (p *pgPinStorage) UpdatePin(patch domain.PinDataUpdate, userID uint64) erro
 	values = append(values, patch.FlowID)
 	values = append(values, userID)
 
-	res, err := p.db.Exec(sqlQuery, values...)
+	res, err := p.db.ExecContext(ctx, sqlQuery, values...)
 	if err != nil {
 		return pincrudService.ErrUntracked
 	}
@@ -149,8 +150,8 @@ func (p *pgPinStorage) UpdatePin(patch domain.PinDataUpdate, userID uint64) erro
 	return nil
 }
 
-func (p *pgPinStorage) CreatePin(data domain.PinDataCreate, imgName string, userID uint64) (uint64, error) {
-	row := p.db.QueryRow(`
+func (p *pgPinStorage) CreatePin(ctx context.Context, data domain.PinDataCreate, imgName string, userID uint64) (uint64, error) {
+	row := p.db.QueryRowContext(ctx, `
         INSERT INTO flow (title, description, author_id, is_private, media_url)
         VALUES ($1, $2, $3, $4, $5)
 		RETURNING id
