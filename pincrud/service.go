@@ -8,6 +8,11 @@ import (
 
 const UnauthorizedID = 0
 
+type PinCRUDService struct {
+	rep     PinCRUDRepository
+	imgStrg FileRepository
+}
+
 func NewPinCRUDService(r PinCRUDRepository, imgStrg FileRepository) *PinCRUDService {
 	return &PinCRUDService{
 		rep:     r,

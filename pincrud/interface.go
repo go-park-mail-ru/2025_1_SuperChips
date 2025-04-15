@@ -22,8 +22,3 @@ type FileRepository interface {
 	Save(file multipart.File, header *multipart.FileHeader) (string, error)
 	Delete(imgName string) error
 }
-
-type PinCRUDService struct {
-	rep     PinCRUDRepository
-	imgStrg FileRepository
-}
