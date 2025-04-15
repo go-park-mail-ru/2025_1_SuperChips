@@ -18,11 +18,11 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/middleware"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/like"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/pin"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/profile"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/user"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/swaggo/http-swagger"
 )
 
@@ -80,6 +80,7 @@ func main() {
 		log.Fatalf("Cannot launch due to profile storage db error: %s", err)
 	}
 
+	likeStorage := pgStorage.NewPgLikeStorage(db)
 	boardStorage := pgStorage.NewBoardStorage(db)
 
 	jwtManager := auth.NewJWTManager(config)
@@ -108,6 +109,11 @@ func main() {
 		BaseUrl:        config.BaseUrl,
 		ExpirationTime: config.ExpirationTime,
 		CookieSecure:   config.CookieSecure,
+	}
+
+	likeHandler := rest.LikeHandler{
+		LikeService: likeService,
+		ContextTimeout: config.ContextExpiration,
 	}
 
 	boardHandler := rest.BoardHandler{
@@ -163,6 +169,16 @@ func main() {
 		middleware.ChainMiddleware(profileHandler.ChangeUserPasswordHandler,
 			middleware.AuthMiddleware(jwtManager),
 			middleware.CorsMiddleware(config, allowedPostOptions)))
+
+	mux.HandleFunc("POST /api/v1/like",
+		middleware.ChainMiddleware(likeHandler.LikeFlow, 
+			middleware.AuthMiddleware(jwtManager),
+			middleware.CorsMiddleware(config, allowedPostOptions)))
+
+	mux.HandleFunc("OPTIONS /api/v1/like", middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}, 
+		middleware.CorsMiddleware(config, allowedGetOptions)))
 
 	mux.HandleFunc("POST /api/v1/boards/{id}/flows",
 		middleware.ChainMiddleware(boardHandler.AddToBoard,

@@ -157,6 +157,15 @@ paths:
           schema:
             type: string
       summary: Register user
+  /api/v1/feed:
+    get:
+      consumes:
+      - application/json
+      description: Returns a pageSized number of pins
+      parameters:
+      - description: requested page
+        in: path
+        name: page
   /api/v1/boards/{board_id}:
     delete:
       description: Deletes a board by ID for authenticated user
@@ -212,6 +221,18 @@ paths:
         "200":
           description: Board details
           schema:
+            type: string
+        "400":
+          description: bad request
+          schema:
+            type: string
+        "404":
+          description: page not found
+          schema:
+            type: string
+      summary: Get Pins
+  /api/v1/like:
+    post:
             allOf:
             - $ref: '#/definitions/rest.ServerResponse'
             - properties:
@@ -493,13 +514,15 @@ paths:
     get:
       consumes:
       - application/json
-      description: Returns a pageSized number of pins
+      description: Leaves a like on a flow or deletes the like
       parameters:
-      - description: requested page
-        in: path
-        name: page
+      - description: flow id
+        example: 456
+        in: body
+        name: pin_id
         required: true
-        type: integer
+        schema:
+          type: integer
       produces:
       - application/json
       responses:
@@ -508,14 +531,17 @@ paths:
           schema:
             type: string
         "400":
-          description: bad request
+          description: Bad Request
           schema:
             type: string
         "404":
-          description: page not found
+          description: Not Found
           schema:
             type: string
-      summary: Get Pins
+        "500":
+          description: Internal server error
+          schema:
+            type: string
   /api/v1/profile/boards:
     get:
       description: Retrieves all boards (public and private) for authenticated user
