@@ -7,7 +7,7 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
 
-type PinCRUDServiceInterface interface {
+type PinCRUDServicer interface {
 	GetPublicPin(pinID uint64) (domain.PinData, error)
 	GetAnyPin(pinID uint64, userID uint64) (domain.PinData, error)
 
@@ -20,5 +20,5 @@ type PinCRUDServiceInterface interface {
 
 type PinCRUDHandler struct {
 	Config     configs.Config
-	PinService PinCRUDServiceInterface
+	PinService PinCRUDServicer
 }
