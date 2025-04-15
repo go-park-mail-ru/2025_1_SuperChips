@@ -20,7 +20,7 @@ import (
 // @Failure 403 string serverResponse.Description "access to private pin is forbidden"
 // @Failure 404 string serverResponse.Description "no pin with given id"
 // @Failure 500 string serverResponse.Description "untracked error: ${error}"
-// @Router GET /api/v1/flows
+// @Router /api/v1/flows [get]
 func (app PinCRUDHandler) ReadHandler(w http.ResponseWriter, r *http.Request) {
 	claims, isAuthorized := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
 

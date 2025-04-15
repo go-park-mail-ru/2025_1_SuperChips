@@ -14,7 +14,7 @@ import (
 // CreateHandler godoc
 // @Summary Create pin if user if user is authorized
 // @Description Returns JSON with result description
-// @Produce JSON
+// @Produce json
 // @Param image formData file true "pin image"
 // @Param header formData string false "text header"
 // @Param description formData string false "text description"
@@ -26,7 +26,7 @@ import (
 // @Failure 400 string serverResponse.Description "invalid image extension"
 // @Failure 401 string serverResponse.Description "user is not authorized"
 // @Failure 500 string serverResponse.Description "untracked error: ${error}"
-// @Router POST /api/v1/flows
+// @Router /api/v1/flows [post]
 func (app PinCRUDHandler) CreateHandler(w http.ResponseWriter, r *http.Request) {
 	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
 	if !ok {

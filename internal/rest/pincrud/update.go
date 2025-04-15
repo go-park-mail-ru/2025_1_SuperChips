@@ -13,7 +13,7 @@ import (
 // UpdateHandler godoc
 // @Summary Update certain pin's fields by ID if user is its author
 // @Description Returns JSON with result description
-// @Produce JSON
+// @Produce json
 // @Param id body int true "pin ID"
 // @Param header body string false "text header"
 // @Param description body string false "text description"
@@ -25,7 +25,7 @@ import (
 // @Failure 403 string serverResponse.Description "access to private pin is forbidden"
 // @Failure 404 string serverResponse.Description "no pin with given id"
 // @Failure 500 string serverResponse.Description "untracked error: ${error}"
-// @Router PUT /api/v1/flows
+// @Router /api/v1/flows [put]
 func (app PinCRUDHandler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
 	if !ok {

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -21,7 +20,6 @@ import (
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
 	middleware "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/middleware"
 	pincrudDelivery "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/pincrud"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/middleware"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/like"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/pin"
 	pincrudService "github.com/go-park-mail-ru/2025_1_SuperChips/pincrud"
@@ -96,14 +94,11 @@ func main() {
 	jwtManager := auth.NewJWTManager(config)
 
 	userService := user.NewUserService(userStorage)
-
 	pinCRUDService := pincrudService.NewPinCRUDService(pinStorage, imageStorage)
-  
 	pinService := pin.NewPinService(pinStorage, config.BaseUrl, config.ImageBaseDir)
-  
 	profileService := profile.NewProfileService(profileStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
-  
 	boardService := board.NewBoardService(boardStorage, config.BaseUrl, config.ImageBaseDir)
+	likeService := like.NewLikeService(likeStorage)
 
 	authHandler := rest.AuthHandler{
 		Config:      config,
@@ -212,7 +207,7 @@ func main() {
 
 	mux.HandleFunc("POST /api/v1/like",
 		middleware.ChainMiddleware(likeHandler.LikeFlow, 
-			middleware.AuthMiddleware(jwtManager),
+			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedPostOptions)))
 
 	mux.HandleFunc("OPTIONS /api/v1/like", middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
@@ -222,12 +217,12 @@ func main() {
 
 	mux.HandleFunc("POST /api/v1/boards/{id}/flows",
 		middleware.ChainMiddleware(boardHandler.AddToBoard,
-			middleware.AuthMiddleware(jwtManager),
+			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedPostOptions)))
 
 	mux.HandleFunc("GET /api/v1/boards/{board_id}/flows",
 		middleware.ChainMiddleware(boardHandler.GetBoardFlows,
-			middleware.AuthSoftMiddleware(jwtManager),
+			middleware.AuthMiddleware(jwtManager, false),
 			middleware.CorsMiddleware(config, allowedGetOptions)))
 
 	mux.HandleFunc("OPTIONS /api/v1/boards/{board_id}/flows",
@@ -237,22 +232,22 @@ func main() {
 
 	mux.HandleFunc("/api/v1/boards/{board_id}/flows/{id}",
 		middleware.ChainMiddleware(boardHandler.DeleteFromBoard,
-			middleware.AuthMiddleware(jwtManager),
+			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedDeleteOptions)))
 
 	mux.HandleFunc("DELETE /api/v1/boards/{board_id}",
 		middleware.ChainMiddleware(boardHandler.DeleteBoard,
-			middleware.AuthMiddleware(jwtManager),
+			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedDeleteOptions)))
 
 	mux.HandleFunc("PUT /api/v1/boards/{board_id}",
 		middleware.ChainMiddleware(boardHandler.UpdateBoard,
-			middleware.AuthMiddleware(jwtManager),
+			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedPutOptions)))
 
 	mux.HandleFunc("GET /api/v1/boards/{board_id}",
 		middleware.ChainMiddleware(boardHandler.GetBoard,
-			middleware.AuthSoftMiddleware(jwtManager),
+			middleware.AuthMiddleware(jwtManager, false),
 			middleware.CorsMiddleware(config, allowedGetOptions)))
 
 	mux.HandleFunc("OPTIONS /api/v1/boards/{board_id}",
@@ -266,7 +261,7 @@ func main() {
 
 	mux.HandleFunc("POST /api/v1/users/{username}/boards",
 		middleware.ChainMiddleware(boardHandler.CreateBoard,
-			middleware.AuthMiddleware(jwtManager),
+			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedPostOptions)))
 
 	mux.HandleFunc("OPTIONS /api/v1/users/{username}/boards",
@@ -276,7 +271,7 @@ func main() {
 
 	mux.HandleFunc("/api/v1/profile/boards",
 		middleware.ChainMiddleware(boardHandler.GetUserAllBoards,
-			middleware.AuthMiddleware(jwtManager),
+			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedGetOptions)))
 
 	server := http.Server{
