@@ -175,14 +175,17 @@ func main() {
 	mux.HandleFunc("/api/v1/profile/update",
 		middleware.ChainMiddleware(profileHandler.PatchUserProfileHandler,
 			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedPatchOptions)))
 	mux.HandleFunc("/api/v1/profile/avatar",
 		middleware.ChainMiddleware(profileHandler.UserAvatarHandler,
 			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedPostOptions)))
 	mux.HandleFunc("/api/v1/profile/password",
 		middleware.ChainMiddleware(profileHandler.ChangeUserPasswordHandler,
 			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedPostOptions)))
 
 	mux.HandleFunc("OPTIONS /api/v1/flows",
@@ -195,19 +198,23 @@ func main() {
 	mux.HandleFunc("DELETE /api/v1/flows",
 		middleware.ChainMiddleware(pinCRUDHandler.DeleteHandler,
 			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedDeleteOptions)))
 	mux.HandleFunc("PUT /api/v1/flows",
 		middleware.ChainMiddleware(pinCRUDHandler.UpdateHandler,
 			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedPutOptions)))
 	mux.HandleFunc("POST /api/v1/flows",
 		middleware.ChainMiddleware(pinCRUDHandler.CreateHandler,
 			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedPostOptions)))
 
 	mux.HandleFunc("POST /api/v1/like",
 		middleware.ChainMiddleware(likeHandler.LikeFlow, 
 			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedPostOptions)))
 
 	mux.HandleFunc("OPTIONS /api/v1/like", middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
@@ -218,6 +225,7 @@ func main() {
 	mux.HandleFunc("POST /api/v1/boards/{id}/flows",
 		middleware.ChainMiddleware(boardHandler.AddToBoard,
 			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedPostOptions)))
 
 	mux.HandleFunc("GET /api/v1/boards/{board_id}/flows",
@@ -233,16 +241,19 @@ func main() {
 	mux.HandleFunc("/api/v1/boards/{board_id}/flows/{id}",
 		middleware.ChainMiddleware(boardHandler.DeleteFromBoard,
 			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedDeleteOptions)))
 
 	mux.HandleFunc("DELETE /api/v1/boards/{board_id}",
 		middleware.ChainMiddleware(boardHandler.DeleteBoard,
 			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedDeleteOptions)))
 
 	mux.HandleFunc("PUT /api/v1/boards/{board_id}",
 		middleware.ChainMiddleware(boardHandler.UpdateBoard,
 			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedPutOptions)))
 
 	mux.HandleFunc("GET /api/v1/boards/{board_id}",
@@ -262,6 +273,7 @@ func main() {
 	mux.HandleFunc("POST /api/v1/users/{username}/boards",
 		middleware.ChainMiddleware(boardHandler.CreateBoard,
 			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedPostOptions)))
 
 	mux.HandleFunc("OPTIONS /api/v1/users/{username}/boards",
