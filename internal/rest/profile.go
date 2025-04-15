@@ -96,7 +96,7 @@ func (h *ProfileHandler) PublicProfileHandler(w http.ResponseWriter, r *http.Req
 
 func (h *ProfileHandler) UserAvatarHandler(w http.ResponseWriter, r *http.Request) {
 	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
-	if !ok {
+	if !ok || claims == nil {
 		HttpErrorToJson(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
@@ -123,20 +123,29 @@ func (h *ProfileHandler) UserAvatarHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	url, err := image.UploadImage(handler.Filename, h.StaticFolder, h.AvatarFolder, h.BaseUrl, file)
+	filename, url, err := image.UploadImage(handler.Filename, h.StaticFolder, h.AvatarFolder, h.BaseUrl, file)
 	if err != nil {
 		HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	err = h.ProfileService.SaveUserAvatar(claims.Email, url)
+	err = h.ProfileService.SaveUserAvatar(claims.Email, filename)
 	if err != nil {
 		handleProfileError(w, err)
 		return
 	}
 
+	type imageURL struct {
+		MediaURL string `json:"media_url"`
+	}
+
+	imgURL := imageURL{
+		MediaURL: url,
+	}
+
 	response := ServerResponse{
 		Description: "Created",
+		Data: imgURL,
 	}
 
 	ServerGenerateJSONResponse(w, response, http.StatusCreated)
@@ -144,7 +153,7 @@ func (h *ProfileHandler) UserAvatarHandler(w http.ResponseWriter, r *http.Reques
 
 func (h *ProfileHandler) ChangeUserPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
-	if (!ok) {
+	if !ok || claims == nil {
 		HttpErrorToJson(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
@@ -178,9 +187,10 @@ func (h *ProfileHandler) ChangeUserPasswordHandler(w http.ResponseWriter, r *htt
 	ServerGenerateJSONResponse(w, resp, http.StatusOK)
 }
 
+
 func (h *ProfileHandler) PatchUserProfileHandler(w http.ResponseWriter, r *http.Request) {
     claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
-	if !ok {
+	if !ok || claims == nil {
 		HttpErrorToJson(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
