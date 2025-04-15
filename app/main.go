@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -14,12 +15,16 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	_ "github.com/go-park-mail-ru/2025_1_SuperChips/docs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/pg"
+	osStorage "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/os/pincrud"
 	pgStorage "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
+	middleware "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/middleware"
+	pincrudDelivery "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/pincrud"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/middleware"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/like"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/pin"
+	pincrudService "github.com/go-park-mail-ru/2025_1_SuperChips/pincrud"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/profile"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/user"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -70,7 +75,12 @@ func main() {
 		log.Fatalf("Cannot launch due to user storage db error: %s", err)
 	}
 
-	pinStorage, err := pgStorage.NewPGPinStorage(db)
+	pinStorage, err := pgStorage.NewPGPinStorage(db, config.ImageBaseDir, config.BaseUrl)
+	if err != nil {
+		log.Fatalf("Cannot launch due to pin storage db error: %s", err)
+	}
+
+	imageStorage, err := osStorage.NewOSImageStorage(config.ImageBaseDir)
 	if err != nil {
 		log.Fatalf("Cannot launch due to pin storage db error: %s", err)
 	}
@@ -86,8 +96,13 @@ func main() {
 	jwtManager := auth.NewJWTManager(config)
 
 	userService := user.NewUserService(userStorage)
+
+	pinCRUDService := pincrudService.NewPinCRUDService(pinStorage, imageStorage)
+  
 	pinService := pin.NewPinService(pinStorage, config.BaseUrl, config.ImageBaseDir)
+  
 	profileService := profile.NewProfileService(profileStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
+  
 	boardService := board.NewBoardService(boardStorage, config.BaseUrl, config.ImageBaseDir)
 
 	authHandler := rest.AuthHandler{
@@ -109,6 +124,11 @@ func main() {
 		BaseUrl:        config.BaseUrl,
 		ExpirationTime: config.ExpirationTime,
 		CookieSecure:   config.CookieSecure,
+	}
+
+	pinCRUDHandler := pincrudDelivery.PinCRUDHandler{
+		Config:     config,
+		PinService: pinCRUDService,
 	}
 
 	likeHandler := rest.LikeHandler{
@@ -152,22 +172,42 @@ func main() {
 
 	mux.HandleFunc("/api/v1/profile",
 		middleware.ChainMiddleware(profileHandler.CurrentUserProfileHandler,
-			middleware.AuthMiddleware(jwtManager),
+			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedGetOptions)))
 	mux.HandleFunc("/api/v1/users/{username}",
 		middleware.ChainMiddleware(profileHandler.PublicProfileHandler,
 			middleware.CorsMiddleware(config, allowedGetOptions)))
 	mux.HandleFunc("/api/v1/profile/update",
 		middleware.ChainMiddleware(profileHandler.PatchUserProfileHandler,
-			middleware.AuthMiddleware(jwtManager),
+			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedPatchOptions)))
 	mux.HandleFunc("/api/v1/profile/avatar",
 		middleware.ChainMiddleware(profileHandler.UserAvatarHandler,
-			middleware.AuthMiddleware(jwtManager),
+			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedPostOptions)))
 	mux.HandleFunc("/api/v1/profile/password",
 		middleware.ChainMiddleware(profileHandler.ChangeUserPasswordHandler,
-			middleware.AuthMiddleware(jwtManager),
+			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CorsMiddleware(config, allowedPostOptions)))
+
+	mux.HandleFunc("OPTIONS /api/v1/flows",
+		middleware.ChainMiddleware(func(http.ResponseWriter, *http.Request) {},
+			middleware.CorsMiddleware(config, allowedGetOptions)))
+	mux.HandleFunc("GET /api/v1/flows",
+		middleware.ChainMiddleware(pinCRUDHandler.ReadHandler,
+			middleware.AuthMiddleware(jwtManager, false),
+			middleware.CorsMiddleware(config, allowedGetOptions)))
+	mux.HandleFunc("DELETE /api/v1/flows",
+		middleware.ChainMiddleware(pinCRUDHandler.DeleteHandler,
+			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CorsMiddleware(config, allowedDeleteOptions)))
+	mux.HandleFunc("PUT /api/v1/flows",
+		middleware.ChainMiddleware(pinCRUDHandler.UpdateHandler,
+			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CorsMiddleware(config, allowedPutOptions)))
+	mux.HandleFunc("POST /api/v1/flows",
+		middleware.ChainMiddleware(pinCRUDHandler.CreateHandler,
+			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedPostOptions)))
 
 	mux.HandleFunc("POST /api/v1/like",

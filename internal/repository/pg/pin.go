@@ -2,39 +2,60 @@ package repository
 
 import (
 	"database/sql"
+	"strings"
 
 	pin "github.com/go-park-mail-ru/2025_1_SuperChips/domain"
-	_ "github.com/jmoiron/sqlx"
 )
 
-type flowPinDB struct {
-	Id          uint64         `db:"id"`
-	Title       sql.NullString `db:"title"`
-	Description sql.NullString `db:"description"`
-	AuthorId    uint64         `db:"author_id"`
-	CreatedAt   sql.NullTime   `db:"created_at"`
-	UpdatedAt   sql.NullTime   `db:"updated_at"`
-	IsPrivate   bool           `db:"is_private"`
-	MediaURL    string         `db:"media_url"`
+type flowDBSchema struct {
+	Id             uint64
+	Title          sql.NullString
+	Description    sql.NullString
+	AuthorId       uint64
+	AuthorUsername string
+	CreatedAt      sql.NullTime
+	UpdatedAt      sql.NullTime
+	IsPrivate      bool
+	LikeCount      int
+	MediaURL       string
 }
 
 type pgPinStorage struct {
-	db       *sql.DB
+	db         *sql.DB
+	imgDir     string
+	baseURL    string
+	imgStrgURL string
 }
 
-func NewPGPinStorage(db *sql.DB) (*pgPinStorage, error) {
+func NewPGPinStorage(db *sql.DB, imgDir, baseURL string) (*pgPinStorage, error) {
 	storage := &pgPinStorage{
-		db: db,
+		db:         db,
+		imgDir:     imgDir,
+		baseURL:    baseURL,
+		imgStrgURL: baseURL + strings.ReplaceAll(imgDir, ".", ""),
 	}
 
 	return storage, nil
 }
 
+func (p *pgPinStorage) assembleMediaURL(fileName string) string {
+	return p.imgStrgURL + "/" + fileName
+}
+
 func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
-	rows, err := p.db.Query(`SELECT id, title, description, author_id, is_private, media_url 
-	FROM flow
-	WHERE is_private = false
-	ORDER BY created_at DESC
+	rows, err := p.db.Query(`
+	SELECT 
+		f.id, 
+		f.title, 
+		f.description, 
+		f.author_id, 
+		f.is_private, 
+		f.media_url,
+		fu.username
+	FROM flow f
+	JOIN flow_user fu ON f.author_id = fu.id
+	WHERE f.is_private = false
+	ORDER BY f.created_at DESC
 	LIMIT $1
 	OFFSET $2
 	`, pageSize, (page-1)*pageSize)
@@ -47,18 +68,18 @@ func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
 	var pins []pin.PinData
 
 	for rows.Next() {
-		var flowPinDB flowPinDB
-		err := rows.Scan(&flowPinDB.Id, &flowPinDB.Title, &flowPinDB.Description, &flowPinDB.AuthorId, &flowPinDB.IsPrivate, &flowPinDB.MediaURL)
+		var flowDBRow flowDBSchema
+		err := rows.Scan(&flowDBRow.Id, &flowDBRow.Title, &flowDBRow.Description, &flowDBRow.AuthorId, &flowDBRow.IsPrivate, &flowDBRow.MediaURL, &flowDBRow.AuthorUsername)
 		if err != nil {
 			return []pin.PinData{}, err
 		}
 
 		pin := pin.PinData{
-			FlowID:      flowPinDB.Id,
-			Description: flowPinDB.Description.String,
-			Header:      flowPinDB.Title.String,
-			MediaURL:    flowPinDB.MediaURL,
-			AuthorID:    flowPinDB.AuthorId,
+			FlowID:         flowDBRow.Id,
+			Description:    flowDBRow.Description.String,
+			Header:         flowDBRow.Title.String,
+			MediaURL:       p.assembleMediaURL(flowDBRow.MediaURL),
+			AuthorUsername: flowDBRow.AuthorUsername,
 		}
 		pins = append(pins, pin)
 	}
