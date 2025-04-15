@@ -3,12 +3,26 @@ package rest
 import (
 	"errors"
 	"net/http"
+	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/pincrud"
+)
+
+var allowedTypes = map[string]bool{
+	"image/jpeg": true,
+	"image/png":  true,
+	"image/webp": true,
+	"image/bmp":  true,
+	"image/tiff": true,
+}
+
+const (
+	maxPinSize = 10 << 20 // 10 mb
 )
 
 // CreateHandler godoc
@@ -41,12 +55,49 @@ func (app PinCRUDHandler) CreateHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	file, header, err := r.FormFile("image")
+	file, handler, err := r.FormFile("image")
 	if err != nil {
 		rest.HttpErrorToJson(w, "image not present in the request body", http.StatusBadRequest)
 		return
 	}
 	defer file.Close()
+
+	if handler.Size > maxPinSize {
+		rest.HttpErrorToJson(w, "image is too big", http.StatusRequestEntityTooLarge)
+		return
+	}
+
+	buffer := make([]byte, 512)
+	_, err = file.Read(buffer)
+	if err != nil {
+		rest.HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	detected := http.DetectContentType(buffer)
+	contentType := handler.Header.Get("Content-Type")
+
+	if !strings.HasPrefix(detected, strings.Split(contentType, ";")[0]) {
+		rest.HttpErrorToJson(w, "image extension and type are mismatched", http.StatusBadRequest)
+		return
+	}
+
+	if _, ok := allowedTypes[detected]; !ok {
+		rest.HttpErrorToJson(w, "this extension is not supported", http.StatusBadRequest)
+		return
+	}
+
+	if _, err := file.Seek(0, 0); err != nil {
+		rest.HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	filename := filepath.Base(handler.Filename)
+    ext := filepath.Ext(filename)
+    if ext == "" {
+        rest.HttpErrorToJson(w, "invalid file extension", http.StatusBadRequest)
+        return
+    }
 
 	data := domain.PinDataCreate{
 		Header:      "",
@@ -68,7 +119,7 @@ func (app PinCRUDHandler) CreateHandler(w http.ResponseWriter, r *http.Request) 
 		data.IsPrivate = boolValue
 	}
 
-	pinID, err := app.PinService.CreatePin(r.Context(), data, file, header, userID)
+	pinID, err := app.PinService.CreatePin(r.Context(), data, file, handler, userID)
 	if errors.Is(err, pincrud.ErrInvalidImageExt) {
 		rest.HttpErrorToJson(w, "invalid image extension", http.StatusBadRequest)
 		return
