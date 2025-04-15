@@ -11,7 +11,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-park-mail-ru/2025_1_SuperChips/board"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
+	_ "github.com/go-park-mail-ru/2025_1_SuperChips/docs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/pg"
 	osStorage "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/os/pincrud"
 	pgStorage "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
@@ -19,13 +21,24 @@ import (
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
 	middleware "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/middleware"
 	pincrudDelivery "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/pincrud"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/middleware"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/like"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/pin"
 	pincrudService "github.com/go-park-mail-ru/2025_1_SuperChips/pincrud"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/profile"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/user"
-	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	"github.com/swaggo/http-swagger"
+)
+
+var (
+	allowedGetOptions     = []string{http.MethodGet, http.MethodOptions}
+	allowedPostOptions    = []string{http.MethodPost, http.MethodOptions}
+	allowedPatchOptions   = []string{http.MethodPatch, http.MethodOptions}
+	allowedDeleteOptions  = []string{http.MethodDelete, http.MethodOptions}
+	allowedPutOptions     = []string{http.MethodPut, http.MethodOptions}
+	allowedOptions        = []string{http.MethodOptions}
+	allowedGetOptionsHead = []string{http.MethodGet, http.MethodOptions, http.MethodHead}
 )
 
 // @title flow API
@@ -57,24 +70,6 @@ func main() {
 
 	defer db.Close()
 
-	driver, err := postgres.WithInstance(db, &postgres.Config{})
-	if err != nil {
-		log.Fatalf("Failed to initialize migration driver: %s", err)
-	}
-
-	m, err := migrate.NewWithDatabaseInstance(
-		"file://database/migrations",
-		"postgres",
-		driver,
-	)
-	if err != nil {
-		log.Fatalf("Failed to create migration instance: %s", err)
-	}
-
-	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		log.Fatalf("Failed to apply migrations: %s", err)
-	}
-
 	userStorage, err := pgStorage.NewPGUserStorage(db)
 	if err != nil {
 		log.Fatalf("Cannot launch due to user storage db error: %s", err)
@@ -95,12 +90,20 @@ func main() {
 		log.Fatalf("Cannot launch due to profile storage db error: %s", err)
 	}
 
+	likeStorage := pgStorage.NewPgLikeStorage(db)
+	boardStorage := pgStorage.NewBoardStorage(db)
+
 	jwtManager := auth.NewJWTManager(config)
 
 	userService := user.NewUserService(userStorage)
-	pinService := pin.NewPinService(pinStorage)
-	profileService := profile.NewProfileService(profileStorage)
+
 	pinCRUDService := pincrudService.NewPinCRUDService(pinStorage, imageStorage)
+  
+	pinService := pin.NewPinService(pinStorage, config.BaseUrl, config.ImageBaseDir)
+  
+	profileService := profile.NewProfileService(profileStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
+  
+	boardService := board.NewBoardService(boardStorage, config.BaseUrl, config.ImageBaseDir)
 
 	authHandler := rest.AuthHandler{
 		Config:      config,
@@ -128,17 +131,31 @@ func main() {
 		PinService: pinCRUDService,
 	}
 
-	allowedGetOptions := []string{http.MethodGet, http.MethodOptions}
-	allowedPostOptions := []string{http.MethodPost, http.MethodOptions}
-	allowedPatchOptions := []string{http.MethodPatch, http.MethodOptions}
-	allowedDeleteOptions := []string{http.MethodDelete, http.MethodOptions}
-	allowedPutOptions := []string{http.MethodPut, http.MethodOptions}
+	likeHandler := rest.LikeHandler{
+		LikeService: likeService,
+		ContextTimeout: config.ContextExpiration,
+	}
+
+	boardHandler := rest.BoardHandler{
+		BoardService:    boardService,
+		ContextDeadline: config.ContextExpiration,
+	}
 
 	fs := http.FileServer(http.Dir("." + config.StaticBaseDir))
+	fsHandler := func(w http.ResponseWriter, r *http.Request) {
+        fs.ServeHTTP(w, r)
+    }
 
 	mux := http.NewServeMux()
 
-	mux.Handle("GET /static/", http.StripPrefix(config.StaticBaseDir, fs))
+	if config.Environment == "test" {
+		mux.HandleFunc("/swagger/", httpSwagger.WrapHandler)
+	}
+
+	mux.Handle("/static/", http.StripPrefix(config.StaticBaseDir, middleware.ChainMiddleware(
+		fsHandler,
+		middleware.CorsMiddleware(config, allowedGetOptionsHead),
+	)))
 
 	mux.HandleFunc("/health",
 		middleware.ChainMiddleware(rest.HealthCheckHandler, middleware.CorsMiddleware(config, allowedGetOptions)))
@@ -157,7 +174,7 @@ func main() {
 		middleware.ChainMiddleware(profileHandler.CurrentUserProfileHandler,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedGetOptions)))
-	mux.HandleFunc("/api/v1/user/{username}",
+	mux.HandleFunc("/api/v1/users/{username}",
 		middleware.ChainMiddleware(profileHandler.PublicProfileHandler,
 			middleware.CorsMiddleware(config, allowedGetOptions)))
 	mux.HandleFunc("/api/v1/profile/update",
@@ -192,6 +209,75 @@ func main() {
 		middleware.ChainMiddleware(pinCRUDHandler.CreateHandler,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedPostOptions)))
+
+	mux.HandleFunc("POST /api/v1/like",
+		middleware.ChainMiddleware(likeHandler.LikeFlow, 
+			middleware.AuthMiddleware(jwtManager),
+			middleware.CorsMiddleware(config, allowedPostOptions)))
+
+	mux.HandleFunc("OPTIONS /api/v1/like", middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}, 
+		middleware.CorsMiddleware(config, allowedGetOptions)))
+
+	mux.HandleFunc("POST /api/v1/boards/{id}/flows",
+		middleware.ChainMiddleware(boardHandler.AddToBoard,
+			middleware.AuthMiddleware(jwtManager),
+			middleware.CorsMiddleware(config, allowedPostOptions)))
+
+	mux.HandleFunc("GET /api/v1/boards/{board_id}/flows",
+		middleware.ChainMiddleware(boardHandler.GetBoardFlows,
+			middleware.AuthSoftMiddleware(jwtManager),
+			middleware.CorsMiddleware(config, allowedGetOptions)))
+
+	mux.HandleFunc("OPTIONS /api/v1/boards/{board_id}/flows",
+		middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		}, middleware.CorsMiddleware(config, allowedOptions)))
+
+	mux.HandleFunc("/api/v1/boards/{board_id}/flows/{id}",
+		middleware.ChainMiddleware(boardHandler.DeleteFromBoard,
+			middleware.AuthMiddleware(jwtManager),
+			middleware.CorsMiddleware(config, allowedDeleteOptions)))
+
+	mux.HandleFunc("DELETE /api/v1/boards/{board_id}",
+		middleware.ChainMiddleware(boardHandler.DeleteBoard,
+			middleware.AuthMiddleware(jwtManager),
+			middleware.CorsMiddleware(config, allowedDeleteOptions)))
+
+	mux.HandleFunc("PUT /api/v1/boards/{board_id}",
+		middleware.ChainMiddleware(boardHandler.UpdateBoard,
+			middleware.AuthMiddleware(jwtManager),
+			middleware.CorsMiddleware(config, allowedPutOptions)))
+
+	mux.HandleFunc("GET /api/v1/boards/{board_id}",
+		middleware.ChainMiddleware(boardHandler.GetBoard,
+			middleware.AuthSoftMiddleware(jwtManager),
+			middleware.CorsMiddleware(config, allowedGetOptions)))
+
+	mux.HandleFunc("OPTIONS /api/v1/boards/{board_id}",
+		middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		}, middleware.CorsMiddleware(config, allowedOptions)))
+
+	mux.HandleFunc("GET /api/v1/users/{username}/boards",
+		middleware.ChainMiddleware(boardHandler.GetUserPublic,
+			middleware.CorsMiddleware(config, allowedGetOptions)))
+
+	mux.HandleFunc("POST /api/v1/users/{username}/boards",
+		middleware.ChainMiddleware(boardHandler.CreateBoard,
+			middleware.AuthMiddleware(jwtManager),
+			middleware.CorsMiddleware(config, allowedPostOptions)))
+
+	mux.HandleFunc("OPTIONS /api/v1/users/{username}/boards",
+		middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		}, middleware.CorsMiddleware(config, allowedOptions)))
+
+	mux.HandleFunc("/api/v1/profile/boards",
+		middleware.ChainMiddleware(boardHandler.GetUserAllBoards,
+			middleware.AuthMiddleware(jwtManager),
+			middleware.CorsMiddleware(config, allowedGetOptions)))
 
 	server := http.Server{
 		Addr:    config.Port,

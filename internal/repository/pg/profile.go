@@ -8,12 +8,12 @@ import (
 )
 
 type pgProfileStorage struct {
-	db *sql.DB
+	db        *sql.DB
 }
 
 func NewPGProfileStorage(db *sql.DB) (*pgProfileStorage, error) {
 	storage := &pgProfileStorage{
-		db: db,
+		db:        db,
 	}
 
 	return storage, nil
@@ -120,3 +120,4 @@ func (p *pgProfileStorage) SetNewPassword(email string, newPassword string) (int
 
 	return id, nil
 }
+

@@ -14,8 +14,10 @@ FROM alpine:latest
 WORKDIR /app
 
 COPY --from=builder /app/main .
-COPY --from=builder /app/database/migrations ./database/migrations
-COPY --from=builder /app/static/ ./static
+
+COPY --from=builder /app/db/migrations ./db/migrations
+COPY --from=builder /app/static/ ./static/
+COPY --from=builder /app/docs ./docs/
 
 EXPOSE 8080
 

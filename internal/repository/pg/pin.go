@@ -86,3 +86,4 @@ func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
 
 	return pins, nil
 }
+

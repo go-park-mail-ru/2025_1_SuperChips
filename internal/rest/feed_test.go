@@ -135,7 +135,7 @@ func TestPinsHandler_FeedHandler(t *testing.T) {
 			cfg.PageSize = tt.pageSize
 
 			mockPinRepo := mock_pin.NewMockPinRepository(ctrl)
-			mockPinService := pin.NewPinService(mockPinRepo)
+			mockPinService := pin.NewPinService(mockPinRepo, "", "")
 
 			if tt.expectMockCall {
 				mockPinRepo.EXPECT().
