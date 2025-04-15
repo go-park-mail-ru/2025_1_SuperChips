@@ -8,7 +8,8 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/stretchr/testify v1.9.0
-	github.com/swaggo/swag v1.16.4
+	github.com/swaggo/http-swagger v1.3.4
+	github.com/swaggo/swag/v2 v2.0.0-rc4
 	golang.org/x/crypto v0.36.0
 )
 
@@ -20,6 +21,11 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/pgx/v5 v5.7.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/sv-tools/openapi v0.2.1 // indirect
+	github.com/swaggo/files v0.0.0-20220610200504-28940afbdbfe // indirect
+	github.com/swaggo/swag v1.16.4 // indirect
+	golang.org/x/net v0.37.0 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
 require (

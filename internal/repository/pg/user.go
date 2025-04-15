@@ -40,7 +40,7 @@ func (p *pgUserStorage) AddUser(userInfo user.User) (uint64, error) {
         VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (email, username) DO NOTHING
 		RETURNING id
-    `, userInfo.Username, userInfo.Avatar, userInfo.PublicName, userInfo.Email, userInfo.Password, userInfo.Birthday).Scan(&id)
+    `, userInfo.Username, userInfo.Avatar, userInfo.Username, userInfo.Email, userInfo.Password, userInfo.Birthday).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return 0, user.ErrConflict
 	} else if err != nil {

@@ -17,9 +17,10 @@ mocks:
 	$(MOCKGEN) -source=./profile/service.go -destination=$(MOCK_DST)/profile/service.go
 	$(MOCKGEN) -source=./internal/rest/profile.go -destination=$(MOCK_DST)/rest/profile.go
 
+
 test: mocks
 	go test $(TESTED_DIRS) -coverprofile=$(COVERAGE_FILE)
-
+	
 cover: test
 	cat $(COVERAGE_FILE) | grep -v '_mock.go'
 	go tool cover -html=$(COVERAGE_FILE)

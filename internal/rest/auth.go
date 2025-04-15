@@ -73,8 +73,15 @@ func (app AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 string serverResponse.Description "Internal server error"
 // @Router /api/v1/auth/register [post]
 func (app AuthHandler) RegistrationHandler(w http.ResponseWriter, r *http.Request) {
-	var userData domain.User
-	if err := DecodeData(w, r.Body, &userData); err != nil {
+	type registerData struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+		Email    string `json:"email"`
+	}
+
+	var regData registerData
+
+	if err := DecodeData(w, r.Body, &regData); err != nil {
 		return
 	}
 
@@ -83,6 +90,12 @@ func (app AuthHandler) RegistrationHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	statusCode := http.StatusCreated
+
+	userData := domain.User{
+		Username: regData.Username,
+		Password: regData.Password,
+		Email:    regData.Email,
+	}
 
 	id, err := app.UserService.AddUser(userData)
 	if err != nil {

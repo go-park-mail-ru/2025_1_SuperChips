@@ -1,3 +1,51 @@
+definitions:
+  domain.Board:
+    properties:
+      author_id:
+        type: integer
+      flow_count:
+        type: integer
+      id:
+        type: integer
+      is_private:
+        type: boolean
+      name:
+        type: string
+      preview:
+        items:
+          $ref: '#/definitions/domain.PinData'
+        type: array
+    type: object
+  domain.PinData:
+    properties:
+      author_id:
+        type: integer
+      created_at:
+        type: string
+      description:
+        type: string
+      header:
+        type: string
+      is_private:
+        type: boolean
+      like_count:
+        type: integer
+      media_url:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  rest.BoardRequest:
+    properties:
+      flow_id:
+        type: integer
+    type: object
+  rest.ServerResponse:
+    properties:
+      data: {}
+      description:
+        type: string
+    type: object
 info:
   contact: {}
   description: API for Flow.
@@ -118,13 +166,60 @@ paths:
       - description: requested page
         in: path
         name: page
+  /api/v1/boards/{board_id}:
+    delete:
+      description: Deletes a board by ID for authenticated user
+      parameters:
+      - description: ID of the board to delete
+        in: path
+        name: board_id
         required: true
         type: integer
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Board deleted successfully
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "400":
+          description: Invalid board ID
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "403":
+          description: Forbidden - not board owner
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "404":
+          description: Board not found
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Delete a board
+      tags:
+      - boards
+    get:
+      description: Retrieves board information with access control
+      parameters:
+      - description: Board ID to retrieve
+        in: path
+        name: board_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Board details
           schema:
             type: string
         "400":
@@ -138,6 +233,285 @@ paths:
       summary: Get Pins
   /api/v1/like:
     post:
+            allOf:
+            - $ref: '#/definitions/rest.ServerResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.Board'
+              type: object
+        "400":
+          description: Invalid board ID
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "403":
+          description: Forbidden - private board
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "404":
+          description: Board not found
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Get board details
+      tags:
+      - boards
+    put:
+      consumes:
+      - application/json
+      description: Updates board name and privacy settings
+      parameters:
+      - description: Board ID to update
+        in: path
+        name: board_id
+        required: true
+        type: integer
+      - description: 'update data: new name and is_private'
+        in: body
+        name: updateData
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Board updated successfully
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "400":
+          description: Invalid request data
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "403":
+          description: Forbidden - not board owner
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "404":
+          description: Board not found
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Update board details
+      tags:
+      - boards
+  /api/v1/boards/{board_id}/flows:
+    get:
+      description: Retrieves flows in a board with pagination for authenticated users
+      parameters:
+      - description: ID of the board to retrieve flows from
+        in: path
+        name: board_id
+        required: true
+        type: integer
+      - description: Page number (0-based index)
+        in: query
+        name: page
+        required: true
+        type: integer
+      - description: Number of items per page
+        in: query
+        name: size
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of flows in the board
+          schema:
+            allOf:
+            - $ref: '#/definitions/rest.ServerResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/domain.PinData'
+                  type: array
+              type: object
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "403":
+          description: Forbidden - access denied
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "404":
+          description: Board not found
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Get board flows with pagination
+      tags:
+      - boards
+  /api/v1/boards/{board_id}/flows/{id}:
+    delete:
+      description: Removes a flow from a board for authenticated user
+      parameters:
+      - description: Board ID
+        in: path
+        name: board_id
+        required: true
+        type: integer
+      - description: Flow ID to remove
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Flow removed successfully
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "400":
+          description: Invalid request data
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "403":
+          description: Forbidden - not board owner
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "404":
+          description: Board or flow not found
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Remove flow from board
+      tags:
+      - boards
+  /api/v1/boards/{id}/flows:
+    post:
+      consumes:
+      - application/json
+      description: Adds a flow to a board for authenticated user
+      parameters:
+      - description: Board ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Flow ID to add
+        in: body
+        name: flow
+        required: true
+        schema:
+          $ref: '#/definitions/rest.BoardRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Flow added successfully
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "400":
+          description: Invalid request data
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "403":
+          description: Forbidden - not board owner
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "404":
+          description: Board or flow not found
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Add flow to board
+      tags:
+      - boards
+  /api/v1/boards/{username}:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new board for the specified user
+      parameters:
+      - description: Username of the board owner
+        in: path
+        name: username
+        required: true
+        type: string
+      - description: Board details
+        in: body
+        name: board
+        required: true
+        schema:
+          $ref: '#/definitions/domain.Board'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Board created successfully
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "400":
+          description: Invalid request data
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "409":
+          description: Board already exists
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Create a new board
+      tags:
+      - boards
+  /api/v1/feed:
+    get:
       consumes:
       - application/json
       description: Leaves a like on a flow or deletes the like
@@ -168,7 +542,74 @@ paths:
           description: Internal server error
           schema:
             type: string
-      summary: Leave a like on a flow
+  /api/v1/profile/boards:
+    get:
+      description: Retrieves all boards (public and private) for authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User's boards list
+          schema:
+            allOf:
+            - $ref: '#/definitions/rest.ServerResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/domain.Board'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Get all user boards
+      tags:
+      - boards
+  /api/v1/user/{username}/boards:
+    get:
+      description: Retrieves public boards for a specific user
+      parameters:
+      - description: Username to retrieve public boards for
+        in: path
+        name: username
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Public boards list
+          schema:
+            allOf:
+            - $ref: '#/definitions/rest.ServerResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/domain.Board'
+                  type: array
+              type: object
+        "400":
+          description: Invalid username
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      summary: Get user's public boards
+      tags:
+      - boards
   /health:
     get:
       description: Returns server status
