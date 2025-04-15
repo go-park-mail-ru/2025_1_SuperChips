@@ -155,22 +155,22 @@ func main() {
 
 	mux.HandleFunc("/api/v1/profile",
 		middleware.ChainMiddleware(profileHandler.CurrentUserProfileHandler,
-			middleware.AuthMiddleware(jwtManager),
+			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedGetOptions)))
 	mux.HandleFunc("/api/v1/user/{username}",
 		middleware.ChainMiddleware(profileHandler.PublicProfileHandler,
 			middleware.CorsMiddleware(config, allowedGetOptions)))
 	mux.HandleFunc("/api/v1/profile/update",
 		middleware.ChainMiddleware(profileHandler.PatchUserProfileHandler,
-			middleware.AuthMiddleware(jwtManager),
+			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedPatchOptions)))
 	mux.HandleFunc("/api/v1/profile/avatar",
 		middleware.ChainMiddleware(profileHandler.UserAvatarHandler,
-			middleware.AuthMiddleware(jwtManager),
+			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedPostOptions)))
 	mux.HandleFunc("/api/v1/profile/password",
 		middleware.ChainMiddleware(profileHandler.ChangeUserPasswordHandler,
-			middleware.AuthMiddleware(jwtManager),
+			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedPostOptions)))
 
 	mux.HandleFunc("OPTIONS /api/v1/flows",
@@ -178,19 +178,19 @@ func main() {
 			middleware.CorsMiddleware(config, allowedGetOptions)))
 	mux.HandleFunc("GET /api/v1/flows",
 		middleware.ChainMiddleware(pinCRUDHandler.ReadHandler,
-			middleware.AuthSoftMiddleware(jwtManager),
+			middleware.AuthMiddleware(jwtManager, false),
 			middleware.CorsMiddleware(config, allowedGetOptions)))
 	mux.HandleFunc("DELETE /api/v1/flows",
 		middleware.ChainMiddleware(pinCRUDHandler.DeleteHandler,
-			middleware.AuthMiddleware(jwtManager),
+			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedDeleteOptions)))
 	mux.HandleFunc("PUT /api/v1/flows",
 		middleware.ChainMiddleware(pinCRUDHandler.UpdateHandler,
-			middleware.AuthMiddleware(jwtManager),
+			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedPutOptions)))
 	mux.HandleFunc("POST /api/v1/flows",
 		middleware.ChainMiddleware(pinCRUDHandler.CreateHandler,
-			middleware.AuthMiddleware(jwtManager),
+			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedPostOptions)))
 
 	server := http.Server{
