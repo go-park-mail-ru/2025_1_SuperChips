@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -43,6 +44,9 @@ var (
 // @version 1.0
 // @description API for Flow.
 func main() {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
+
 	config := configs.Config{}
 	if err := config.LoadConfigFromEnv(); err != nil {
 		log.Fatalf("Cannot launch due to config error: %s", err)
@@ -53,7 +57,7 @@ func main() {
 		log.Fatalf("Cannot launch due to pg config error: %s", err)
 	}
 
-	log.Println("Waiting for database to start...")
+	slog.Info("Waiting for database to start...")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 
 	defer cancel()
@@ -153,138 +157,167 @@ func main() {
 	)))
 
 	mux.HandleFunc("/health",
-		middleware.ChainMiddleware(rest.HealthCheckHandler, middleware.CorsMiddleware(config, allowedGetOptions)))
+		middleware.ChainMiddleware(rest.HealthCheckHandler, middleware.CorsMiddleware(config, allowedGetOptions),
+		middleware.Log()))
 
 	mux.HandleFunc("/api/v1/feed",
-		middleware.ChainMiddleware(pinsHandler.FeedHandler, middleware.CorsMiddleware(config, allowedGetOptions)))
+		middleware.ChainMiddleware(pinsHandler.FeedHandler, middleware.CorsMiddleware(config, allowedGetOptions),
+		middleware.Log()))
 
 	mux.HandleFunc("/api/v1/auth/login",
-		middleware.ChainMiddleware(authHandler.LoginHandler, middleware.CorsMiddleware(config, allowedPostOptions)))
+		middleware.ChainMiddleware(authHandler.LoginHandler, middleware.CorsMiddleware(config, allowedPostOptions),
+		middleware.Log()))
 	mux.HandleFunc("/api/v1/auth/registration",
-		middleware.ChainMiddleware(authHandler.RegistrationHandler, middleware.CorsMiddleware(config, allowedPostOptions)))
+		middleware.ChainMiddleware(authHandler.RegistrationHandler, middleware.CorsMiddleware(config, allowedPostOptions),
+		middleware.Log()))
 	mux.HandleFunc("/api/v1/auth/logout",
-		middleware.ChainMiddleware(authHandler.LogoutHandler, middleware.CorsMiddleware(config, allowedPostOptions)))
+		middleware.ChainMiddleware(authHandler.LogoutHandler, middleware.CorsMiddleware(config, allowedPostOptions),
+		middleware.Log()))
 
 	mux.HandleFunc("/api/v1/profile",
 		middleware.ChainMiddleware(profileHandler.CurrentUserProfileHandler,
 			middleware.AuthMiddleware(jwtManager, true),
-			middleware.CorsMiddleware(config, allowedGetOptions)))
+			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.Log()))
 	mux.HandleFunc("/api/v1/users/{username}",
 		middleware.ChainMiddleware(profileHandler.PublicProfileHandler,
-			middleware.CorsMiddleware(config, allowedGetOptions)))
+			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.Log()))
 	mux.HandleFunc("/api/v1/profile/update",
 		middleware.ChainMiddleware(profileHandler.PatchUserProfileHandler,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),
-			middleware.CorsMiddleware(config, allowedPatchOptions)))
+			middleware.CorsMiddleware(config, allowedPatchOptions),
+			middleware.Log()))
 	mux.HandleFunc("/api/v1/profile/avatar",
 		middleware.ChainMiddleware(profileHandler.UserAvatarHandler,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),
-			middleware.CorsMiddleware(config, allowedPostOptions)))
+			middleware.CorsMiddleware(config, allowedPostOptions),
+			middleware.Log()))
 	mux.HandleFunc("/api/v1/profile/password",
 		middleware.ChainMiddleware(profileHandler.ChangeUserPasswordHandler,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),
-			middleware.CorsMiddleware(config, allowedPostOptions)))
+			middleware.CorsMiddleware(config, allowedPostOptions),
+			middleware.Log()))
 
 	mux.HandleFunc("OPTIONS /api/v1/flows",
 		middleware.ChainMiddleware(func(http.ResponseWriter, *http.Request) {},
-			middleware.CorsMiddleware(config, allowedGetOptions)))
+			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.Log()))
 	mux.HandleFunc("GET /api/v1/flows",
 		middleware.ChainMiddleware(pinCRUDHandler.ReadHandler,
 			middleware.AuthMiddleware(jwtManager, false),
-			middleware.CorsMiddleware(config, allowedGetOptions)))
+			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.Log()))
 	mux.HandleFunc("DELETE /api/v1/flows",
 		middleware.ChainMiddleware(pinCRUDHandler.DeleteHandler,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),
-			middleware.CorsMiddleware(config, allowedDeleteOptions)))
+			middleware.CorsMiddleware(config, allowedDeleteOptions),
+			middleware.Log()))
 	mux.HandleFunc("PUT /api/v1/flows",
 		middleware.ChainMiddleware(pinCRUDHandler.UpdateHandler,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),
-			middleware.CorsMiddleware(config, allowedPutOptions)))
+			middleware.CorsMiddleware(config, allowedPutOptions),
+			middleware.Log()))
 	mux.HandleFunc("POST /api/v1/flows",
 		middleware.ChainMiddleware(pinCRUDHandler.CreateHandler,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),
-			middleware.CorsMiddleware(config, allowedPostOptions)))
+			middleware.CorsMiddleware(config, allowedPostOptions),
+			middleware.Log()))
 
 	mux.HandleFunc("POST /api/v1/like",
 		middleware.ChainMiddleware(likeHandler.LikeFlow, 
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),
-			middleware.CorsMiddleware(config, allowedPostOptions)))
+			middleware.CorsMiddleware(config, allowedPostOptions),
+			middleware.Log()))
 
 	mux.HandleFunc("OPTIONS /api/v1/like", middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}, 
-		middleware.CorsMiddleware(config, allowedGetOptions)))
+		middleware.CorsMiddleware(config, allowedGetOptions),
+		middleware.Log()))
 
 	mux.HandleFunc("POST /api/v1/boards/{id}/flows",
 		middleware.ChainMiddleware(boardHandler.AddToBoard,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),
-			middleware.CorsMiddleware(config, allowedPostOptions)))
+			middleware.CorsMiddleware(config, allowedPostOptions),
+			middleware.Log()))
 
 	mux.HandleFunc("GET /api/v1/boards/{board_id}/flows",
 		middleware.ChainMiddleware(boardHandler.GetBoardFlows,
 			middleware.AuthMiddleware(jwtManager, false),
-			middleware.CorsMiddleware(config, allowedGetOptions)))
+			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.Log()))
 
 	mux.HandleFunc("OPTIONS /api/v1/boards/{board_id}/flows",
 		middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
-		}, middleware.CorsMiddleware(config, allowedOptions)))
+		}, middleware.CorsMiddleware(config, allowedOptions),
+		middleware.Log()))
 
 	mux.HandleFunc("/api/v1/boards/{board_id}/flows/{id}",
 		middleware.ChainMiddleware(boardHandler.DeleteFromBoard,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),
-			middleware.CorsMiddleware(config, allowedDeleteOptions)))
+			middleware.CorsMiddleware(config, allowedDeleteOptions),
+			middleware.Log()))
 
 	mux.HandleFunc("DELETE /api/v1/boards/{board_id}",
 		middleware.ChainMiddleware(boardHandler.DeleteBoard,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),
-			middleware.CorsMiddleware(config, allowedDeleteOptions)))
+			middleware.CorsMiddleware(config, allowedDeleteOptions),
+			middleware.Log()))
 
 	mux.HandleFunc("PUT /api/v1/boards/{board_id}",
 		middleware.ChainMiddleware(boardHandler.UpdateBoard,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),
-			middleware.CorsMiddleware(config, allowedPutOptions)))
+			middleware.CorsMiddleware(config, allowedPutOptions),
+			middleware.Log()))
 
 	mux.HandleFunc("GET /api/v1/boards/{board_id}",
 		middleware.ChainMiddleware(boardHandler.GetBoard,
 			middleware.AuthMiddleware(jwtManager, false),
-			middleware.CorsMiddleware(config, allowedGetOptions)))
+			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.Log()))
 
 	mux.HandleFunc("OPTIONS /api/v1/boards/{board_id}",
 		middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
-		}, middleware.CorsMiddleware(config, allowedOptions)))
+		}, middleware.CorsMiddleware(config, allowedOptions),
+		middleware.Log()))
 
 	mux.HandleFunc("GET /api/v1/users/{username}/boards",
 		middleware.ChainMiddleware(boardHandler.GetUserPublic,
-			middleware.CorsMiddleware(config, allowedGetOptions)))
+			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.Log()))
 
 	mux.HandleFunc("POST /api/v1/users/{username}/boards",
 		middleware.ChainMiddleware(boardHandler.CreateBoard,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),
-			middleware.CorsMiddleware(config, allowedPostOptions)))
+			middleware.CorsMiddleware(config, allowedPostOptions),
+			middleware.Log()))
 
 	mux.HandleFunc("OPTIONS /api/v1/users/{username}/boards",
 		middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
-		}, middleware.CorsMiddleware(config, allowedOptions)))
+		}, middleware.CorsMiddleware(config, allowedOptions),
+		middleware.Log()))
 
 	mux.HandleFunc("/api/v1/profile/boards",
 		middleware.ChainMiddleware(boardHandler.GetUserAllBoards,
 			middleware.AuthMiddleware(jwtManager, true),
-			middleware.CorsMiddleware(config, allowedGetOptions)))
+			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.Log()))
 
 	server := http.Server{
 		Addr:    config.Port,
