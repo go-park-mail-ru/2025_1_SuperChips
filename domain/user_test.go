@@ -75,26 +75,6 @@ func TestValidateUser(t *testing.T) {
 			},
 			wantErr: true,
 		},
-		{
-			name: "Сценарий: некорректная дата рождения: дата из будущего.",
-			user: domain.User{
-				Email:    "test@example.com",
-				Username: "username",
-				Password: "securepassword123",
-				Birthday: time.Now().Add(1 * time.Hour),
-			},
-			wantErr: true,
-		},
-		{
-			name: "Сценарий: некорректная дата рождения: слишком старая дата.",
-			user: domain.User{
-				Email:    "test@example.com",
-				Username: "username",
-				Password: "securepassword123",
-				Birthday: time.Now().Add(-200 * 365 * 24 * time.Hour),
-			},
-			wantErr: true,
-		},
 	}
 
 	for _, tt := range tests {

@@ -68,7 +68,7 @@ func (h *ProfileHandler) CurrentUserProfileHandler(w http.ResponseWriter, r *htt
 		HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-	
+
 	response := ServerResponse{
 		Data: user,
 	}

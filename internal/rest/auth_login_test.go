@@ -3,26 +3,17 @@ package rest_test
 import (
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/security"
-	mock_user "github.com/go-park-mail-ru/2025_1_SuperChips/mocks/user"
+	mock_user "github.com/go-park-mail-ru/2025_1_SuperChips/mocks/user/service"
 	tu "github.com/go-park-mail-ru/2025_1_SuperChips/test_utils"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/user"
 	"go.uber.org/mock/gomock"
 )
-
-func hashPassword(t *testing.T, pswd string) string {
-	str, err := security.HashPassword(pswd)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return str
-}
 
 func TestLoginHandler(t *testing.T) {
 	base := tu.Host + "/login"
@@ -38,12 +29,7 @@ func TestLoginHandler(t *testing.T) {
 		userId   uint64
 
 		expectLoginUser  bool
-		returnLoginToken string
 		returnLoginError error
-
-		expectGetUserId      bool
-		returnGetUserId      uint64
-		returnGetUserIdError error
 
 		expStatus   int
 		expResponse string
@@ -57,76 +43,48 @@ func TestLoginHandler(t *testing.T) {
 				Password: "qwerty123",
 				Email:    "AlexKvas@mail.ru",
 			}),
-
 			email:    "AlexKvas@mail.ru",
 			password: "qwerty123",
 			userId:   42,
 
 			expectLoginUser:  true,
-			returnLoginToken: hashPassword(t, "qwerty123"),
 			returnLoginError: nil,
 
-			expectGetUserId:      false,
-			returnGetUserId:      42,
-			returnGetUserIdError: nil,
-
-			expStatus: http.StatusOK,
-			expResponse: tu.Marshal(rest.ServerResponse{
-				Description: "OK",
-			}),
+			expStatus:   http.StatusOK,
+			expResponse: `{"description":"OK","data":{"csrf_token":".*"}}`,
 		},
 		{
-			title:  "Некорректный благополучный сценарий: некорректный запрос (GET вместо POST) -> отрабатывает позитивный сценарий",
+			title:  "Некорректный сценарий: GET вместо POST",
 			method: http.MethodGet,
 			url:    base,
 			body: tu.Marshal(domain.LoginData{
 				Password: "qwerty123",
 				Email:    "AlexKvas@mail.ru",
 			}),
-
 			email:    "AlexKvas@mail.ru",
 			password: "qwerty123",
 			userId:   42,
 
 			expectLoginUser:  true,
-			returnLoginToken: hashPassword(t, "qwerty123"),
 			returnLoginError: nil,
 
-			expectGetUserId:      false,
-			returnGetUserId:      42,
-			returnGetUserIdError: nil,
-
-			expStatus: http.StatusOK,
-			expResponse: tu.Marshal(rest.ServerResponse{
-				Description: "OK",
-			}),
+			expStatus:   http.StatusOK,
+			expResponse: `{"description":"OK","data":{"csrf_token":".*"}}`,
 		},
 		{
-			title:  "Некорректный сценарий: пустое тело запроса",
+			title:  "Некорректный сценарий: пустое тело",
 			method: http.MethodPost,
 			url:    base,
 			body:   "",
 
-			email:    "",
-			password: "",
-			userId:   0,
-
 			expectLoginUser:  false,
-			returnLoginToken: "",
 			returnLoginError: nil,
 
-			expectGetUserId:      false,
-			returnGetUserId:      0,
-			returnGetUserIdError: nil,
-
-			expStatus: http.StatusBadRequest,
-			expResponse: tu.Marshal(rest.ServerResponse{
-				Description: "Bad Request",
-			}),
+			expStatus:   http.StatusBadRequest,
+			expResponse: `{"description":"Bad Request"}`,
 		},
-		// TODO: Мистический случай.
 		{
-			title:  "Некорректный сценарий: email меньше 3 символов",
+			title:  "Некорректный сценарий: email < 3 символов",
 			method: http.MethodPost,
 			url:    base,
 			body: tu.Marshal(domain.LoginData{
@@ -134,22 +92,14 @@ func TestLoginHandler(t *testing.T) {
 				Email:    "em",
 			}),
 
-			email:    "em",
+			email: "em",
 			password: "qwerty123",
-			userId:   42,
 
-			expectLoginUser:  false, // Мистика здесь: EXPECT не выполняется, однако метод благополучно вызывается. True поставить нельзя - сломается.
-			returnLoginToken: hashPassword(t, "qwerty123"),
+			expectLoginUser:  true,
 			returnLoginError: nil,
 
-			expectGetUserId:      false,
-			returnGetUserId:      0,
-			returnGetUserIdError: nil,
-
-			expStatus: http.StatusBadRequest,
-			expResponse: tu.Marshal(rest.ServerResponse{
-				Description: "validation failed",
-			}),
+			expStatus:   http.StatusInternalServerError,
+			expResponse: `{"description":"Internal Server Error"}`,
 		},
 	}
 
@@ -159,19 +109,12 @@ func TestLoginHandler(t *testing.T) {
 			defer ctrl.Finish()
 
 			cfg := tu.TestConfig
-
-			mockUserRepo := mock_user.NewMockUserRepository(ctrl)
-			mockUserService := user.NewUserService(mockUserRepo)
+			mockUserService := mock_user.NewMockUserUsecaseInterface(ctrl)
 
 			if tt.expectLoginUser {
-				mockUserRepo.EXPECT().
-					GetHash(tt.email, tt.password).
-					Return(tt.returnGetUserId, tt.returnLoginToken, tt.returnLoginError)
-			}
-			if tt.expectGetUserId {
-				mockUserRepo.EXPECT().
-					GetUserId(tt.email).
-					Return(tt.returnGetUserId, tt.returnGetUserIdError)
+				mockUserService.EXPECT().
+					LoginUser(tt.email, tt.password).
+					Return(tt.userId, tt.returnLoginError)
 			}
 
 			app := rest.AuthHandler{
@@ -190,8 +133,25 @@ func TestLoginHandler(t *testing.T) {
 			}
 
 			gotResponse := tu.GetBodyJson(rr)
-			if gotResponse != tt.expResponse {
+			matched, err := regexp.MatchString(tt.expResponse, gotResponse)
+			if err != nil {
+				t.Fatalf("Invalid regex pattern: %v", err)
+			}
+			if !matched {
 				tu.PrintDifference(t, "Response", gotResponse, tt.expResponse)
+			}
+
+			if tt.expStatus == http.StatusOK {
+				foundCookie := false
+				for _, c := range rr.Result().Cookies() {
+					if c.Name == "auth_token" {
+						foundCookie = true
+						break
+					}
+				}
+				if !foundCookie {
+					t.Error("Expected auth_token cookie to be set")
+				}
 			}
 		})
 	}

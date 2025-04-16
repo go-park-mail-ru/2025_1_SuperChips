@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
-	mock_pin "github.com/go-park-mail-ru/2025_1_SuperChips/mocks/pin"
+	mock_pin "github.com/go-park-mail-ru/2025_1_SuperChips/mocks/pin/repository"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/pin"
 	tu "github.com/go-park-mail-ru/2025_1_SuperChips/test_utils"
 	"go.uber.org/mock/gomock"

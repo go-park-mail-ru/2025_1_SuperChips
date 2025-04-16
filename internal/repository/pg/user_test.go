@@ -1,197 +1,181 @@
-package repository_test
-
+package repository
 import (
-	"errors"
-	"testing"
-	"time"
+    "database/sql"
+    "testing"
+    "time"
 
-	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
-	pg "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
+    "github.com/DATA-DOG/go-sqlmock"
+    "github.com/go-park-mail-ru/2025_1_SuperChips/domain"
+    "github.com/stretchr/testify/assert"
 )
 
-func TestUserRepository_AddUser(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer db.Close()
-
-	repo, err := pg.NewPGUserStorage(db)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	user := domain.User{
-		Username:   "testuser",
-		Email:      "test@example.com",
-		Password:   "password123",
-		PublicName: "Test User",
-		Birthday:   time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
-	}
-
-	expectedId := uint64(12)
-
-	mock.ExpectQuery(`INSERT INTO flow_user \(username, avatar, public_name, email, password, birthday\) VALUES \(\$1, \$2, \$3, \$4, \$5, \$6\) ON CONFLICT \(email, username\) DO NOTHING RETURNING id`).
-		WithArgs(user.Username, "", user.PublicName, user.Email, user.Password, user.Birthday).
-		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(expectedId))
-
-	_, err = repo.AddUser(user)
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("there were unfulfilled expectations: %v", err)
-	}
+func setupMock(t *testing.T) (sqlmock.Sqlmock, *pgUserStorage) {
+    db, mock, err := sqlmock.New()
+    if err != nil {
+        t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+    }
+    storage := &pgUserStorage{
+        db: db,
+    }
+    return mock, storage
 }
 
-func TestUserRepository_LoginUser(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatal(err)
-	}
+func TestAddUser_Success(t *testing.T) {
+    mock, storage := setupMock(t)
+    defer mock.ExpectClose()
 
-	defer db.Close()
+    userInfo := domain.User{
+        Username:  "user1",
+        Avatar:    "avatar_url",
+        PublicName: "user1",
+        Email:     "user@example.com",
+        Password:  "pass123",
+        Birthday:  time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
+    }
 
-	repo, err := pg.NewPGUserStorage(db)
-	if err != nil {
-		t.Fatal(err)
-	}
+    mock.ExpectQuery("INSERT INTO flow_user").
+        WithArgs(userInfo.Username, userInfo.Avatar, userInfo.Username, userInfo.Email, userInfo.Password, userInfo.Birthday).
+        WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
 
-	email := "test@example.com"
-	password := "password123"
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	mock.ExpectQuery(`SELECT id, password FROM flow_user WHERE email = \$1`).
-		WithArgs(email).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "password"}).AddRow(2, password))
-
-	_, pswd, err := repo.GetHash(email, password)
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("there were unfulfilled expectations: %v", err)
-	}
-
-	if password != pswd {
-		t.Errorf("passwords dont match")
-	}
+    id, err := storage.AddUser(userInfo)
+    assert.NoError(t, err)
+    assert.Equal(t, uint64(1), id)
+    assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestUserRepository_GetUserPublicInfo(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatal(err)
-	}
+func TestGetHash_Success(t *testing.T) {
+    mock, storage := setupMock(t)
+    defer mock.ExpectClose()
 
-	defer db.Close()
+    email := "user@example.com"
+    password := "hashedpassword"
+    id := uint64(1)
 
-	repo, err := pg.NewPGUserStorage(db)
-	if err != nil {
-		t.Fatal(err)
-	}
+    rows := sqlmock.NewRows([]string{"id", "password"}).
+        AddRow(id, password)
 
-	email := "test@example.com"
-	mockUser := domain.PublicUser{
-		Username: "testuser",
-		Email:    email,
-		Avatar:   "avatar.png",
-		Birthday: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
-	}
+    mock.ExpectQuery("SELECT id, password FROM flow_user WHERE email =").
+        WithArgs(email).
+        WillReturnRows(rows)
 
-	mock.ExpectQuery(`SELECT username, email, avatar, birthday, about, public_name, FROM flow_user WHERE email = \$1`).
-		WithArgs(email).
-		WillReturnRows(sqlmock.NewRows([]string{"username", "email", "avatar", "birthday"}).
-			AddRow(mockUser.Username, mockUser.Email, mockUser.Avatar, mockUser.Birthday))
-
-	user, err := repo.GetUserPublicInfo(email)
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-
-	if user.Username != mockUser.Username || user.Email != mockUser.Email || user.Avatar != mockUser.Avatar || user.Birthday != mockUser.Birthday {
-		t.Errorf("unexpected user data: got %+v, want %+v", user, mockUser)
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("there were unfulfilled expectations: %v", err)
-	}
+    returnedID, returnedHash, err := storage.GetHash(email, "")
+    assert.NoError(t, err)
+    assert.Equal(t, id, returnedID)
+    assert.Equal(t, password, returnedHash)
+    assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestUserRepository_GetUserId(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatal(err)
-	}
+func TestGetHash_UserNotFound(t *testing.T) {
+    mock, storage := setupMock(t)
+    defer mock.ExpectClose()
 
-	defer db.Close()
+    email := "user@example.com"
 
-	repo, err := pg.NewPGUserStorage(db)
-	if err != nil {
-		t.Fatal(err)
-	}
+    mock.ExpectQuery("SELECT id, password FROM flow_user WHERE email =").
+        WithArgs(email).
+        WillReturnError(sql.ErrNoRows)
 
-	email := "test@example.com"
-	var expectedID uint64 = 1
-
-	mock.ExpectQuery(`SELECT id FROM flow_user WHERE email = \$1`).
-		WithArgs(email).
-		WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow(expectedID))
-
-	id, err := repo.GetUserId(email)
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-
-	if id != expectedID {
-		t.Errorf("unexpected user ID: got %d, want %d", id, expectedID)
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("there were unfulfilled expectations: %v", err)
-	}
+    _, _, err := storage.GetHash(email, "")
+    assert.Equal(t, domain.ErrInvalidCredentials, err)
+    assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestUserRepository_AddUser_Conflict(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatal(err)
-	}
+func TestGetUserPublicInfo_Success(t *testing.T) {
+    mock, storage := setupMock(t)
+    defer mock.ExpectClose()
 
-	defer db.Close()
+    email := "user@example.com"
+    username := "user1"
+    avatar := "avatar.jpg"
+    birthday := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
 
-	repo, err := pg.NewPGUserStorage(db)
-	if err != nil {
-		t.Fatal(err)
-	}
+    rows := sqlmock.NewRows([]string{"username", "email", "avatar", "birthday"}).
+        AddRow(username, email, avatar, birthday)
 
-	user := domain.User{
-		Username:   "testuser",
-		Email:      "test@example.com",
-		Password:   "password123",
-		PublicName: "Test User",
-		Birthday:   time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
-	}
+    mock.ExpectQuery(`SELECT username, email, avatar, birthday, about, public_name, FROM flow_user WHERE email = \$1`).
+        WithArgs(email).
+        WillReturnRows(rows)
 
-	mock.NewRows([]string{"id", "username", "avatar", "public_name", "email", "password"}).
-	AddRow(1, user.Username, "", user.PublicName, user.Email, user.Password)
-
-	mock.ExpectQuery(`INSERT INTO flow_user \(username, avatar, public_name, email, password, birthday\) VALUES \(\$1, \$2, \$3, \$4, \$5, \$6\) ON CONFLICT \(email, username\) DO NOTHING RETURNING id`).
-		WithArgs(user.Username, "", user.PublicName, user.Email, user.Password, user.Birthday).
-		WillReturnError(domain.ErrConflict)
-
-	_, err = repo.AddUser(user)
-	if !errors.Is(err, domain.ErrConflict) {
-		t.Errorf("expected conflict error, got %v", err)
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("there were unfulfilled expectations: %v", err)
-	}
+    publicUser, err := storage.GetUserPublicInfo(email)
+    assert.NoError(t, err)
+    assert.Equal(t, username, publicUser.Username)
+    assert.Equal(t, email, publicUser.Email)
+    assert.Equal(t, avatar, publicUser.Avatar)
+    assert.Equal(t, birthday, publicUser.Birthday)
+    assert.NoError(t, mock.ExpectationsWereMet())
 }
+
+func TestGetUserPublicInfo_NullAvatar(t *testing.T) {
+    mock, storage := setupMock(t)
+    defer mock.ExpectClose()
+
+    email := "user@example.com"
+    username := "user1"
+    var avatar sql.NullString
+    birthday := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
+
+    rows := sqlmock.NewRows([]string{"username", "email", "avatar", "birthday"}).
+        AddRow(username, email, avatar, birthday)
+
+    mock.ExpectQuery(`SELECT username, email, avatar, birthday, about, public_name, FROM flow_user WHERE email = \$1`).
+        WithArgs(email).
+        WillReturnRows(rows)
+
+    publicUser, err := storage.GetUserPublicInfo(email)
+    assert.NoError(t, err)
+    assert.Equal(t, username, publicUser.Username)
+    assert.Equal(t, email, publicUser.Email)
+    assert.Equal(t, "", publicUser.Avatar)
+    assert.Equal(t, birthday, publicUser.Birthday)
+    assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestGetUserPublicInfo_UserNotFound(t *testing.T) {
+    mock, storage := setupMock(t)
+    defer mock.ExpectClose()
+
+    email := "user@example.com"
+
+    mock.ExpectQuery(`SELECT username, email, avatar, birthday, about, public_name, FROM flow_user WHERE email = \$1`).
+        WithArgs(email).
+        WillReturnError(sql.ErrNoRows)
+
+    _, err := storage.GetUserPublicInfo(email)
+    assert.Equal(t, domain.ErrInvalidCredentials, err)
+    assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestGetUserId_Success(t *testing.T) {
+    mock, storage := setupMock(t)
+    defer mock.ExpectClose()
+
+    email := "user@example.com"
+    id := uint64(1)
+
+    rows := sqlmock.NewRows([]string{"id"}).AddRow(id)
+
+    mock.ExpectQuery("SELECT id FROM flow_user WHERE email =").
+        WithArgs(email).
+        WillReturnRows(rows)
+
+    returnedID, err := storage.GetUserId(email)
+    assert.NoError(t, err)
+    assert.Equal(t, id, returnedID)
+    assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestGetUserId_UserNotFound(t *testing.T) {
+    mock, storage := setupMock(t)
+    defer mock.ExpectClose()
+
+    email := "user@example.com"
+
+    mock.ExpectQuery("SELECT id FROM flow_user WHERE email =").
+        WithArgs(email).
+        WillReturnError(sql.ErrNoRows)
+
+    _, err := storage.GetUserId(email)
+    assert.Equal(t, domain.ErrUserNotFound, err)
+    assert.NoError(t, mock.ExpectationsWereMet())
+}
+

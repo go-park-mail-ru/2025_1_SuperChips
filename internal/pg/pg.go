@@ -40,3 +40,4 @@ func ConnectDB(connString string, ctx context.Context) (*sql.DB, error) {
 
 	return nil, fmt.Errorf("failed to connect to database after %d attempts", maxRetries)
 }
+

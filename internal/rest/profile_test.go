@@ -3,11 +3,13 @@ package rest_test
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"fmt"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/textproto"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -16,11 +18,14 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
-	mock_rest "github.com/go-park-mail-ru/2025_1_SuperChips/mocks/rest"
+	mock_rest "github.com/go-park-mail-ru/2025_1_SuperChips/mocks/profile/service"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"go.uber.org/mock/gomock"
 )
+
+//go:embed test.jpg
+var testImage []byte
 
 type ContextString string
 
@@ -77,7 +82,7 @@ func TestCurrentUserProfileHandler_GET(t *testing.T) {
             URL:          base,
             Token:        "yes",
             ExpectedCode: 200,
-            ExpectedBody: `{"data":{"username":"JohnDoe","email":"","birthday":"2000-01-01T00:00:00Z"}}`,
+            ExpectedBody: `{"data":{"user_id":1,"username":"JohnDoe","email":"","birthday":"2000-01-01T00:00:00Z"}}`,
         },
         {
             Name:         "Unauthorized request",
@@ -312,7 +317,7 @@ func TestUserAvatarHandler(t *testing.T) {
 			URL:          base,
 			Token:        "validToken",
 			ExpectedCode: 201,
-			ExpectedBody: `{"description":"Created"}`,
+			ExpectedBody: `{"description":"Created","data":{"media_url":".*"}}`,
 		},
 		{
 			Name:         "File too large",
@@ -327,8 +332,8 @@ func TestUserAvatarHandler(t *testing.T) {
 			Method:       "POST",
 			URL:          base,
 			Token:        "validToken",
-			ExpectedCode: 415,
-			ExpectedBody: `{"description":"unsupported file format"}`,
+			ExpectedCode: 400,
+			ExpectedBody: `{"description":"image extension and type are mismatched"}`,
 		},
 		{
 			Name:         "No file uploaded",
@@ -353,7 +358,7 @@ func TestUserAvatarHandler(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
 			req := httptest.NewRequest(tc.Method, tc.URL, strings.NewReader(tc.Body))
-			req.Header.Set("Content-Type", "multipart/form-data; boundary=TestBoundary")
+			req.Header.Set("Content-Type", "image/jpeg")
 
 			ctrl := gomock.NewController(t)
 			mockService := mock_rest.NewMockProfileService(ctrl)
@@ -368,16 +373,16 @@ func TestUserAvatarHandler(t *testing.T) {
 
 			switch tc.Name {
 			case "Valid avatar upload":
-				body, contentType := createMultipartFormData(t, "test.png", "image/png", 1024)
+				body, contentType := createRealMultipartFormData(t, "test.jpg", "image/jpeg")
 				req = httptest.NewRequest(tc.Method, tc.URL, body)
 				req.Header.Set("Content-Type", contentType)
 				mockService.EXPECT().SaveUserAvatar(gomock.Any(), gomock.Any()).AnyTimes().Return(nil)
 			case "File too large":
-				body, contentType := createMultipartFormData(t, "large.jpg", "image/jpeg", 4*1024*1024)
+				body, contentType := createMultipartFormData(t, "large.jpg", "image/jpg", 4*1024*1024)
 				req = httptest.NewRequest(tc.Method, tc.URL, body)
 				req.Header.Set("Content-Type", contentType)
 			case "Invalid content type":
-				body, contentType := createMultipartFormData(t, "test.txt", "text/plain")
+				body, contentType := createMultipartFormData(t, "test.txt", "text/plain", 512)
 				req = httptest.NewRequest(tc.Method, tc.URL, body)
 				req.Header.Set("Content-Type", contentType)
 			case "No file uploaded":
@@ -396,9 +401,20 @@ func TestUserAvatarHandler(t *testing.T) {
 			if rr.Code != tc.ExpectedCode {
 				t.Errorf("expected code %d, got %d", tc.ExpectedCode, rr.Code)
 			}
-			if !strings.Contains(rr.Body.String(), tc.ExpectedBody) {
-				t.Errorf("expected body to contain %s, got %s", tc.ExpectedBody, rr.Body.String())
+			if tc.Name != "Valid avatar upload" {
+				if !strings.Contains(rr.Body.String(), tc.ExpectedBody) {
+					t.Errorf("expected body to contain %s, got %s", tc.ExpectedBody, rr.Body.String())
+				}
+			} else {
+				matched, err := regexp.MatchString(tc.ExpectedBody, rr.Body.String())
+				if err != nil {
+					t.Fatalf("Invalid regex pattern: %v", err)
+				}
+				if !matched {
+					t.Errorf("expected body to match %s, got %s", tc.ExpectedBody, rr.Body.String())
+				}
 			}
+
 		})
 	}
 }
@@ -492,6 +508,29 @@ func TestChangeUserPasswordHandler(t *testing.T) {
 			}
 		})
 	}
+}
+
+func createRealMultipartFormData(t *testing.T, filename, contentType string) (body *bytes.Buffer, contentTypeHeader string) {
+    t.Helper()
+
+    body = &bytes.Buffer{}
+    writer := multipart.NewWriter(body)
+    defer writer.Close()
+
+    h := make(textproto.MIMEHeader)
+    h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="image"; filename="%s"`, filename))
+    h.Set("Content-Type", contentType)
+
+    part, err := writer.CreatePart(h)
+    if err != nil {
+        t.Fatal(err)
+    }
+
+    if _, err := part.Write(testImage); err != nil {
+        t.Fatal(err)
+    }
+
+    return body, writer.FormDataContentType()
 }
 
 func createMultipartFormData(t *testing.T, filename, contentType string, size ...int) (*bytes.Buffer, string) {
