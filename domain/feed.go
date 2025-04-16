@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"html"
+
 	"github.com/microcosm-cc/bluemonday"
 )
 
@@ -21,6 +23,6 @@ type PinData struct {
 func (p *PinData) Sanitize() {
 	b := bluemonday.UGCPolicy()
 
-	p.Header = b.Sanitize(p.Header)
-	p.Description = b.Sanitize(p.Description)
+	p.Header = b.Sanitize(html.EscapeString(p.Header))
+	p.Description = b.Sanitize(html.EscapeString(p.Description))
 }
