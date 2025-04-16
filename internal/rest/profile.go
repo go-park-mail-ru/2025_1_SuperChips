@@ -15,7 +15,7 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/utils/image"
 )
 
-const maxAvatarSize = (1 << 20) * 3 // 3 мб
+const maxAvatarSize = (1 << 20) * 5 // 3 мб
 
 var allowedTypes = map[string]bool{
 	"image/jpeg": true,
@@ -141,6 +141,11 @@ func (h *ProfileHandler) UserAvatarHandler(w http.ResponseWriter, r *http.Reques
 
 	if _, err := file.Seek(0, 0); err != nil {
 		HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	if _, ok := allowedTypes[contentType]; !ok {
+		HttpErrorToJson(w, "image type is not allowed", http.StatusBadRequest)
 		return
 	}
 

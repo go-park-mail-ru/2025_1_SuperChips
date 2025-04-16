@@ -22,7 +22,7 @@ var allowedTypes = map[string]bool{
 }
 
 const (
-	maxPinSize = 10 << 20 // 10 mb
+	maxPinSize = 1024 * 1024 * 10 // 10 mb
 )
 
 // CreateHandler godoc
@@ -84,6 +84,11 @@ func (app PinCRUDHandler) CreateHandler(w http.ResponseWriter, r *http.Request) 
 
 	if _, err := file.Seek(0, 0); err != nil {
 		rest.HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	if _, ok := allowedTypes[contentType]; !ok {
+		rest.HttpErrorToJson(w, "image type is not allowed", http.StatusBadRequest)
 		return
 	}
 
