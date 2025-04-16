@@ -82,11 +82,6 @@ func (app PinCRUDHandler) CreateHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if _, ok := allowedTypes[detected]; !ok {
-		rest.HttpErrorToJson(w, "this extension is not supported", http.StatusBadRequest)
-		return
-	}
-
 	if _, err := file.Seek(0, 0); err != nil {
 		rest.HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
