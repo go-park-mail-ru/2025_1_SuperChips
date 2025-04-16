@@ -47,6 +47,8 @@ func (app PinsHandler) FeedHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	domain.EscapeFlows(pagedImages)
+
 	response := ServerResponse{
 		Data: pagedImages,
 	}

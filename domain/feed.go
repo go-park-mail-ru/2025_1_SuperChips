@@ -1,5 +1,9 @@
 package domain
 
+import (
+	"html"
+)
+
 
 type PinData struct {
 	FlowID         uint64 `json:"flow_id,omitempty"`
@@ -13,4 +17,15 @@ type PinData struct {
 	UpdatedAt      string `json:"updated_at"`
 	IsLiked        bool   `json:"is_liked"`
 	LikeCount      int    `json:"like_count"`
+}
+
+func (p *PinData) Escape() {
+	p.Header = html.EscapeString(p.Header)
+	p.Description = html.EscapeString(p.Description)
+}
+
+func EscapeFlows(flows []PinData) {
+	for i := range flows {
+		flows[i].Escape()
+	}
 }
