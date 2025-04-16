@@ -1,10 +1,5 @@
 package domain
 
-import (
-	"html"
-
-	"github.com/microcosm-cc/bluemonday"
-)
 
 type PinData struct {
 	FlowID         uint64 `json:"flow_id,omitempty"`
@@ -18,11 +13,4 @@ type PinData struct {
 	UpdatedAt      string `json:"updated_at"`
 	IsLiked        bool   `json:"is_liked"`
 	LikeCount      int    `json:"like_count"`
-}
-
-func (p *PinData) Sanitize() {
-	b := bluemonday.UGCPolicy()
-
-	p.Header = b.Sanitize(html.EscapeString(p.Header))
-	p.Description = b.Sanitize(html.EscapeString(p.Description))
 }

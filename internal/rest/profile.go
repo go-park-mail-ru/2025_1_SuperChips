@@ -68,9 +68,7 @@ func (h *ProfileHandler) CurrentUserProfileHandler(w http.ResponseWriter, r *htt
 		HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-
-	user.Sanitize()
-
+	
 	response := ServerResponse{
 		Data: user,
 	}
@@ -90,8 +88,6 @@ func (h *ProfileHandler) PublicProfileHandler(w http.ResponseWriter, r *http.Req
 		handleProfileError(w, err)
 		return
 	}
-
-	user.Sanitize()
 
 	response := ServerResponse{
 		Data: user,

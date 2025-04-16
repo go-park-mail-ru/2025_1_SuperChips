@@ -2,12 +2,10 @@ package domain
 
 import (
 	"errors"
-	"html"
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/validator"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/utils/wrapper"
-	"github.com/microcosm-cc/bluemonday"
 )
 
 type User struct {
@@ -44,23 +42,6 @@ var (
 	ErrUserNotFound         = errors.New("user not found")
 )
 
-func (u *PublicUser) Sanitize() {
-	p := bluemonday.UGCPolicy()
-
-	u.About = p.Sanitize(html.EscapeString(u.About))
-	u.PublicName = p.Sanitize(html.EscapeString(u.PublicName))
-	u.Username = p.Sanitize(html.EscapeString(u.Username))
-	u.Email = p.Sanitize(html.EscapeString(u.Email))
-}
-
-func (u *User) Sanitize() {
-	p := bluemonday.UGCPolicy()
-
-	u.Username = p.Sanitize(html.EscapeString(u.Username))
-	u.PublicName = p.Sanitize(html.EscapeString(u.PublicName))
-	u.Email = p.Sanitize(html.EscapeString(u.Email))
-	u.About = p.Sanitize(html.EscapeString(u.About))
-}
 
 func ValidateEmail(email string) error {
 	v := validator.New()

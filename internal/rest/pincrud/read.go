@@ -49,8 +49,6 @@ func (app PinCRUDHandler) ReadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data.Sanitize()
-
 	response := rest.ServerResponse{
 		Description: "OK",
 		Data:        data,

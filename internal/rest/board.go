@@ -379,9 +379,6 @@ func (b *BoardHandler) GetBoard(w http.ResponseWriter, r *http.Request) {
 		handleBoardError(w, err)
 		return
 	}
-
-	board.Sanitize()
-
 	resp := ServerResponse{
 		Description: "OK",
 		Data:        board,
@@ -418,10 +415,6 @@ func (b *BoardHandler) GetUserPublic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for i := range boards {
-		boards[i].Sanitize()
-	}
-
 	resp := ServerResponse{
 		Description: "OK",
 		Data:        boards,
@@ -455,10 +448,6 @@ func (b *BoardHandler) GetUserAllBoards(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		handleBoardError(w, err)
 		return
-	}
-
-	for i := range boards {
-		boards[i].Sanitize()
 	}
 
 	resp := ServerResponse{
@@ -536,10 +525,6 @@ func (b *BoardHandler) GetBoardFlows(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		handleBoardError(w, err)
 		return
-	}
-
-	for i := range flows {
-		flows[i].Sanitize()
 	}
 
 	resp := ServerResponse{

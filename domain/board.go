@@ -2,10 +2,7 @@ package domain
 
 import (
 	"errors"
-	"html"
 	"time"
-
-	"github.com/microcosm-cc/bluemonday"
 )
 
 type Board struct {
@@ -17,12 +14,6 @@ type Board struct {
 	IsPrivate      bool      `json:"is_private"`
 	FlowCount      int       `json:"flow_count"`
 	Preview        []PinData `json:"preview,omitempty"`
-}
-
-func (b *Board) Sanitize() {
-	p := bluemonday.UGCPolicy()
-
-	b.Name = p.Sanitize(html.EscapeString(b.Name))
 }
 
 type BoardPost struct {
