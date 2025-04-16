@@ -23,6 +23,7 @@ var allowedTypes = map[string]bool{
 	"image/webp": true,
 	"image/bmp":  true,
 	"image/tiff": true,
+	"image/gif": true,
 }
 
 type passwordChange struct {
