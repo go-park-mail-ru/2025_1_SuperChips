@@ -5,6 +5,7 @@ import (
 	"mime/multipart"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/utils/image"
 )
 
 const UnauthorizedID = 0
@@ -83,6 +84,16 @@ func (s *PinCRUDService) CreatePin(ctx context.Context, data domain.PinDataCreat
 	if err != nil {
 		return 0, err
 	}
+
+	width, height, err := image.GetImageDimensions(file)
+	if err != nil {
+		println(err.Error())
+		return 0, err
+	}
+
+	data.Width = width
+	data.Height = height
+
 	pinID, err := s.rep.CreatePin(ctx, data, imgName, userID)
 	if err != nil {
 		return 0, err
