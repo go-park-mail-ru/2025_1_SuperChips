@@ -18,6 +18,8 @@ type flowDBSchema struct {
 	IsPrivate      bool
 	LikeCount      int
 	MediaURL       string
+	Width          sql.NullInt64
+	Height         sql.NullInt64
 }
 
 type pgPinStorage struct {
@@ -86,4 +88,3 @@ func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
 
 	return pins, nil
 }
-

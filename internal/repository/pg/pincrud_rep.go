@@ -22,6 +22,8 @@ func (p *pgPinStorage) GetPin(ctx context.Context, pinID, userID uint64) (domain
             f.media_url,
             fu.username,
             f.like_count,
+			f.width,
+			f.height,
             CASE 
                 WHEN fl.user_id IS NOT NULL THEN true
                 ELSE false
@@ -35,7 +37,8 @@ func (p *pgPinStorage) GetPin(ctx context.Context, pinID, userID uint64) (domain
 	var isLiked bool
 	var flowDBRow flowDBSchema
 	err := row.Scan(&flowDBRow.Id, &flowDBRow.Title, &flowDBRow.Description,
-		&flowDBRow.AuthorId, &flowDBRow.IsPrivate, &flowDBRow.MediaURL, &flowDBRow.AuthorUsername, &flowDBRow.LikeCount, &isLiked)
+		&flowDBRow.AuthorId, &flowDBRow.IsPrivate, &flowDBRow.MediaURL,
+		&flowDBRow.AuthorUsername, &flowDBRow.LikeCount, &flowDBRow.Width, &flowDBRow.Height, &isLiked)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.PinData{}, 0, pincrudService.ErrPinNotFound
 	}
@@ -52,6 +55,8 @@ func (p *pgPinStorage) GetPin(ctx context.Context, pinID, userID uint64) (domain
 		IsPrivate:      flowDBRow.IsPrivate,
 		LikeCount:      flowDBRow.LikeCount,
 		IsLiked:        isLiked,
+		Width:          int(flowDBRow.Width.Int64),
+		Height:         int(flowDBRow.Height.Int64),
 	}
 
 	return pin, flowDBRow.AuthorId, nil
@@ -152,10 +157,10 @@ func (p *pgPinStorage) UpdatePin(ctx context.Context, patch domain.PinDataUpdate
 
 func (p *pgPinStorage) CreatePin(ctx context.Context, data domain.PinDataCreate, imgName string, userID uint64) (uint64, error) {
 	row := p.db.QueryRowContext(ctx, `
-        INSERT INTO flow (title, description, author_id, is_private, media_url)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO flow (title, description, author_id, is_private, media_url, width, height)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id
-    `, data.Header, data.Description, userID, data.IsPrivate, imgName)
+    `, data.Header, data.Description, userID, data.IsPrivate, imgName, data.Width, data.Height)
 
 	var pinID uint64
 	err := row.Scan(&pinID)

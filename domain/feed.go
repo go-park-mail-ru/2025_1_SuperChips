@@ -4,7 +4,6 @@ import (
 	"html"
 )
 
-
 type PinData struct {
 	FlowID         uint64 `json:"flow_id,omitempty"`
 	Header         string `json:"header,omitempty"`
@@ -13,10 +12,12 @@ type PinData struct {
 	Description    string `json:"description,omitempty"`
 	MediaURL       string `json:"media_url,omitempty"`
 	IsPrivate      bool   `json:"is_private"`
-	CreatedAt      string `json:"created_at"`
-	UpdatedAt      string `json:"updated_at"`
+	CreatedAt      string `json:"created_at,omitempty"`
+	UpdatedAt      string `json:"updated_at,omitempty"`
 	IsLiked        bool   `json:"is_liked"`
 	LikeCount      int    `json:"like_count"`
+	Width          int    `json:"width,omitempty"`
+	Height         int    `json:"height,omitempty"`
 }
 
 func (p *PinData) Escape() {
