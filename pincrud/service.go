@@ -87,7 +87,6 @@ func (s *PinCRUDService) CreatePin(ctx context.Context, data domain.PinDataCreat
 
 	width, height, err := image.GetImageDimensions(file)
 	if err != nil {
-		println(err.Error())
 		return 0, err
 	}
 

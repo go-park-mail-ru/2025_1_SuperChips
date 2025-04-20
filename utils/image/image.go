@@ -61,7 +61,7 @@ func UploadImage(imageFilename, staticDir, imageDir, baseUrl string, file io.Rea
 func GetImageDimensions(file multipart.File) (int, int, error) {
 	_ , err := file.Seek(0, 0)
 	if err != nil {
-		return 0, 0, fmt.Errorf("failed to decode image: %w", err)
+		return 0, 0, fmt.Errorf("failed to reset pointer: %w", err)
 	}
 
 	img, _, err := image.Decode(file)
