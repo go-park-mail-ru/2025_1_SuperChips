@@ -324,8 +324,8 @@ func TestUserAvatarHandler(t *testing.T) {
 			Method:       "POST",
 			URL:          base,
 			Token:        "validToken",
-			ExpectedCode: 413,
-			ExpectedBody: `{"description":"image is too large"}`,
+			ExpectedCode: 400,
+			ExpectedBody: `{"description":"image extension and type are mismatched"}`,
 		},
 		{
 			Name:         "Invalid content type",
