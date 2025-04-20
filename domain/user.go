@@ -2,6 +2,7 @@ package domain
 
 import (
 	"errors"
+	"html"
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/validator"
@@ -42,6 +43,19 @@ var (
 	ErrUserNotFound         = errors.New("user not found")
 )
 
+func (p *PublicUser) Escape() {
+	p.Username = html.EscapeString(p.Username)
+	p.PublicName = html.EscapeString(p.PublicName)
+	p.Email = html.EscapeString(p.Email)
+	p.About = html.EscapeString(p.About)
+}
+
+func (u *User) Escape() {
+	u.Username = html.EscapeString(u.Username)
+	u.PublicName = html.EscapeString(u.PublicName)
+	u.Email = html.EscapeString(u.Email)
+	u.About = html.EscapeString(u.About)
+}
 
 func ValidateEmail(email string) error {
 	v := validator.New()

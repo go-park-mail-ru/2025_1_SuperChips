@@ -19,10 +19,11 @@ var allowedTypes = map[string]bool{
 	"image/webp": true,
 	"image/bmp":  true,
 	"image/tiff": true,
+	"image/gif": true,
 }
 
 const (
-	maxPinSize = 10 << 20 // 10 mb
+	maxPinSize = 1024 * 1024 * 10 // 10 mb
 )
 
 // CreateHandler godoc
@@ -82,13 +83,13 @@ func (app PinCRUDHandler) CreateHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if _, ok := allowedTypes[detected]; !ok {
-		rest.HttpErrorToJson(w, "this extension is not supported", http.StatusBadRequest)
+	if _, err := file.Seek(0, 0); err != nil {
+		rest.HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	if _, err := file.Seek(0, 0); err != nil {
-		rest.HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	if _, ok := allowedTypes[contentType]; !ok {
+		rest.HttpErrorToJson(w, "image type is not allowed", http.StatusBadRequest)
 		return
 	}
 

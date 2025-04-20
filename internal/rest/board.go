@@ -379,6 +379,9 @@ func (b *BoardHandler) GetBoard(w http.ResponseWriter, r *http.Request) {
 		handleBoardError(w, err)
 		return
 	}
+
+	board.Escape()
+
 	resp := ServerResponse{
 		Description: "OK",
 		Data:        board,
@@ -415,6 +418,8 @@ func (b *BoardHandler) GetUserPublic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	domain.EscapeBoards(boards)
+
 	resp := ServerResponse{
 		Description: "OK",
 		Data:        boards,
@@ -449,6 +454,8 @@ func (b *BoardHandler) GetUserAllBoards(w http.ResponseWriter, r *http.Request) 
 		handleBoardError(w, err)
 		return
 	}
+
+	domain.EscapeBoards(boards)
 
 	resp := ServerResponse{
 		Description: "OK",
@@ -526,6 +533,8 @@ func (b *BoardHandler) GetBoardFlows(w http.ResponseWriter, r *http.Request) {
 		handleBoardError(w, err)
 		return
 	}
+
+	domain.EscapeFlows(flows)
 
 	resp := ServerResponse{
 		Description: "OK",
