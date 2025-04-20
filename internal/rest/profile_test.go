@@ -68,163 +68,163 @@ func generateJWTToken(secret string) (auth.Claims, error) {
 }
 
 func TestCurrentUserProfileHandler_GET(t *testing.T) {
-    base := "/profile"
+	base := "/profile"
 
-    claims, err := generateJWTToken(string(conf.JWTSecret))
-    if err != nil {
-        t.Fatalf("failed to generate JWT token: %v", err)
-    }
+	claims, err := generateJWTToken(string(conf.JWTSecret))
+	if err != nil {
+		t.Fatalf("failed to generate JWT token: %v", err)
+	}
 
-    testCases := []TestCase{
-        {
-            Name:         "Valid request",
-            Method:       "GET",
-            URL:          base,
-            Token:        "yes",
-            ExpectedCode: 200,
-            ExpectedBody: `{"data":{"user_id":1,"username":"JohnDoe","email":"","birthday":"2000-01-01T00:00:00Z"}}`,
-        },
-        {
-            Name:         "Unauthorized request",
-            Method:       "GET",
-            URL:          base,
-            ExpectedCode: 401,
-            ExpectedBody: `{"description":"Unauthorized"}`,
-        },
-    }
+	testCases := []TestCase{
+		{
+			Name:         "Valid request",
+			Method:       "GET",
+			URL:          base,
+			Token:        "yes",
+			ExpectedCode: 200,
+			ExpectedBody: `{"data":{"user_id":1,"username":"JohnDoe","email":"","birthday":"2000-01-01T00:00:00Z"}}`,
+		},
+		{
+			Name:         "Unauthorized request",
+			Method:       "GET",
+			URL:          base,
+			ExpectedCode: 401,
+			ExpectedBody: `{"description":"Unauthorized"}`,
+		},
+	}
 
-    for _, tc := range testCases {
-        t.Run(tc.Name, func(t *testing.T) {
-            ctrl := gomock.NewController(t)
-            defer ctrl.Finish()
+	for _, tc := range testCases {
+		t.Run(tc.Name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
 
-            mockService := mock_rest.NewMockProfileService(ctrl)
+			mockService := mock_rest.NewMockProfileService(ctrl)
 
-            if tc.Name == "Valid request" {
-                mockService.EXPECT().GetUserPublicInfoByEmail("email@email.ru").Return(domain.User{
-                    Id:       1,
-                    Birthday: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
-                    Username: "JohnDoe",
-                }, nil)
-            }
+			if tc.Name == "Valid request" {
+				mockService.EXPECT().GetUserPublicInfoByEmail("email@email.ru").Return(domain.User{
+					Id:       1,
+					Birthday: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
+					Username: "JohnDoe",
+				}, nil)
+			}
 
-            req := httptest.NewRequest(tc.Method, tc.URL, nil)
-            if tc.Token != "" {
+			req := httptest.NewRequest(tc.Method, tc.URL, nil)
+			if tc.Token != "" {
 				ctx := context.WithValue(req.Context(), auth.ClaimsContextKey, &claims)
-                req = req.WithContext(ctx)
-            }
+				req = req.WithContext(ctx)
+			}
 
-            handler := rest.ProfileHandler{
-                ProfileService: mockService,
-                JwtManager:     *auth.NewJWTManager(conf),
-                AvatarFolder:   conf.AvatarDir,
-                BaseUrl:        conf.BaseUrl,
-                StaticFolder:   conf.StaticBaseDir,
-                ExpirationTime: conf.ExpirationTime,
-                CookieSecure:   conf.CookieSecure,
-            }
+			handler := rest.ProfileHandler{
+				ProfileService: mockService,
+				JwtManager:     *auth.NewJWTManager(conf),
+				AvatarFolder:   conf.AvatarDir,
+				BaseUrl:        conf.BaseUrl,
+				StaticFolder:   conf.StaticBaseDir,
+				ExpirationTime: conf.ExpirationTime,
+				CookieSecure:   conf.CookieSecure,
+			}
 
-            rr := httptest.NewRecorder()
-            http.HandlerFunc(handler.CurrentUserProfileHandler).ServeHTTP(rr, req)
+			rr := httptest.NewRecorder()
+			http.HandlerFunc(handler.CurrentUserProfileHandler).ServeHTTP(rr, req)
 
-            if rr.Code != tc.ExpectedCode {
-                t.Errorf("expected code %d, got %d", tc.ExpectedCode, rr.Code)
-            }
-            if strings.TrimSpace(rr.Body.String()) != tc.ExpectedBody {
-                t.Errorf("expected body %s, got %s", tc.ExpectedBody, rr.Body.String())
-            }
-        })
-    }
+			if rr.Code != tc.ExpectedCode {
+				t.Errorf("expected code %d, got %d", tc.ExpectedCode, rr.Code)
+			}
+			if strings.TrimSpace(rr.Body.String()) != tc.ExpectedBody {
+				t.Errorf("expected body %s, got %s", tc.ExpectedBody, rr.Body.String())
+			}
+		})
+	}
 }
 
 func TestCurrentUserProfileHandler_PATCH(t *testing.T) {
-    base := "/profile"
+	base := "/profile"
 
-    claims, err := generateJWTToken(string(conf.JWTSecret))
-    if err != nil {
-        t.Fatalf("failed to generate JWT token: %v", err)
-    }
+	claims, err := generateJWTToken(string(conf.JWTSecret))
+	if err != nil {
+		t.Fatalf("failed to generate JWT token: %v", err)
+	}
 
-    testCases := []TestCase{
-        {
-            Name:         "Patch profile",
-            Method:       "PATCH",
-            Body:         `{"public_name":"idk","birthday":"2000-02-01T00:00:00Z","about":"idk","email":"verynice@mail.ru"}`,
-            URL:          base,
-            Token:        "yes",
-            ExpectedCode: 200,
-            ExpectedBody: `{"description":"OK"}`,
-        },
-        {
-            Name:         "bad request body",
-            Method:       "PATCH",
-            Body:         `{asfsafasfsafsa`,
-            URL:          base,
-            Token:        "yes",
-            ExpectedCode: 400,
-            ExpectedBody: `{"description":"Bad Request"}`,
-        },
-        {
-            Name:         "patch validation error",
-            Method:       "PATCH",
-            Body:         `{"email":"invalidemail","birthday":"2000-02-01T00:00:00Z","about":"idk","public_name":"idk"}`,
-            URL:          base,
-            Token:        "yes",
-            ExpectedCode: 400,
-            ExpectedBody: `{"description":"validation failed"}`,
-        },
-    }
+	testCases := []TestCase{
+		{
+			Name:         "Patch profile",
+			Method:       "PATCH",
+			Body:         `{"public_name":"idk","birthday":"2000-02-01T00:00:00Z","about":"idk","email":"verynice@mail.ru"}`,
+			URL:          base,
+			Token:        "yes",
+			ExpectedCode: 200,
+			ExpectedBody: `{"description":"OK"}`,
+		},
+		{
+			Name:         "bad request body",
+			Method:       "PATCH",
+			Body:         `{asfsafasfsafsa`,
+			URL:          base,
+			Token:        "yes",
+			ExpectedCode: 400,
+			ExpectedBody: `{"description":"Bad Request"}`,
+		},
+		{
+			Name:         "patch validation error",
+			Method:       "PATCH",
+			Body:         `{"email":"invalidemail","birthday":"2000-02-01T00:00:00Z","about":"idk","public_name":"idk"}`,
+			URL:          base,
+			Token:        "yes",
+			ExpectedCode: 400,
+			ExpectedBody: `{"description":"validation failed"}`,
+		},
+	}
 
-    for _, tc := range testCases {
-        t.Run(tc.Name, func(t *testing.T) {
-            ctrl := gomock.NewController(t)
-            defer ctrl.Finish()
+	for _, tc := range testCases {
+		t.Run(tc.Name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
 
-            mockService := mock_rest.NewMockProfileService(ctrl)
+			mockService := mock_rest.NewMockProfileService(ctrl)
 
-            switch tc.Name {
-            case "Patch profile":
-                mockService.EXPECT().GetUserPublicInfoByEmail("email@email.ru").Return(domain.User{
-                    Id:       1,
-                    Birthday: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
-                    Username: "JohnDoe",
-                }, nil)
-                mockService.EXPECT().UpdateUserData(gomock.Any(), "email@email.ru").Return(nil)
-            case "patch validation error":
-                mockService.EXPECT().GetUserPublicInfoByEmail("email@email.ru").Return(domain.User{
-                    Id:       1,
-                    Birthday: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
-                    Username: "JohnDoe",
-                }, nil)
-            }
+			switch tc.Name {
+			case "Patch profile":
+				mockService.EXPECT().GetUserPublicInfoByEmail("email@email.ru").Return(domain.User{
+					Id:       1,
+					Birthday: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
+					Username: "JohnDoe",
+				}, nil)
+				mockService.EXPECT().UpdateUserData(gomock.Any(), "email@email.ru").Return(nil)
+			case "patch validation error":
+				mockService.EXPECT().GetUserPublicInfoByEmail("email@email.ru").Return(domain.User{
+					Id:       1,
+					Birthday: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
+					Username: "JohnDoe",
+				}, nil)
+			}
 
-            req := httptest.NewRequest(tc.Method, tc.URL, strings.NewReader(tc.Body))
-            if tc.Token != "" {
+			req := httptest.NewRequest(tc.Method, tc.URL, strings.NewReader(tc.Body))
+			if tc.Token != "" {
 				ctx := context.WithValue(req.Context(), auth.ClaimsContextKey, &claims)
-                req = req.WithContext(ctx)
-            }
+				req = req.WithContext(ctx)
+			}
 
-            handler := rest.ProfileHandler{
-                ProfileService: mockService,
-                JwtManager:     *auth.NewJWTManager(conf),
-                AvatarFolder:   conf.AvatarDir,
-                BaseUrl:        conf.BaseUrl,
-                StaticFolder:   conf.StaticBaseDir,
-                ExpirationTime: conf.ExpirationTime,
-                CookieSecure:   conf.CookieSecure,
-            }
+			handler := rest.ProfileHandler{
+				ProfileService: mockService,
+				JwtManager:     *auth.NewJWTManager(conf),
+				AvatarFolder:   conf.AvatarDir,
+				BaseUrl:        conf.BaseUrl,
+				StaticFolder:   conf.StaticBaseDir,
+				ExpirationTime: conf.ExpirationTime,
+				CookieSecure:   conf.CookieSecure,
+			}
 
-            rr := httptest.NewRecorder()
-            http.HandlerFunc(handler.PatchUserProfileHandler).ServeHTTP(rr, req)
+			rr := httptest.NewRecorder()
+			http.HandlerFunc(handler.PatchUserProfileHandler).ServeHTTP(rr, req)
 
-            if rr.Code != tc.ExpectedCode {
-                t.Errorf("expected code %d, got %d", tc.ExpectedCode, rr.Code)
-            }
-            if strings.TrimSpace(rr.Body.String()) != tc.ExpectedBody {
-                t.Errorf("expected body %s, got %s", tc.ExpectedBody, rr.Body.String())
-            }
-        })
-    }
+			if rr.Code != tc.ExpectedCode {
+				t.Errorf("expected code %d, got %d", tc.ExpectedCode, rr.Code)
+			}
+			if strings.TrimSpace(rr.Body.String()) != tc.ExpectedBody {
+				t.Errorf("expected body %s, got %s", tc.ExpectedBody, rr.Body.String())
+			}
+		})
+	}
 }
 
 func TestPublicProfileHandler(t *testing.T) {
@@ -275,7 +275,7 @@ func TestPublicProfileHandler(t *testing.T) {
 			req := httptest.NewRequest(tc.Method, tc.URL, nil)
 			if tc.Token != "" {
 				ctx := context.WithValue(req.Context(), auth.ClaimsContextKey, &claims)
-                req = req.WithContext(ctx)
+				req = req.WithContext(ctx)
 			}
 
 			switch tc.Name {
@@ -392,7 +392,7 @@ func TestUserAvatarHandler(t *testing.T) {
 
 			if tc.Token != "" {
 				ctx := context.WithValue(req.Context(), auth.ClaimsContextKey, &claims)
-                req = req.WithContext(ctx)
+				req = req.WithContext(ctx)
 			}
 
 			rr := httptest.NewRecorder()
@@ -473,7 +473,7 @@ func TestChangeUserPasswordHandler(t *testing.T) {
 
 			if tc.Token != "" {
 				ctx := context.WithValue(req.Context(), auth.ClaimsContextKey, &claims)
-                req = req.WithContext(ctx)
+				req = req.WithContext(ctx)
 			}
 
 			ctrl := gomock.NewController(t)
@@ -511,26 +511,26 @@ func TestChangeUserPasswordHandler(t *testing.T) {
 }
 
 func createRealMultipartFormData(t *testing.T, filename, contentType string) (body *bytes.Buffer, contentTypeHeader string) {
-    t.Helper()
+	t.Helper()
 
-    body = &bytes.Buffer{}
-    writer := multipart.NewWriter(body)
-    defer writer.Close()
+	body = &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	defer writer.Close()
 
-    h := make(textproto.MIMEHeader)
-    h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="image"; filename="%s"`, filename))
-    h.Set("Content-Type", contentType)
+	h := make(textproto.MIMEHeader)
+	h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="image"; filename="%s"`, filename))
+	h.Set("Content-Type", contentType)
 
-    part, err := writer.CreatePart(h)
-    if err != nil {
-        t.Fatal(err)
-    }
+	part, err := writer.CreatePart(h)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-    if _, err := part.Write(testImage); err != nil {
-        t.Fatal(err)
-    }
+	if _, err := part.Write(testImage); err != nil {
+		t.Fatal(err)
+	}
 
-    return body, writer.FormDataContentType()
+	return body, writer.FormDataContentType()
 }
 
 func createMultipartFormData(t *testing.T, filename, contentType string, size ...int) (*bytes.Buffer, string) {

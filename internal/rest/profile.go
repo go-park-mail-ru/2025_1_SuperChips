@@ -15,7 +15,7 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/utils/image"
 )
 
-const maxAvatarSize = (1 << 20) * 3 // 3 мб
+const maxAvatarSize = (1 << 20) * 5 // 3 мб
 
 var allowedTypes = map[string]bool{
 	"image/jpeg": true,
@@ -23,6 +23,7 @@ var allowedTypes = map[string]bool{
 	"image/webp": true,
 	"image/bmp":  true,
 	"image/tiff": true,
+	"image/gif": true,
 }
 
 type passwordChange struct {
@@ -31,11 +32,11 @@ type passwordChange struct {
 }
 
 type UserUpdateRequest struct {
-    Username   *string    `json:"username"`
-    Email      *string    `json:"email"`
-    Birthday   *time.Time `json:"birthday"`
-    About      *string    `json:"about"`
-    PublicName *string    `json:"public_name"`
+	Username   *string    `json:"username"`
+	Email      *string    `json:"email"`
+	Birthday   *time.Time `json:"birthday"`
+	About      *string    `json:"about"`
+	PublicName *string    `json:"public_name"`
 }
 
 type ProfileService interface {
@@ -69,6 +70,8 @@ func (h *ProfileHandler) CurrentUserProfileHandler(w http.ResponseWriter, r *htt
 		return
 	}
 
+	user.Escape()
+
 	response := ServerResponse{
 		Data: user,
 	}
@@ -88,6 +91,8 @@ func (h *ProfileHandler) PublicProfileHandler(w http.ResponseWriter, r *http.Req
 		handleProfileError(w, err)
 		return
 	}
+
+	user.Escape()
 
 	response := ServerResponse{
 		Data: user,
@@ -135,22 +140,22 @@ func (h *ProfileHandler) UserAvatarHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if _, ok := allowedTypes[detected]; !ok {
-		HttpErrorToJson(w, "this extension is not supported", http.StatusBadRequest)
-		return
-	}
-
 	if _, err := file.Seek(0, 0); err != nil {
 		HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
+	if _, ok := allowedTypes[contentType]; !ok {
+		HttpErrorToJson(w, "image type is not allowed", http.StatusBadRequest)
+		return
+	}
+
 	filename := filepath.Base(handler.Filename)
-    ext := filepath.Ext(filename)
-    if ext == "" {
-        HttpErrorToJson(w, "invalid file extension", http.StatusBadRequest)
-        return
-    }
+	ext := filepath.Ext(filename)
+	if ext == "" {
+		HttpErrorToJson(w, "invalid file extension", http.StatusBadRequest)
+		return
+	}
 
 	filename, url, err := image.UploadImage(handler.Filename, h.StaticFolder, h.AvatarFolder, h.BaseUrl, file)
 	if err != nil {
@@ -174,7 +179,7 @@ func (h *ProfileHandler) UserAvatarHandler(w http.ResponseWriter, r *http.Reques
 
 	response := ServerResponse{
 		Description: "Created",
-		Data: imgURL,
+		Data:        imgURL,
 	}
 
 	ServerGenerateJSONResponse(w, response, http.StatusCreated)
@@ -216,63 +221,62 @@ func (h *ProfileHandler) ChangeUserPasswordHandler(w http.ResponseWriter, r *htt
 	ServerGenerateJSONResponse(w, resp, http.StatusOK)
 }
 
-
 func (h *ProfileHandler) PatchUserProfileHandler(w http.ResponseWriter, r *http.Request) {
-    claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
 	if !ok || claims == nil {
 		HttpErrorToJson(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 
-    var updateReq UserUpdateRequest
-    if err := DecodeData(w, r.Body, &updateReq); err != nil {
-        return
-    }
+	var updateReq UserUpdateRequest
+	if err := DecodeData(w, r.Body, &updateReq); err != nil {
+		return
+	}
 
 	existingUser, err := h.ProfileService.GetUserPublicInfoByEmail(claims.Email)
-    if err != nil {
-        handleProfileError(w, err)
-        return
-    }
+	if err != nil {
+		handleProfileError(w, err)
+		return
+	}
 
-    if updateReq.Username != nil {
-        existingUser.Username = *updateReq.Username
-    }
-    if updateReq.Email != nil {
-        existingUser.Email = *updateReq.Email
-    }
-    if updateReq.Birthday != nil {
-        existingUser.Birthday = *updateReq.Birthday
-    }
-    if updateReq.About != nil {
-        existingUser.About = *updateReq.About
-    }
-    if updateReq.PublicName != nil {
-        existingUser.PublicName = *updateReq.PublicName
-    }
+	if updateReq.Username != nil {
+		existingUser.Username = *updateReq.Username
+	}
+	if updateReq.Email != nil {
+		existingUser.Email = *updateReq.Email
+	}
+	if updateReq.Birthday != nil {
+		existingUser.Birthday = *updateReq.Birthday
+	}
+	if updateReq.About != nil {
+		existingUser.About = *updateReq.About
+	}
+	if updateReq.PublicName != nil {
+		existingUser.PublicName = *updateReq.PublicName
+	}
 
-    if err := existingUser.ValidateUserNoPassword(); err != nil {
-        HttpErrorToJson(w, "validation failed", http.StatusBadRequest)
-        return
-    }
+	if err := existingUser.ValidateUserNoPassword(); err != nil {
+		HttpErrorToJson(w, "validation failed", http.StatusBadRequest)
+		return
+	}
 
-    if err := h.ProfileService.UpdateUserData(existingUser, claims.Email); err != nil {
-        handleProfileError(w, err)
-        return
-    }
+	if err := h.ProfileService.UpdateUserData(existingUser, claims.Email); err != nil {
+		handleProfileError(w, err)
+		return
+	}
 
-    if updateReq.Email != nil && *updateReq.Email != claims.Email {
-        conf := configs.Config{
-            ExpirationTime: h.ExpirationTime,
-            CookieSecure:   h.CookieSecure,
-        }
-        if err := updateAuthToken(w, h.JwtManager, conf, existingUser.Email, int(existingUser.Id)); err != nil {
-            handleProfileError(w, err)
-            return
-        }
-    }
+	if updateReq.Email != nil && *updateReq.Email != claims.Email {
+		conf := configs.Config{
+			ExpirationTime: h.ExpirationTime,
+			CookieSecure:   h.CookieSecure,
+		}
+		if err := updateAuthToken(w, h.JwtManager, conf, existingUser.Email, int(existingUser.Id)); err != nil {
+			handleProfileError(w, err)
+			return
+		}
+	}
 
-    ServerGenerateJSONResponse(w, ServerResponse{Description: "OK"}, http.StatusOK)
+	ServerGenerateJSONResponse(w, ServerResponse{Description: "OK"}, http.StatusOK)
 }
 
 func handleProfileError(w http.ResponseWriter, err error) {
