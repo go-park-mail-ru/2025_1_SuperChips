@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"time"
@@ -12,14 +13,15 @@ import (
 )
 
 type UserUsecaseInterface interface {
-	AddUser(user domain.User) (uint64, error)
-	LoginUser(email, password string) (uint64, error)
+	AddUser(ctx context.Context, user domain.User) (uint64, error)
+	LoginUser(ctx context.Context, email, password string) (uint64, error)
 }
-  
+
 type AuthHandler struct {
-	Config      configs.Config
-	UserService UserUsecaseInterface
-	JWTManager  auth.JWTManager
+	Config          configs.Config
+	UserService     UserUsecaseInterface
+	JWTManager      auth.JWTManager
+	ContextDuration time.Duration
 }
 
 type CSRFResponse struct {
@@ -44,9 +46,12 @@ func (app AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), app.ContextDuration)
+	defer cancel()
+
 	var response ServerResponse
 
-	id, err := app.UserService.LoginUser(data.Email, data.Password)
+	id, err := app.UserService.LoginUser(ctx, data.Email, data.Password)
 	if err != nil {
 		handleAuthError(w, err)
 		return
@@ -113,7 +118,10 @@ func (app AuthHandler) RegistrationHandler(w http.ResponseWriter, r *http.Reques
 		Email:    regData.Email,
 	}
 
-	id, err := app.UserService.AddUser(userData)
+	ctx, cancel := context.WithTimeout(context.Background(), app.ContextDuration)
+	defer cancel()
+
+	id, err := app.UserService.AddUser(ctx, userData)
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrValidation):
@@ -185,11 +193,10 @@ func (app AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	ServerGenerateJSONResponse(w, response, http.StatusOK)
 }
 
-
 func setCookie(w http.ResponseWriter, config configs.Config, name string, value string, httpOnly bool) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     name,
-		Value:    value,
+		Name:  name,
+		Value: value,
 		// Domain:   "yourflow.ru",
 		Path:     "/",
 		HttpOnly: httpOnly,

@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 
@@ -33,9 +34,9 @@ func NewPGUserStorage(db *sql.DB) (*pgUserStorage, error) {
 	return storage, nil
 }
 
-func (p *pgUserStorage) AddUser(userInfo user.User) (uint64, error) {
+func (p *pgUserStorage) AddUser(ctx context.Context, userInfo user.User) (uint64, error) {
 	var id uint64
-	err := p.db.QueryRow(`
+	err := p.db.QueryRowContext(ctx, `
         INSERT INTO flow_user (username, avatar, public_name, email, password, birthday)
         VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (email, username) DO NOTHING
@@ -50,11 +51,11 @@ func (p *pgUserStorage) AddUser(userInfo user.User) (uint64, error) {
 	return id, nil
 }
 
-func (p *pgUserStorage) GetHash(email, password string) (uint64, string, error) {
+func (p *pgUserStorage) GetHash(ctx context.Context, email, password string) (uint64, string, error) {
 	var hashedPassword string
 	var id uint64
 
-	err := p.db.QueryRow(`
+	err := p.db.QueryRowContext(ctx, `
         SELECT id, password FROM flow_user WHERE email = $1
     `, email).Scan(&id, &hashedPassword)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
@@ -66,11 +67,11 @@ func (p *pgUserStorage) GetHash(email, password string) (uint64, string, error) 
 	return id, hashedPassword, nil
 }
 
-func (p *pgUserStorage) GetUserPublicInfo(email string) (user.PublicUser, error) {
+func (p *pgUserStorage) GetUserPublicInfo(ctx context.Context, email string) (user.PublicUser, error) {
 	var userDB userDB
 
-	err := p.db.QueryRow(`
-        SELECT username, email, avatar, birthday, about, public_name,
+	err := p.db.QueryRowContext(ctx, `
+        SELECT username, email, avatar, birthday, about, public_name
 		FROM flow_user WHERE email = $1
     `, email).Scan(&userDB.Username, &userDB.Email, &userDB.Avatar, &userDB.Birthday)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
@@ -89,10 +90,10 @@ func (p *pgUserStorage) GetUserPublicInfo(email string) (user.PublicUser, error)
 	return publicUser, nil
 }
 
-func (p *pgUserStorage) GetUserId(email string) (uint64, error) {
+func (p *pgUserStorage) GetUserId(ctx context.Context, email string) (uint64, error) {
 	var id uint64
 
-	err := p.db.QueryRow(`
+	err := p.db.QueryRowContext(ctx, `
         SELECT id FROM flow_user WHERE email = $1
     `, email).Scan(&id)
 	if err != nil {
