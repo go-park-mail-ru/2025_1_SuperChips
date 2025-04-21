@@ -71,7 +71,7 @@ func (p *pgUserStorage) GetUserPublicInfo(ctx context.Context, email string) (us
 	var userDB userDB
 
 	err := p.db.QueryRowContext(ctx, `
-        SELECT username, email, avatar, birthday, about, public_name,
+        SELECT username, email, avatar, birthday, about, public_name
 		FROM flow_user WHERE email = $1
     `, email).Scan(&userDB.Username, &userDB.Email, &userDB.Avatar, &userDB.Birthday)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
