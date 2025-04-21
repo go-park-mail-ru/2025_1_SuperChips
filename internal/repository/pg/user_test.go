@@ -1,12 +1,14 @@
 package repository
-import (
-    "database/sql"
-    "testing"
-    "time"
 
-    "github.com/DATA-DOG/go-sqlmock"
-    "github.com/go-park-mail-ru/2025_1_SuperChips/domain"
-    "github.com/stretchr/testify/assert"
+import (
+	"context"
+	"database/sql"
+	"testing"
+	"time"
+
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
+	"github.com/stretchr/testify/assert"
 )
 
 func setupMock(t *testing.T) (sqlmock.Sqlmock, *pgUserStorage) {
@@ -37,7 +39,7 @@ func TestAddUser_Success(t *testing.T) {
         WithArgs(userInfo.Username, userInfo.Avatar, userInfo.Username, userInfo.Email, userInfo.Password, userInfo.Birthday).
         WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
 
-    id, err := storage.AddUser(userInfo)
+    id, err := storage.AddUser(context.Background(), userInfo)
     assert.NoError(t, err)
     assert.Equal(t, uint64(1), id)
     assert.NoError(t, mock.ExpectationsWereMet())
@@ -58,7 +60,7 @@ func TestGetHash_Success(t *testing.T) {
         WithArgs(email).
         WillReturnRows(rows)
 
-    returnedID, returnedHash, err := storage.GetHash(email, "")
+    returnedID, returnedHash, err := storage.GetHash(context.Background(), email, "")
     assert.NoError(t, err)
     assert.Equal(t, id, returnedID)
     assert.Equal(t, password, returnedHash)
@@ -75,7 +77,7 @@ func TestGetHash_UserNotFound(t *testing.T) {
         WithArgs(email).
         WillReturnError(sql.ErrNoRows)
 
-    _, _, err := storage.GetHash(email, "")
+    _, _, err := storage.GetHash(context.Background(), email, "")
     assert.Equal(t, domain.ErrInvalidCredentials, err)
     assert.NoError(t, mock.ExpectationsWereMet())
 }
@@ -96,7 +98,7 @@ func TestGetUserPublicInfo_Success(t *testing.T) {
         WithArgs(email).
         WillReturnRows(rows)
 
-    publicUser, err := storage.GetUserPublicInfo(email)
+    publicUser, err := storage.GetUserPublicInfo(context.Background(), email)
     assert.NoError(t, err)
     assert.Equal(t, username, publicUser.Username)
     assert.Equal(t, email, publicUser.Email)
@@ -121,7 +123,7 @@ func TestGetUserPublicInfo_NullAvatar(t *testing.T) {
         WithArgs(email).
         WillReturnRows(rows)
 
-    publicUser, err := storage.GetUserPublicInfo(email)
+    publicUser, err := storage.GetUserPublicInfo(context.Background(), email)
     assert.NoError(t, err)
     assert.Equal(t, username, publicUser.Username)
     assert.Equal(t, email, publicUser.Email)
@@ -140,7 +142,7 @@ func TestGetUserPublicInfo_UserNotFound(t *testing.T) {
         WithArgs(email).
         WillReturnError(sql.ErrNoRows)
 
-    _, err := storage.GetUserPublicInfo(email)
+    _, err := storage.GetUserPublicInfo(context.Background(), email)
     assert.Equal(t, domain.ErrInvalidCredentials, err)
     assert.NoError(t, mock.ExpectationsWereMet())
 }
@@ -158,7 +160,7 @@ func TestGetUserId_Success(t *testing.T) {
         WithArgs(email).
         WillReturnRows(rows)
 
-    returnedID, err := storage.GetUserId(email)
+    returnedID, err := storage.GetUserId(context.Background(), email)
     assert.NoError(t, err)
     assert.Equal(t, id, returnedID)
     assert.NoError(t, mock.ExpectationsWereMet())
@@ -174,7 +176,7 @@ func TestGetUserId_UserNotFound(t *testing.T) {
         WithArgs(email).
         WillReturnError(sql.ErrNoRows)
 
-    _, err := storage.GetUserId(email)
+    _, err := storage.GetUserId(context.Background(), email)
     assert.Equal(t, domain.ErrUserNotFound, err)
     assert.NoError(t, mock.ExpectationsWereMet())
 }

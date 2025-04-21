@@ -28,7 +28,7 @@ func TestGetPins(t *testing.T) {
 	}
 
 	mock.ExpectQuery(`SELECT
-	f.id, f.title, f.description, f.author_id, f.is_private, f.media_url, fu.username
+	f.id, f.title, f.description, f.author_id, f.is_private, f.media_url, f.width, f.height, fu.username
 	FROM flow f
 	JOIN flow_user fu ON f.author_id = fu.id
 	WHERE f.is_private = false
@@ -36,9 +36,10 @@ func TestGetPins(t *testing.T) {
 	LIMIT \$1
 	OFFSET \$2`).
 		WithArgs(pageSize, (page-1)*pageSize).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "title", "description", "author_id", "is_private", "media_url", "author_username"}).
-			AddRow(1, "title1", "description1", 1, false, "media_url1", "emresha").
-			AddRow(3, "title3", "description3", 3, false, "media_url3", "valekir"))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "title", "description", 
+		"author_id", "is_private", "media_url", "width", "height", "author_username"}).
+			AddRow(1, "title1", "description1", 1, false, "media_url1", 0, 0, "emresha").
+			AddRow(3, "title3", "description3", 3, false, "media_url3", 0, 0, "valekir"))
 
 	repo, err := pg.NewPGPinStorage(db, "", "")
 	require.NoError(t, err)

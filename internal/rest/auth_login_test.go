@@ -92,7 +92,7 @@ func TestLoginHandler(t *testing.T) {
 				Email:    "em",
 			}),
 
-			email: "em",
+			email:    "em",
 			password: "qwerty123",
 
 			expectLoginUser:  true,
@@ -113,14 +113,15 @@ func TestLoginHandler(t *testing.T) {
 
 			if tt.expectLoginUser {
 				mockUserService.EXPECT().
-					LoginUser(tt.email, tt.password).
+					LoginUser(gomock.Any(), tt.email, tt.password).
 					Return(tt.userId, tt.returnLoginError)
 			}
 
 			app := rest.AuthHandler{
-				Config:      cfg,
-				UserService: mockUserService,
-				JWTManager:  *auth.NewJWTManager(cfg),
+				Config:          cfg,
+				UserService:     mockUserService,
+				JWTManager:      *auth.NewJWTManager(cfg),
+				ContextDuration: cfg.ContextExpiration,
 			}
 
 			req := httptest.NewRequest(tt.method, tt.url, strings.NewReader(tt.body))

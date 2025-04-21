@@ -97,8 +97,8 @@ func main() {
 
 	jwtManager := auth.NewJWTManager(config)
 
-	userService := user.NewUserService(userStorage)
-	pinCRUDService := pincrudService.NewPinCRUDService(pinStorage, imageStorage)
+	userService := user.NewUserService(userStorage, boardStorage)
+	pinCRUDService := pincrudService.NewPinCRUDService(pinStorage, boardStorage, imageStorage)
 	pinService := pin.NewPinService(pinStorage, config.BaseUrl, config.ImageBaseDir)
 	profileService := profile.NewProfileService(profileStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
 	boardService := board.NewBoardService(boardStorage, config.BaseUrl, config.ImageBaseDir)
@@ -108,6 +108,7 @@ func main() {
 		Config:      config,
 		UserService: userService,
 		JWTManager:  *jwtManager,
+		ContextDuration: config.ContextExpiration,
 	}
 
 	pinsHandler := rest.PinsHandler{
