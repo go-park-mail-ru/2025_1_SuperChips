@@ -27,7 +27,7 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/profile"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/user"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	"github.com/swaggo/http-swagger"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 var (
@@ -131,7 +131,7 @@ func main() {
 	}
 
 	likeHandler := rest.LikeHandler{
-		LikeService: likeService,
+		LikeService:    likeService,
 		ContextTimeout: config.ContextExpiration,
 	}
 
@@ -142,8 +142,8 @@ func main() {
 
 	fs := http.FileServer(http.Dir("." + config.StaticBaseDir))
 	fsHandler := func(w http.ResponseWriter, r *http.Request) {
-        fs.ServeHTTP(w, r)
-    }
+		fs.ServeHTTP(w, r)
+	}
 
 	mux := http.NewServeMux()
 
@@ -158,21 +158,21 @@ func main() {
 
 	mux.HandleFunc("/health",
 		middleware.ChainMiddleware(rest.HealthCheckHandler, middleware.CorsMiddleware(config, allowedGetOptions),
-		middleware.Log()))
+			middleware.Log()))
 
 	mux.HandleFunc("/api/v1/feed",
 		middleware.ChainMiddleware(pinsHandler.FeedHandler, middleware.CorsMiddleware(config, allowedGetOptions),
-		middleware.Log()))
+			middleware.Log()))
 
 	mux.HandleFunc("/api/v1/auth/login",
 		middleware.ChainMiddleware(authHandler.LoginHandler, middleware.CorsMiddleware(config, allowedPostOptions),
-		middleware.Log()))
+			middleware.Log()))
 	mux.HandleFunc("/api/v1/auth/registration",
 		middleware.ChainMiddleware(authHandler.RegistrationHandler, middleware.CorsMiddleware(config, allowedPostOptions),
-		middleware.Log()))
+			middleware.Log()))
 	mux.HandleFunc("/api/v1/auth/logout",
 		middleware.ChainMiddleware(authHandler.LogoutHandler, middleware.CorsMiddleware(config, allowedPostOptions),
-		middleware.Log()))
+			middleware.Log()))
 
 	mux.HandleFunc("/api/v1/profile",
 		middleware.ChainMiddleware(profileHandler.CurrentUserProfileHandler,
@@ -181,7 +181,7 @@ func main() {
 			middleware.Log()))
 	mux.HandleFunc("/api/v1/users/{username}",
 		middleware.ChainMiddleware(profileHandler.PublicProfileHandler,
-			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.CorsMiddleware(config, allowedGetOptionsHead),
 			middleware.Log()))
 	mux.HandleFunc("/api/v1/profile/update",
 		middleware.ChainMiddleware(profileHandler.PatchUserProfileHandler,
@@ -231,7 +231,7 @@ func main() {
 			middleware.Log()))
 
 	mux.HandleFunc("POST /api/v1/like",
-		middleware.ChainMiddleware(likeHandler.LikeFlow, 
+		middleware.ChainMiddleware(likeHandler.LikeFlow,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedPostOptions),
@@ -239,7 +239,7 @@ func main() {
 
 	mux.HandleFunc("OPTIONS /api/v1/like", middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
-	}, 
+	},
 		middleware.CorsMiddleware(config, allowedGetOptions),
 		middleware.Log()))
 
@@ -260,7 +260,7 @@ func main() {
 		middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
 		}, middleware.CorsMiddleware(config, allowedOptions),
-		middleware.Log()))
+			middleware.Log()))
 
 	mux.HandleFunc("/api/v1/boards/{board_id}/flows/{id}",
 		middleware.ChainMiddleware(boardHandler.DeleteFromBoard,
@@ -293,7 +293,7 @@ func main() {
 		middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
 		}, middleware.CorsMiddleware(config, allowedOptions),
-		middleware.Log()))
+			middleware.Log()))
 
 	mux.HandleFunc("GET /api/v1/users/{username}/boards",
 		middleware.ChainMiddleware(boardHandler.GetUserPublic,
@@ -311,7 +311,7 @@ func main() {
 		middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
 		}, middleware.CorsMiddleware(config, allowedOptions),
-		middleware.Log()))
+			middleware.Log()))
 
 	mux.HandleFunc("/api/v1/profile/boards",
 		middleware.ChainMiddleware(boardHandler.GetUserAllBoards,
