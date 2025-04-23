@@ -275,8 +275,8 @@ func (app AuthHandler) ExternalRegister(w http.ResponseWriter, r *http.Request) 
 
 func vkGetData(accessToken string, clientID string) (string, string, error) {
 	type VKuserData struct {
-		UserID string
-		Email  string
+		UserID string `json:"user_id"`
+		Email  string `json:"email"`
 	}
 
 	postURL := "https://id.vk.com/oauth2/user_info"
