@@ -24,6 +24,7 @@ type Config struct {
 	PageSize          int
 	AllowedOrigins    []string
 	ContextExpiration time.Duration
+	VKClientID        string
 }
 
 var (
@@ -118,12 +119,12 @@ func (config *Config) LoadConfigFromEnv() error {
 	if err != nil {
 		log.Fatalf("Couldn't parse CONTEXT_DURATION: %s", err.Error())
 	}
-	
+
 	contextDurationTime, err := time.ParseDuration(contextDuration)
 	if err != nil {
 		log.Fatalf("Couldn't parse CONTEXT_DURATION: %s", err.Error())
 	}
-	
+
 	config.ContextExpiration = contextDurationTime
 
 	config.AllowedOrigins = strings.Split(allowedOrigins, ",")
@@ -136,6 +137,13 @@ func (config *Config) LoadConfigFromEnv() error {
 
 	baseUrl, _ := getEnvHelper("BASE_URL", "https://yourflow.ru")
 	config.BaseUrl = baseUrl
+
+	VKClientID, err := getEnvHelper("VK_CLIENT_ID", "")
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+
+	config.VKClientID = VKClientID
 
 	printConfig(*config)
 

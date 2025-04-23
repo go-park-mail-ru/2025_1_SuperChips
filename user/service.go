@@ -12,8 +12,8 @@ type UserRepository interface {
 	GetHash(ctx context.Context, email, password string) (uint64, string, error)
 	GetUserPublicInfo(ctx context.Context, email string) (domain.PublicUser, error)
 	GetUserId(ctx context.Context, email string) (uint64, error)
-	FindExternalServiceUser(ctx context.Context, email string, externalID int) (int, string, error)
-	AddExternalUser(ctx context.Context, email, username string, externalID int) (uint64, error)
+	FindExternalServiceUser(ctx context.Context, email string, externalID string) (int, string, error)
+	AddExternalUser(ctx context.Context, email, username string, externalID string) (uint64, error)
 }
 
 type BoardRepository interface {
@@ -81,7 +81,7 @@ func (u *UserService) LoginUser(ctx context.Context, email, password string) (ui
 	return id, nil
 }
 
-func (u *UserService) LoginExternalUser(ctx context.Context, email string, externalID int) (int, string, error) {
+func (u *UserService) LoginExternalUser(ctx context.Context, email string, externalID string) (int, string, error) {
 	id, gotEmail, err := u.userRepo.FindExternalServiceUser(ctx, email, externalID)
 	if err != nil {
 		return 0, "", err
@@ -95,7 +95,7 @@ func (u *UserService) LoginExternalUser(ctx context.Context, email string, exter
 	return id, gotEmail, nil
 }
 
-func (u *UserService) AddExternalUser(ctx context.Context, email, username string, externalID int) (uint64, error) {
+func (u *UserService) AddExternalUser(ctx context.Context, email, username string, externalID string) (uint64, error) {
 	return u.userRepo.AddExternalUser(ctx, email, username, externalID)
 }
 

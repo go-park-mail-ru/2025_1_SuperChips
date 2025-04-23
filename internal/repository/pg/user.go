@@ -107,7 +107,7 @@ func (p *pgUserStorage) GetUserId(ctx context.Context, email string) (uint64, er
 	return id, nil
 }
 
-func (p *pgUserStorage) FindExternalServiceUser(ctx context.Context, email string, externalID int) (int, string, error) {
+func (p *pgUserStorage) FindExternalServiceUser(ctx context.Context, email string, externalID string) (int, string, error) {
 	var id int
 	var gotEmail string
 
@@ -126,7 +126,7 @@ func (p *pgUserStorage) FindExternalServiceUser(ctx context.Context, email strin
 	return id, gotEmail, nil
 }
 
-func (p *pgUserStorage) AddExternalUser(ctx context.Context, email, username string, externalID int) (uint64, error) {
+func (p *pgUserStorage) AddExternalUser(ctx context.Context, email, username string, externalID string) (uint64, error) {
 	var id uint64
 	dummyPassword, err := security.GenerateRandomHash()
 	if err != nil {
