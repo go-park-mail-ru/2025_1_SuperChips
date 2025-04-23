@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	user "github.com/go-park-mail-ru/2025_1_SuperChips/domain"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/security"
 	_ "github.com/jmoiron/sqlx"
 )
 
@@ -100,6 +101,47 @@ func (p *pgUserStorage) GetUserId(ctx context.Context, email string) (uint64, er
 		if err == sql.ErrNoRows {
 			return 0, user.ErrUserNotFound
 		}
+		return 0, err
+	}
+
+	return id, nil
+}
+
+func (p *pgUserStorage) FindExternalServiceUser(ctx context.Context, email string, externalID int) (int, string, error) {
+	var id int
+	var gotEmail string
+
+	err := p.db.QueryRowContext(ctx, `
+	SELECT id, email
+	FROM flow_user
+	WHERE external_id = $1
+	AND email = $2`, externalID, email).Scan(&id, &gotEmail)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, "", user.ErrNotFound
+	}
+	if err != nil {
+		return 0, "", err
+	}
+
+	return id, gotEmail, nil
+}
+
+func (p *pgUserStorage) AddExternalUser(ctx context.Context, email, username string, externalID int) (uint64, error) {
+	var id uint64
+	dummyPassword, err := security.GenerateRandomHash()
+	if err != nil {
+		return 0, err
+	}
+
+	err = p.db.QueryRowContext(ctx, `
+        INSERT INTO flow_user (username, public_name, email, password, external_id)
+        VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (email, username) DO NOTHING
+		RETURNING id
+    `, username, username, email, dummyPassword, externalID).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, user.ErrConflict
+	} else if err != nil {
 		return 0, err
 	}
 

@@ -320,6 +320,16 @@ func main() {
 			middleware.CorsMiddleware(config, allowedGetOptions),
 			middleware.Log()))
 
+	mux.HandleFunc("/api/v1/auth/vkid/login",
+		middleware.ChainMiddleware(authHandler.ExternalLogin,
+			middleware.CorsMiddleware(config, allowedPostOptions),
+			middleware.Log()))
+
+	mux.HandleFunc("/api/v1/auth/vkid/register",
+		middleware.ChainMiddleware(authHandler.ExternalRegister,
+			middleware.CorsMiddleware(config, allowedPostOptions),
+			middleware.Log()))
+
 	server := http.Server{
 		Addr:    config.Port,
 		Handler: mux,

@@ -15,6 +15,8 @@ import (
 type UserUsecaseInterface interface {
 	AddUser(ctx context.Context, user domain.User) (uint64, error)
 	LoginUser(ctx context.Context, email, password string) (uint64, error)
+	LoginExternalUser(ctx context.Context, email string, externalID int) (int, string, error)
+	AddExternalUser(ctx context.Context, email, username string, externalID int) (uint64, error)
 }
 
 type AuthHandler struct {
@@ -22,6 +24,12 @@ type AuthHandler struct {
 	UserService     UserUsecaseInterface
 	JWTManager      auth.JWTManager
 	ContextDuration time.Duration
+}
+
+type ExternalData struct {
+	ExternalID int    `json:"external_id,omitempty"`
+	Email      string `json:"email,omitempty"`
+	Username   string `json:"username,omitempty"`
 }
 
 type CSRFResponse struct {
@@ -191,6 +199,65 @@ func (app AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ServerGenerateJSONResponse(w, response, http.StatusOK)
+}
+
+func (app AuthHandler) ExternalLogin(w http.ResponseWriter, r *http.Request) {
+	var data ExternalData
+	if err := DecodeData(w, r.Body, &data); err != nil {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), app.ContextDuration)
+	defer cancel()
+
+	id, email, err := app.UserService.LoginExternalUser(ctx, data.Email, data.ExternalID)
+	if errors.Is(err, domain.ErrNotFound) {
+		HttpErrorToJson(w, "not found; need to register first", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		println(err.Error())
+		handleAuthError(w, err)
+		return
+	}
+
+	if err := app.setCookieJWT(w, app.Config, email, uint64(id)); err != nil {
+		handleAuthError(w, err)
+		return
+	}
+
+	resp := ServerResponse{
+		Description: "OK",
+	}
+
+	ServerGenerateJSONResponse(w, resp, http.StatusOK)
+}
+
+func (app AuthHandler) ExternalRegister(w http.ResponseWriter, r *http.Request) {
+	var data ExternalData
+	if err := DecodeData(w, r.Body, &data); err != nil {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), app.ContextDuration)
+	defer cancel()
+
+	id, err := app.UserService.AddExternalUser(ctx, data.Email, data.Username, data.ExternalID)
+	if err != nil {
+		handleAuthError(w, err)
+		return
+	}
+
+	if err := app.setCookieJWT(w, app.Config, data.Email, uint64(id)); err != nil {
+		handleAuthError(w, err)
+		return
+	}
+
+	resp := ServerResponse{
+		Description: "OK",
+	}
+
+	ServerGenerateJSONResponse(w, resp, http.StatusOK)
 }
 
 func setCookie(w http.ResponseWriter, config configs.Config, name string, value string, httpOnly bool) {
