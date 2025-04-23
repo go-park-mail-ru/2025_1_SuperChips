@@ -274,9 +274,13 @@ func (app AuthHandler) ExternalRegister(w http.ResponseWriter, r *http.Request) 
 }
 
 func vkGetData(accessToken string, clientID string) (string, string, error) {
-	type VKuserData struct {
+	type VKUser struct {
 		UserID string `json:"user_id"`
 		Email  string `json:"email"`
+	}
+
+	type VKUserTop struct {
+		User VKUser `json:"user"`
 	}
 
 	postURL := "https://id.vk.com/oauth2/user_info"
@@ -299,12 +303,12 @@ func vkGetData(accessToken string, clientID string) (string, string, error) {
 	}
 	defer resp.Body.Close()
 
-	var data VKuserData
+	var data VKUserTop
 	if err := DecodeData(nil, resp.Body, &data); err != nil {
 		return "", "", err
 	}
 
-	return data.UserID, data.Email, nil
+	return data.User.UserID, data.User.Email, nil
 }
 
 func setCookie(w http.ResponseWriter, config configs.Config, name string, value string, httpOnly bool) {
