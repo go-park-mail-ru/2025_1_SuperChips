@@ -13,7 +13,7 @@ type UserRepository interface {
 	GetUserPublicInfo(ctx context.Context, email string) (domain.PublicUser, error)
 	GetUserId(ctx context.Context, email string) (uint64, error)
 	FindExternalServiceUser(ctx context.Context, email string, externalID string) (int, string, error)
-	AddExternalUser(ctx context.Context, email, username string, externalID string) (uint64, error)
+	AddExternalUser(ctx context.Context, email, username, password string, externalID string) (uint64, error)
 }
 
 type BoardRepository interface {
@@ -96,7 +96,17 @@ func (u *UserService) LoginExternalUser(ctx context.Context, email string, exter
 }
 
 func (u *UserService) AddExternalUser(ctx context.Context, email, username string, externalID string) (uint64, error) {
-	return u.userRepo.AddExternalUser(ctx, email, username, externalID)
+	dummyPassword, err := security.GenerateRandomHash()
+	if err != nil {
+		return 0, err
+	}
+
+	dummyPassword, err = security.HashPassword(dummyPassword)
+	if err != nil {
+		return 0, err
+	}	
+
+	return u.userRepo.AddExternalUser(ctx, email, username, dummyPassword, externalID)
 }
 
 func (u *UserService) GetUserPublicInfo(ctx context.Context, email string) (domain.PublicUser, error) {
