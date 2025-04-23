@@ -237,6 +237,20 @@ func (app AuthHandler) ExternalLogin(w http.ResponseWriter, r *http.Request) {
 		Description: "OK",
 	}
 
+	token, err := csrf.GenerateCSRF()
+	if err != nil {
+		handleAuthError(w, err)
+		return
+	}
+
+	app.setCookieCSRF(w, app.Config, token)
+
+	csrf := CSRFResponse{
+		CSRFToken: token,
+	}
+
+	resp.Data = csrf
+
 	ServerGenerateJSONResponse(w, resp, http.StatusOK)
 }
 
@@ -266,8 +280,21 @@ func (app AuthHandler) ExternalRegister(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	token, err := csrf.GenerateCSRF()
+	if err != nil {
+		handleAuthError(w, err)
+		return
+	}
+
+	app.setCookieCSRF(w, app.Config, token)
+
+	csrf := CSRFResponse{
+		CSRFToken: token,
+	}
+
 	resp := ServerResponse{
 		Description: "OK",
+		Data: csrf,
 	}
 
 	ServerGenerateJSONResponse(w, resp, http.StatusOK)
