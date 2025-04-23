@@ -49,15 +49,7 @@ func (u *UserService) AddUser(ctx context.Context, user domain.User) (uint64, er
 		return 0, err
 	}
 
-	if err := u.boardRepo.CreateBoard(ctx, &domain.Board{
-		Name: "Созданные вами",
-	}, user.Username, int(id)); err != nil {
-		return 0, err
-	}
-
-	if err := u.boardRepo.CreateBoard(ctx, &domain.Board{
-		Name: "Сохраненные",
-	}, user.Username, int(id)); err != nil {
+	if err := u.createUserBoards(ctx, user.Username, int(id)); err != nil {
 		return 0, err
 	}
 
@@ -104,9 +96,18 @@ func (u *UserService) AddExternalUser(ctx context.Context, email, username strin
 	dummyPassword, err = security.HashPassword(dummyPassword)
 	if err != nil {
 		return 0, err
-	}	
+	}
 
-	return u.userRepo.AddExternalUser(ctx, email, username, dummyPassword, externalID)
+	id, err := u.userRepo.AddExternalUser(ctx, email, username, dummyPassword, externalID)
+	if err != nil {
+		return 0, err
+	}
+
+	if err := u.createUserBoards(ctx, username, int(id)); err != nil {
+		return 0, err
+	}
+
+	return id, nil
 }
 
 func (u *UserService) GetUserPublicInfo(ctx context.Context, email string) (domain.PublicUser, error) {
@@ -115,4 +116,20 @@ func (u *UserService) GetUserPublicInfo(ctx context.Context, email string) (doma
 
 func (u *UserService) GetUserId(ctx context.Context, email string) (uint64, error) {
 	return u.userRepo.GetUserId(ctx, email)
+}
+
+func (u *UserService) createUserBoards(ctx context.Context, username string, id int) error {
+	if err := u.boardRepo.CreateBoard(ctx, &domain.Board{
+		Name: "Созданные вами",
+	}, username, int(id)); err != nil {
+		return err
+	}
+
+	if err := u.boardRepo.CreateBoard(ctx, &domain.Board{
+		Name: "Сохраненные",
+	}, username, int(id)); err != nil {
+		return err
+	}
+
+	return nil
 }

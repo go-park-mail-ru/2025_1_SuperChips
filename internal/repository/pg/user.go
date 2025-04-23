@@ -37,11 +37,16 @@ func NewPGUserStorage(db *sql.DB) (*pgUserStorage, error) {
 func (p *pgUserStorage) AddUser(ctx context.Context, userInfo user.User) (uint64, error) {
 	var id uint64
 	err := p.db.QueryRowContext(ctx, `
-        INSERT INTO flow_user (username, avatar, public_name, email, password, birthday)
-        VALUES ($1, $2, $3, $4, $5, $6)
-		ON CONFLICT (email, username) DO NOTHING
-		RETURNING id
-    `, userInfo.Username, userInfo.Avatar, userInfo.Username, userInfo.Email, userInfo.Password, userInfo.Birthday).Scan(&id)
+	WITH conflict_check AS (
+		SELECT id
+		FROM flow_user
+		WHERE email = $3 OR username = $1
+	)
+	INSERT INTO flow_user (username, avatar, public_name, email, password)
+	SELECT $1, $2, $3, $4, $5
+	WHERE NOT EXISTS (SELECT 1 FROM conflict_check)
+	RETURNING id;
+    `, userInfo.Username, userInfo.Avatar, userInfo.Username, userInfo.Email, userInfo.Password).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return 0, user.ErrConflict
 	} else if err != nil {
@@ -129,10 +134,15 @@ func (p *pgUserStorage) AddExternalUser(ctx context.Context, email, username, pa
 	var id uint64
 
 	err := p.db.QueryRowContext(ctx, `
-        INSERT INTO flow_user (username, public_name, email, password, external_id)
-        VALUES ($1, $2, $3, $4, $5)
-		ON CONFLICT (email, username) DO NOTHING
-		RETURNING id
+	WITH conflict_check AS (
+		SELECT id
+		FROM flow_user
+		WHERE email = $3 OR username = $1
+	)
+	INSERT INTO flow_user (username, public_name, email, password, external_id)
+	SELECT $1, $2, $3, $4, $5
+	WHERE NOT EXISTS (SELECT 1 FROM conflict_check)
+	RETURNING id;
     `, username, username, email, password, externalID).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return 0, user.ErrConflict

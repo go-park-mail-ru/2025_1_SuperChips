@@ -182,7 +182,7 @@ func main() {
 			middleware.Log()))
 	mux.HandleFunc("/api/v1/users/{username}",
 		middleware.ChainMiddleware(profileHandler.PublicProfileHandler,
-			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.CorsMiddleware(config, allowedGetOptionsHead),
 			middleware.Log()))
 	mux.HandleFunc("/api/v1/profile/update",
 		middleware.ChainMiddleware(profileHandler.PatchUserProfileHandler,
