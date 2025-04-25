@@ -10,14 +10,14 @@ import (
 )
 
 type User struct {
-	Id         uint64    `json:"user_id,omitempty"`
+	ID         uint64    `json:"user_id,omitempty"`
 	Username   string    `json:"username"`
 	Password   string    `json:"password,omitempty"`
 	Email      string    `json:"email"`
 	Avatar     string    `json:"avatar,omitempty"`
 	Birthday   time.Time `json:"birthday,omitempty"`
 	About      string    `json:"about,omitempty"`
-	PublicName string    `json:"public_name,omitempty"`
+	PublicName string    `json:"public_name"`
 	JWTVersion uint64    `json:"-"`
 }
 
@@ -26,7 +26,7 @@ type PublicUser struct {
 	Email      string    `json:"email,omitempty"`
 	Avatar     string    `json:"avatar,omitempty"`
 	Birthday   time.Time `json:"birthday,omitempty"`
-	PublicName string    `json:"public_name,omitempty"`
+	PublicName string    `json:"public_name"`
 	About      string    `json:"about,omitempty"`
 }
 

@@ -25,10 +25,7 @@ func (s *SearchHandler) SearchPins(w http.ResponseWriter, r *http.Request) {
 	v := validator.New()
 
 	query := r.URL.Query().Get("query")
-	if !v.Check(query != "", "query", "cannot be empty") {
-		HttpErrorToJson(w, v.GetError("query").Error(), http.StatusBadRequest)
-		return
-	}
+	v.Check(query != "", "query", "cannot be empty")
 
 	page := r.URL.Query().Get("page")
 	pageInt, err := strconv.Atoi(page)
@@ -44,13 +41,12 @@ func (s *SearchHandler) SearchPins(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !v.Check(pageInt >= 0, "page", "cannot be less or equal to zero") {
-		HttpErrorToJson(w, v.GetError("page").Error(), http.StatusBadRequest)
-		return
-	}
+	v.Check(pageInt >= 0, "page", "cannot be less or equal to zero")
 
-	if !v.Check(pageSizeInt >= 0 && pageSizeInt <= 30, "page size", "cannot be less than 1 or more than 30") {
-		HttpErrorToJson(w, v.GetError("page size").Error(), http.StatusBadRequest)
+	v.Check(pageSizeInt >= 0 && pageSizeInt <= 30, "page size", "cannot be less than 1 or more than 30")
+
+	if !v.Valid() {
+		handleValidatorError(w, v.Errors, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
@@ -80,10 +76,7 @@ func (s *SearchHandler) SearchBoards(w http.ResponseWriter, r *http.Request) {
 	v := validator.New()
 
 	query := r.URL.Query().Get("query")
-	if !v.Check(query != "", "query", "cannot be empty") {
-		HttpErrorToJson(w, v.GetError("query").Error(), http.StatusBadRequest)
-		return
-	}
+	v.Check(query != "", "query", "cannot be empty")
 
 	page := r.URL.Query().Get("page")
 	pageInt, err := strconv.Atoi(page)
@@ -99,13 +92,11 @@ func (s *SearchHandler) SearchBoards(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !v.Check(pageInt >= 0, "page", "cannot be less or equal to zero") {
-		HttpErrorToJson(w, v.GetError("page").Error(), http.StatusBadRequest)
-		return
-	}
+	v.Check(pageInt >= 0, "page", "cannot be less or equal to zero")
+	v.Check(pageSizeInt >= 0 && pageSizeInt <= 30, "page size", "cannot be less than 1 or more than 30")
 
-	if !v.Check(pageSizeInt >= 0 && pageSizeInt <= 30, "page size", "cannot be less than 1 or more than 30") {
-		HttpErrorToJson(w, v.GetError("page size").Error(), http.StatusBadRequest)
+	if !v.Valid() {
+		handleValidatorError(w, v.Errors, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
@@ -135,10 +126,7 @@ func (s *SearchHandler) SearchUsers(w http.ResponseWriter, r *http.Request) {
 	v := validator.New()
 
 	query := r.URL.Query().Get("query")
-	if !v.Check(query != "", "query", "cannot be empty") {
-		HttpErrorToJson(w, v.GetError("query").Error(), http.StatusBadRequest)
-		return
-	}
+	v.Check(query != "", "query", "cannot be empty")
 
 	page := r.URL.Query().Get("page")
 	pageInt, err := strconv.Atoi(page)
@@ -154,13 +142,11 @@ func (s *SearchHandler) SearchUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !v.Check(pageInt >= 0, "page", "cannot be less or equal to zero") {
-		HttpErrorToJson(w, v.GetError("page").Error(), http.StatusBadRequest)
-		return
-	}
+	v.Check(pageInt >= 0, "page", "cannot be less or equal to zero")
+	v.Check(pageSizeInt >= 0 && pageSizeInt <= 30, "page size", "cannot be less than 1 or more than 30")
 
-	if !v.Check(pageSizeInt >= 0 && pageSizeInt <= 30, "page size", "cannot be less than 1 or more than 30") {
-		HttpErrorToJson(w, v.GetError("page size").Error(), http.StatusBadRequest)
+	if !v.Valid() {
+		handleValidatorError(w, v.Errors, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
@@ -184,6 +170,15 @@ func (s *SearchHandler) SearchUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ServerGenerateJSONResponse(w, resp, http.StatusOK)
+}
+
+func handleValidatorError(w http.ResponseWriter, errors map[string]string, description string, statusCode int) {
+	resp := ServerResponse{
+		Description: description,
+		Data: errors,
+	}
+
+	ServerGenerateJSONResponse(w, resp, statusCode)
 }
 
 func handleSearchError(w http.ResponseWriter, err error) {

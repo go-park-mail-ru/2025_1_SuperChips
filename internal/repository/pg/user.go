@@ -9,7 +9,7 @@ import (
 )
 
 type userDB struct {
-	Id         uint64         `db:"id"`
+	ID         uint64         `db:"id"`
 	Username   string         `db:"username"`
 	Avatar     sql.NullString `db:"avatar"`
 	PublicName string         `db:"public_name"`
