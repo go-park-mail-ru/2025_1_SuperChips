@@ -8,27 +8,8 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
 
-// type SearchRepository interface {
-// 	SearchPins(query string, page, pageSize int) ([]domain.PinData, error)
-// 	SearchUsers(query string, page, pageSize int) ([]domain.PublicUser, error)
-// 	SearchBoards(query string, page, pageSize int) ([]domain.Board, error)
-// }
-
 type SearchRepository struct {
 	db *sql.DB
-}
-
-type UserNullable struct {
-	About sql.NullString
-}
-
-type PinNullable struct {
-	Header      sql.NullString
-	Description sql.NullString
-}
-
-type BoardNullable struct {
-	BoardName sql.NullString
 }
 
 func NewSearchRepository(db *sql.DB) *SearchRepository {
@@ -67,13 +48,15 @@ func (s *SearchRepository) SearchPins(ctx context.Context, query string, page, p
 	defer rows.Close()
 
 	var pins []domain.PinData
+	var header sql.NullString
+	var description sql.NullString
+
 	for rows.Next() {
 		var pin domain.PinData
-		var pinNullable PinNullable
 		if err := rows.Scan(
 			&pin.FlowID,
-			&pinNullable.Header,
-			&pinNullable.Description,
+			&header,
+			&description,
 			&pin.AuthorID,
 			&pin.IsPrivate,
 			&pin.MediaURL,
@@ -82,8 +65,8 @@ func (s *SearchRepository) SearchPins(ctx context.Context, query string, page, p
 			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
 
-		pin.Header = pinNullable.Header.String
-		pin.Description = pinNullable.Description.String
+		pin.Header = header.String
+		pin.Description = description.String
 
 		pins = append(pins, pin)
 	}
@@ -114,19 +97,19 @@ func (s *SearchRepository) SearchUsers(ctx context.Context, query string, page, 
 	var users []domain.PublicUser
 	for rows.Next() {
 		var user domain.PublicUser
-		var userNullable UserNullable
+		var about sql.NullString
 		if err := rows.Scan(
 			&user.Username,
 			&user.Email,
 			&user.Avatar,
 			&user.Birthday,
-			&userNullable.About,
+			&about,
 			&user.PublicName,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan row %w", err)
 		}
 
-		user.About = userNullable.About.String
+		user.About = about.String
 
 		users = append(users, user)
 	}
@@ -138,7 +121,7 @@ func (s *SearchRepository) SearchUsers(ctx context.Context, query string, page, 
 	return users, nil
 }
 
-func (s *SearchRepository) SearchBoards(ctx context.Context, query string, page, pageSize int) ([]domain.Board, error) {
+func (s *SearchRepository) SearchBoards(ctx context.Context, query string, page, pageSize, previewNum, previewStart int) ([]domain.Board, error) {
 	offset := (page - 1) * pageSize
 
 	rows, err := s.db.QueryContext(ctx, `
@@ -171,11 +154,11 @@ func (s *SearchRepository) SearchBoards(ctx context.Context, query string, page,
 	var boards []domain.Board
 	for rows.Next() {
 		var board domain.Board
-		var boardNullable BoardNullable
+		var name sql.NullString
 		if err := rows.Scan(
 			&board.ID,
 			&board.AuthorID,
-			&boardNullable.BoardName,
+			&name,
 			&board.CreatedAt,
 			&board.IsPrivate,
 			&board.FlowCount,
@@ -184,9 +167,22 @@ func (s *SearchRepository) SearchBoards(ctx context.Context, query string, page,
 			return nil, fmt.Errorf("failed to scan row %w", err)
 		}
 
-		board.Name = boardNullable.BoardName.String
+		board.Name = name.String
 
 		boards = append(boards, board)
+	}
+
+	for i := range boards {
+		preview, err := s.fetchFirstNFlowsForBoard(ctx, boards[i].ID, 0, previewNum, previewStart)
+		if err != nil {
+			// наверное, если произошла ошибка
+			// при получении превью, имеет смысл
+			// просто не отображать его, а не выдавать
+			// хттп ошибку
+			continue
+		}
+
+		boards[i].Preview = preview
 	}
 
 	if err := rows.Err(); err != nil {
@@ -195,3 +191,58 @@ func (s *SearchRepository) SearchBoards(ctx context.Context, query string, page,
 
 	return boards, nil
 }
+
+func (p *SearchRepository) fetchFirstNFlowsForBoard(ctx context.Context, boardID, userID, pageSize, offset int) ([]domain.PinData, error) {
+	rows, err := p.db.QueryContext(ctx, `
+        SELECT f.id, f.title, f.description, f.author_id, f.created_at, 
+               f.updated_at, f.is_private, f.media_url, f.like_count
+        FROM flow f
+        JOIN board_post bp ON f.id = bp.flow_id
+        WHERE bp.board_id = $1
+          AND (f.is_private = false OR f.author_id = $2)
+        ORDER BY bp.saved_at DESC
+        LIMIT $3 OFFSET $4
+    `, boardID, userID, pageSize, offset)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch flows: %w", err)
+	}
+	defer rows.Close()
+
+	type middlePinData struct {
+		Header      sql.NullString
+		Description sql.NullString
+	}
+
+	middlePin := middlePinData{}
+
+	var flows []domain.PinData
+	for rows.Next() {
+		var flow domain.PinData
+		err := rows.Scan(
+			&flow.FlowID,
+			&middlePin.Header,
+			&middlePin.Description,
+			&flow.AuthorID,
+			&flow.CreatedAt,
+			&flow.UpdatedAt,
+			&flow.IsPrivate,
+			&flow.MediaURL,
+			&flow.LikeCount,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan flow: %w", err)
+		}
+
+		flow.Header = middlePin.Header.String
+		flow.Description = middlePin.Description.String
+
+		flows = append(flows, flow)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during flow iteration: %w", err)
+	}
+
+	return flows, nil
+}
+

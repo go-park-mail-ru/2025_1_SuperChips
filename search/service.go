@@ -11,8 +11,13 @@ import (
 type SearchRepository interface {
 	SearchPins(ctx context.Context, query string, page, pageSize int) ([]domain.PinData, error)
 	SearchUsers(ctx context.Context, query string, page, pageSize int) ([]domain.PublicUser, error)
-	SearchBoards(ctx context.Context, query string, page, pageSize int) ([]domain.Board, error) 
+	SearchBoards(ctx context.Context, query string, page, pageSize, previewNum, previewStart int) ([]domain.Board, error) 
 }
+
+const (
+	previewNum = 3
+	previewStart = 0
+)
 
 type SearchService struct {
 	repo SearchRepository
@@ -46,7 +51,7 @@ func (s *SearchService) SearchPins(ctx context.Context, query string, page, page
 }
 
 func (s *SearchService) SearchBoards(ctx context.Context, query string, page, pageSize int) ([]domain.Board, error) {
-	return s.repo.SearchBoards(ctx, query, page, pageSize)
+	return s.repo.SearchBoards(ctx, query, page, pageSize, previewNum, previewStart)
 }
 
 func (s *SearchService) SearchUsers(ctx context.Context, query string, page, pageSize int) ([]domain.PublicUser, error) {

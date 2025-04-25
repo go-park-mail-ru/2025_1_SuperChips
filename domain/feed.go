@@ -14,7 +14,7 @@ type PinData struct {
 	IsPrivate      bool   `json:"is_private"`
 	CreatedAt      string `json:"created_at,omitempty"`
 	UpdatedAt      string `json:"updated_at,omitempty"`
-	IsLiked        bool   `json:"is_liked,omitempty"`
+	IsLiked        bool   `json:"is_liked"`
 	LikeCount      int    `json:"like_count"`
 	Width          int    `json:"width,omitempty"`
 	Height         int    `json:"height,omitempty"`
