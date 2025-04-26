@@ -19,8 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	PollService_GetAllPolls_FullMethodName = "/proto_poll.PollService/GetAllPolls"
-	PollService_AddAnswer_FullMethodName   = "/proto_poll.PollService/AddAnswer"
+	PollService_GetAllPolls_FullMethodName    = "/proto_poll.PollService/GetAllPolls"
+	PollService_AddAnswer_FullMethodName      = "/proto_poll.PollService/AddAnswer"
+	PollService_GetAllStarStat_FullMethodName = "/proto_poll.PollService/GetAllStarStat"
+	PollService_GetAllAnswers_FullMethodName  = "/proto_poll.PollService/GetAllAnswers"
 )
 
 // PollServiceClient is the client API for PollService service.
@@ -29,6 +31,8 @@ const (
 type PollServiceClient interface {
 	GetAllPolls(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*GetAllPollsResponse, error)
 	AddAnswer(ctx context.Context, in *AddAnswerRequest, opts ...grpc.CallOption) (*Empty, error)
+	GetAllStarStat(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*GetStarStatResponse, error)
+	GetAllAnswers(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*GetAllAnswersResponse, error)
 }
 
 type pollServiceClient struct {
@@ -59,12 +63,34 @@ func (c *pollServiceClient) AddAnswer(ctx context.Context, in *AddAnswerRequest,
 	return out, nil
 }
 
+func (c *pollServiceClient) GetAllStarStat(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*GetStarStatResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetStarStatResponse)
+	err := c.cc.Invoke(ctx, PollService_GetAllStarStat_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *pollServiceClient) GetAllAnswers(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*GetAllAnswersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAllAnswersResponse)
+	err := c.cc.Invoke(ctx, PollService_GetAllAnswers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PollServiceServer is the server API for PollService service.
 // All implementations must embed UnimplementedPollServiceServer
 // for forward compatibility.
 type PollServiceServer interface {
 	GetAllPolls(context.Context, *Empty) (*GetAllPollsResponse, error)
 	AddAnswer(context.Context, *AddAnswerRequest) (*Empty, error)
+	GetAllStarStat(context.Context, *Empty) (*GetStarStatResponse, error)
+	GetAllAnswers(context.Context, *Empty) (*GetAllAnswersResponse, error)
 	mustEmbedUnimplementedPollServiceServer()
 }
 
@@ -80,6 +106,12 @@ func (UnimplementedPollServiceServer) GetAllPolls(context.Context, *Empty) (*Get
 }
 func (UnimplementedPollServiceServer) AddAnswer(context.Context, *AddAnswerRequest) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddAnswer not implemented")
+}
+func (UnimplementedPollServiceServer) GetAllStarStat(context.Context, *Empty) (*GetStarStatResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAllStarStat not implemented")
+}
+func (UnimplementedPollServiceServer) GetAllAnswers(context.Context, *Empty) (*GetAllAnswersResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAllAnswers not implemented")
 }
 func (UnimplementedPollServiceServer) mustEmbedUnimplementedPollServiceServer() {}
 func (UnimplementedPollServiceServer) testEmbeddedByValue()                     {}
@@ -138,6 +170,42 @@ func _PollService_AddAnswer_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PollService_GetAllStarStat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PollServiceServer).GetAllStarStat(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PollService_GetAllStarStat_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PollServiceServer).GetAllStarStat(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PollService_GetAllAnswers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PollServiceServer).GetAllAnswers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PollService_GetAllAnswers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PollServiceServer).GetAllAnswers(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PollService_ServiceDesc is the grpc.ServiceDesc for PollService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -152,6 +220,14 @@ var PollService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AddAnswer",
 			Handler:    _PollService_AddAnswer_Handler,
+		},
+		{
+			MethodName: "GetAllStarStat",
+			Handler:    _PollService_GetAllStarStat_Handler,
+		},
+		{
+			MethodName: "GetAllAnswers",
+			Handler:    _PollService_GetAllAnswers_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

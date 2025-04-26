@@ -367,6 +367,18 @@ func main() {
 		middleware.CorsMiddleware(config, allowedPostOptions),
 		middleware.Log()))
 
+	mux.HandleFunc("/api/v1/polls/stats/stars",
+	middleware.ChainMiddleware(pollHandler.GetAllStarStat,
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CorsMiddleware(config, allowedGetOptions),
+		middleware.Log()))
+
+	mux.HandleFunc("/api/v1/polls/stats/all",
+	middleware.ChainMiddleware(pollHandler.GetAllAnswers,
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CorsMiddleware(config, allowedGetOptions),
+		middleware.Log()))
+
 	//
 	server := http.Server{
 		Addr:    config.Port,

@@ -329,6 +329,214 @@ func (x *AddAnswerRequest) GetAnswers() []*Answer {
 	return nil
 }
 
+type QuestionStarAvg struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PollId        int64                  `protobuf:"varint,1,opt,name=poll_id,json=pollId,proto3" json:"poll_id,omitempty"`
+	QuestionId    int64                  `protobuf:"varint,2,opt,name=question_id,json=questionId,proto3" json:"question_id,omitempty"`
+	Average       float32                `protobuf:"fixed32,3,opt,name=average,proto3" json:"average,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *QuestionStarAvg) Reset() {
+	*x = QuestionStarAvg{}
+	mi := &file_protos_proto_poll_poll_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *QuestionStarAvg) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QuestionStarAvg) ProtoMessage() {}
+
+func (x *QuestionStarAvg) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_proto_poll_poll_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use QuestionStarAvg.ProtoReflect.Descriptor instead.
+func (*QuestionStarAvg) Descriptor() ([]byte, []int) {
+	return file_protos_proto_poll_poll_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *QuestionStarAvg) GetPollId() int64 {
+	if x != nil {
+		return x.PollId
+	}
+	return 0
+}
+
+func (x *QuestionStarAvg) GetQuestionId() int64 {
+	if x != nil {
+		return x.QuestionId
+	}
+	return 0
+}
+
+func (x *QuestionStarAvg) GetAverage() float32 {
+	if x != nil {
+		return x.Average
+	}
+	return 0
+}
+
+type QuestionAnswer struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PollId        int64                  `protobuf:"varint,1,opt,name=poll_id,json=pollId,proto3" json:"poll_id,omitempty"`
+	QuestionId    int64                  `protobuf:"varint,2,opt,name=question_id,json=questionId,proto3" json:"question_id,omitempty"`
+	Content       string                 `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *QuestionAnswer) Reset() {
+	*x = QuestionAnswer{}
+	mi := &file_protos_proto_poll_poll_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *QuestionAnswer) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QuestionAnswer) ProtoMessage() {}
+
+func (x *QuestionAnswer) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_proto_poll_poll_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use QuestionAnswer.ProtoReflect.Descriptor instead.
+func (*QuestionAnswer) Descriptor() ([]byte, []int) {
+	return file_protos_proto_poll_poll_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *QuestionAnswer) GetPollId() int64 {
+	if x != nil {
+		return x.PollId
+	}
+	return 0
+}
+
+func (x *QuestionAnswer) GetQuestionId() int64 {
+	if x != nil {
+		return x.QuestionId
+	}
+	return 0
+}
+
+func (x *QuestionAnswer) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
+type GetStarStatResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Result        []*QuestionStarAvg     `protobuf:"bytes,1,rep,name=result,proto3" json:"result,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetStarStatResponse) Reset() {
+	*x = GetStarStatResponse{}
+	mi := &file_protos_proto_poll_poll_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetStarStatResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetStarStatResponse) ProtoMessage() {}
+
+func (x *GetStarStatResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_proto_poll_poll_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetStarStatResponse.ProtoReflect.Descriptor instead.
+func (*GetStarStatResponse) Descriptor() ([]byte, []int) {
+	return file_protos_proto_poll_poll_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *GetStarStatResponse) GetResult() []*QuestionStarAvg {
+	if x != nil {
+		return x.Result
+	}
+	return nil
+}
+
+type GetAllAnswersResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Result        []*QuestionAnswer      `protobuf:"bytes,1,rep,name=result,proto3" json:"result,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAllAnswersResponse) Reset() {
+	*x = GetAllAnswersResponse{}
+	mi := &file_protos_proto_poll_poll_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAllAnswersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAllAnswersResponse) ProtoMessage() {}
+
+func (x *GetAllAnswersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_proto_poll_poll_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAllAnswersResponse.ProtoReflect.Descriptor instead.
+func (*GetAllAnswersResponse) Descriptor() ([]byte, []int) {
+	return file_protos_proto_poll_poll_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *GetAllAnswersResponse) GetResult() []*QuestionAnswer {
+	if x != nil {
+		return x.Result
+	}
+	return nil
+}
+
 type Empty struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -337,7 +545,7 @@ type Empty struct {
 
 func (x *Empty) Reset() {
 	*x = Empty{}
-	mi := &file_protos_proto_poll_poll_proto_msgTypes[5]
+	mi := &file_protos_proto_poll_poll_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -349,7 +557,7 @@ func (x *Empty) String() string {
 func (*Empty) ProtoMessage() {}
 
 func (x *Empty) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_proto_poll_poll_proto_msgTypes[5]
+	mi := &file_protos_proto_poll_poll_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -362,7 +570,7 @@ func (x *Empty) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Empty.ProtoReflect.Descriptor instead.
 func (*Empty) Descriptor() ([]byte, []int) {
-	return file_protos_proto_poll_poll_proto_rawDescGZIP(), []int{5}
+	return file_protos_proto_poll_poll_proto_rawDescGZIP(), []int{9}
 }
 
 var File_protos_proto_poll_poll_proto protoreflect.FileDescriptor
@@ -392,11 +600,27 @@ const file_protos_proto_poll_poll_proto_rawDesc = "" +
 	"\x10AddAnswerRequest\x12\x17\n" +
 	"\apoll_id\x18\x01 \x01(\x03R\x06pollId\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\x03R\x06userId\x12,\n" +
-	"\aanswers\x18\x03 \x03(\v2\x12.proto_poll.AnswerR\aanswers\"\a\n" +
-	"\x05Empty2\x92\x01\n" +
+	"\aanswers\x18\x03 \x03(\v2\x12.proto_poll.AnswerR\aanswers\"e\n" +
+	"\x0fQuestionStarAvg\x12\x17\n" +
+	"\apoll_id\x18\x01 \x01(\x03R\x06pollId\x12\x1f\n" +
+	"\vquestion_id\x18\x02 \x01(\x03R\n" +
+	"questionId\x12\x18\n" +
+	"\aaverage\x18\x03 \x01(\x02R\aaverage\"d\n" +
+	"\x0eQuestionAnswer\x12\x17\n" +
+	"\apoll_id\x18\x01 \x01(\x03R\x06pollId\x12\x1f\n" +
+	"\vquestion_id\x18\x02 \x01(\x03R\n" +
+	"questionId\x12\x18\n" +
+	"\acontent\x18\x03 \x01(\tR\acontent\"J\n" +
+	"\x13GetStarStatResponse\x123\n" +
+	"\x06result\x18\x01 \x03(\v2\x1b.proto_poll.QuestionStarAvgR\x06result\"K\n" +
+	"\x15GetAllAnswersResponse\x122\n" +
+	"\x06result\x18\x01 \x03(\v2\x1a.proto_poll.QuestionAnswerR\x06result\"\a\n" +
+	"\x05Empty2\xa3\x02\n" +
 	"\vPollService\x12C\n" +
 	"\vGetAllPolls\x12\x11.proto_poll.Empty\x1a\x1f.proto_poll.GetAllPollsResponse\"\x00\x12>\n" +
-	"\tAddAnswer\x12\x1c.proto_poll.AddAnswerRequest\x1a\x11.proto_poll.Empty\"\x00B\x18Z\x16./protos/gen/poll/;genb\x06proto3"
+	"\tAddAnswer\x12\x1c.proto_poll.AddAnswerRequest\x1a\x11.proto_poll.Empty\"\x00\x12F\n" +
+	"\x0eGetAllStarStat\x12\x11.proto_poll.Empty\x1a\x1f.proto_poll.GetStarStatResponse\"\x00\x12G\n" +
+	"\rGetAllAnswers\x12\x11.proto_poll.Empty\x1a!.proto_poll.GetAllAnswersResponse\"\x00B\x18Z\x16./protos/gen/poll/;genb\x06proto3"
 
 var (
 	file_protos_proto_poll_poll_proto_rawDescOnce sync.Once
@@ -410,28 +634,38 @@ func file_protos_proto_poll_poll_proto_rawDescGZIP() []byte {
 	return file_protos_proto_poll_poll_proto_rawDescData
 }
 
-var file_protos_proto_poll_poll_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_protos_proto_poll_poll_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_protos_proto_poll_poll_proto_goTypes = []any{
-	(*Question)(nil),            // 0: proto_poll.Question
-	(*Poll)(nil),                // 1: proto_poll.Poll
-	(*GetAllPollsResponse)(nil), // 2: proto_poll.GetAllPollsResponse
-	(*Answer)(nil),              // 3: proto_poll.Answer
-	(*AddAnswerRequest)(nil),    // 4: proto_poll.AddAnswerRequest
-	(*Empty)(nil),               // 5: proto_poll.Empty
+	(*Question)(nil),              // 0: proto_poll.Question
+	(*Poll)(nil),                  // 1: proto_poll.Poll
+	(*GetAllPollsResponse)(nil),   // 2: proto_poll.GetAllPollsResponse
+	(*Answer)(nil),                // 3: proto_poll.Answer
+	(*AddAnswerRequest)(nil),      // 4: proto_poll.AddAnswerRequest
+	(*QuestionStarAvg)(nil),       // 5: proto_poll.QuestionStarAvg
+	(*QuestionAnswer)(nil),        // 6: proto_poll.QuestionAnswer
+	(*GetStarStatResponse)(nil),   // 7: proto_poll.GetStarStatResponse
+	(*GetAllAnswersResponse)(nil), // 8: proto_poll.GetAllAnswersResponse
+	(*Empty)(nil),                 // 9: proto_poll.Empty
 }
 var file_protos_proto_poll_poll_proto_depIdxs = []int32{
 	0, // 0: proto_poll.Poll.questions:type_name -> proto_poll.Question
 	1, // 1: proto_poll.GetAllPollsResponse.polls:type_name -> proto_poll.Poll
 	3, // 2: proto_poll.AddAnswerRequest.answers:type_name -> proto_poll.Answer
-	5, // 3: proto_poll.PollService.GetAllPolls:input_type -> proto_poll.Empty
-	4, // 4: proto_poll.PollService.AddAnswer:input_type -> proto_poll.AddAnswerRequest
-	2, // 5: proto_poll.PollService.GetAllPolls:output_type -> proto_poll.GetAllPollsResponse
-	5, // 6: proto_poll.PollService.AddAnswer:output_type -> proto_poll.Empty
-	5, // [5:7] is the sub-list for method output_type
-	3, // [3:5] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	5, // 3: proto_poll.GetStarStatResponse.result:type_name -> proto_poll.QuestionStarAvg
+	6, // 4: proto_poll.GetAllAnswersResponse.result:type_name -> proto_poll.QuestionAnswer
+	9, // 5: proto_poll.PollService.GetAllPolls:input_type -> proto_poll.Empty
+	4, // 6: proto_poll.PollService.AddAnswer:input_type -> proto_poll.AddAnswerRequest
+	9, // 7: proto_poll.PollService.GetAllStarStat:input_type -> proto_poll.Empty
+	9, // 8: proto_poll.PollService.GetAllAnswers:input_type -> proto_poll.Empty
+	2, // 9: proto_poll.PollService.GetAllPolls:output_type -> proto_poll.GetAllPollsResponse
+	9, // 10: proto_poll.PollService.AddAnswer:output_type -> proto_poll.Empty
+	7, // 11: proto_poll.PollService.GetAllStarStat:output_type -> proto_poll.GetStarStatResponse
+	8, // 12: proto_poll.PollService.GetAllAnswers:output_type -> proto_poll.GetAllAnswersResponse
+	9, // [9:13] is the sub-list for method output_type
+	5, // [5:9] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_protos_proto_poll_poll_proto_init() }
@@ -445,7 +679,7 @@ func file_protos_proto_poll_poll_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_protos_proto_poll_poll_proto_rawDesc), len(file_protos_proto_poll_poll_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

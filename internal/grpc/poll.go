@@ -10,6 +10,8 @@ import (
 type PollUsecase interface {
 	GetAllPolls(ctx context.Context) ([]domain.Poll, error)
 	AddAnswer(ctx context.Context, pollID, userID int, answers []domain.Answer) error
+	GetAllStarStat(ctx context.Context) ([]domain.QuestionStarAvg, error)
+	GetAllAnswers(ctx context.Context) ([]domain.QuestionAnswer, error)
 }
 
 type GrpcPollHandler struct {
@@ -60,6 +62,48 @@ func (p *GrpcPollHandler) AddAnswer(ctx context.Context, in *gen.AddAnswerReques
 	}
 
 	return &gen.Empty{}, nil
+}
+
+func (p *GrpcPollHandler) GetAllStarStat(ctx context.Context, in *gen.Empty) (*gen.GetStarStatResponse, error) {
+	res, err := p.usecase.GetAllStarStat(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var grpcRes []*gen.QuestionStarAvg
+
+	for i := range res {
+		grpcRes = append(grpcRes, &gen.QuestionStarAvg{
+			PollId: int64(res[i].PollID),
+			QuestionId: int64(res[i].QuestionID),
+			Average: float32(res[i].Average),
+		})
+	}
+
+	return &gen.GetStarStatResponse{
+		Result: grpcRes,
+	}, nil
+}
+
+func (p *GrpcPollHandler) GetAllAnswers(ctx context.Context, in *gen.Empty) (*gen.GetAllAnswersResponse, error) {
+	res, err := p.usecase.GetAllAnswers(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var grpcRes []*gen.QuestionAnswer
+
+	for i := range res {
+		grpcRes = append(grpcRes, &gen.QuestionAnswer{
+			PollId: int64(res[i].PollID),
+			QuestionId: int64(res[i].QuestionID),
+			Content: res[i].Content,
+		})
+	}
+
+	return &gen.GetAllAnswersResponse{
+		Result: grpcRes,
+	}, nil
 }
 
 func questionToGRPC(questions []domain.Question) []*gen.Question {

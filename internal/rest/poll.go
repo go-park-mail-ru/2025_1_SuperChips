@@ -94,6 +94,62 @@ func (h *PollHandler) GetPolls(w http.ResponseWriter, r *http.Request) {
 	ServerGenerateJSONResponse(w, resp, http.StatusOK)
 }
 
+func (h *PollHandler) GetAllStarStat(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(context.Background(), h.ContextTimeout)
+	defer cancel()
+
+	resp, err := h.Usecase.GetAllStarStat(ctx, &gen.Empty{})
+	if err != nil {
+		handleGRPCPollError(w, err)
+		return
+	}
+
+	var normalResp []domain.QuestionStarAvg
+	for i := range resp.Result {
+		stat := domain.QuestionStarAvg{
+			PollID: int(resp.Result[i].PollId),
+			QuestionID: int(resp.Result[i].QuestionId),
+			Average: float64(resp.Result[i].Average),
+		}
+		normalResp = append(normalResp, stat)
+	}
+
+	servResp := ServerResponse{
+		Description: "OK",
+		Data: normalResp,
+	}
+
+	ServerGenerateJSONResponse(w, servResp, http.StatusOK)
+}
+
+func (h *PollHandler) GetAllAnswers(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(context.Background(), h.ContextTimeout)
+	defer cancel()
+
+	resp, err := h.Usecase.GetAllAnswers(ctx, &gen.Empty{})
+	if err != nil {
+		handleGRPCPollError(w, err)
+		return
+	}
+
+	var normalResp []domain.QuestionAnswer
+	for i := range resp.Result {
+		stat := domain.QuestionAnswer{
+			PollID: int(resp.Result[i].PollId),
+			QuestionID: int(resp.Result[i].QuestionId),
+			Content: resp.Result[i].Content,
+		}
+		normalResp = append(normalResp, stat)
+	}
+
+	servResp := ServerResponse{
+		Description: "OK",
+		Data: normalResp,
+	}
+
+	ServerGenerateJSONResponse(w, servResp, http.StatusOK)
+}
+
 func formatQuestions(grpcQuestions []*gen.Question) []domain.Question {
 	var questions []domain.Question
 	for i := range grpcQuestions {

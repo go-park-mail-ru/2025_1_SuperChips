@@ -47,13 +47,19 @@ message QuestionAnswer {
     string content = 3;
 }
 
-message 
+message GetStarStatResponse {
+    repeated QuestionStarAvg result = 1;
+}
+
+message GetAllAnswersResponse {
+    repeated QuestionAnswer result = 1;
+}
 
 message Empty {}
 
 service PollService {
     rpc GetAllPolls(Empty) returns (GetAllPollsResponse) {}
     rpc AddAnswer(AddAnswerRequest) returns (Empty) {}
-    rpc GetStarStat(Empty) returns (GetStarStatResponse) {}
+    rpc GetAllStarStat(Empty) returns (GetStarStatResponse) {}
     rpc GetAllAnswers(Empty) returns (GetAllAnswersResponse) {}
 }
