@@ -18,8 +18,6 @@ WORKDIR /root
 
 COPY --from=builder /app/auth_service .
 
-RUN ls -l /root
-
 EXPOSE 8010
 
 CMD ["./main"]

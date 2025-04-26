@@ -18,4 +18,4 @@ COPY --from=builder /app/poll_service .
 
 EXPOSE 8011
 
-CMD ["./main"]
+CMD ["./poll_service"]
