@@ -1,0 +1,1 @@
+CREATE TYPE POLL_TYPE AS ENUM ('stars', 'text');
