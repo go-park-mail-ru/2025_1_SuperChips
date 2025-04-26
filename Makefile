@@ -29,3 +29,11 @@ test: mocks
 cover: mocks test
 	cat $(COVERAGE_FILE) | grep -v 'mock_' | grep -v 'docs' | grep -v 'test_utils' > cover.out
 	go tool cover -func=cover.out
+
+proto_poll: 
+	protoc \
+    --go_out=./protos \
+    --go_opt=module=protos \
+    --go-grpc_out=./protos \
+    --go-grpc_opt=module=protos \
+    protos/proto/poll/poll.proto
