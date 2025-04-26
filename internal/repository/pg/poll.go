@@ -39,46 +39,46 @@ func NewPGPollStorage(db *sql.DB) *pgPollStorage {
 	return storage
 }
 
-// func (p *pgPollStorage) getPoll(ctx context.Context, pollID uint64) (domain.Poll, error) {
-// 	row := p.db.QueryRowContext(ctx, `
-//         SELECT
-// 			id,
-// 			name,
-// 			delay,
-// 			screen
-// 		FROM poll
-// 		WHERE id = $1
-// 		LIMIT 1;
-//     `, pollID)
+func (p *pgPollStorage) getPoll(ctx context.Context, pollID uint64) (domain.Poll, error) {
+	row := p.db.QueryRowContext(ctx, `
+        SELECT
+			id,
+			name,
+			delay,
+			screen
+		FROM poll
+		WHERE id = $1
+		LIMIT 1;
+    `, pollID)
 
-// 	var pollDBRow pollDBSchema
-// 	err := row.Scan(
-// 		&pollDBRow.ID,
-// 		&pollDBRow.Name,
-// 		&pollDBRow.Delay,
-// 		&pollDBRow.Screen)
-// 	if errors.Is(err, sql.ErrNoRows) {
-// 		return domain.Poll{}, errors.New("") // ErrPinNotFound
-// 	}
-// 	if err != nil {
-// 		return domain.Poll{}, errors.New("") // ErrUntracked
-// 	}
+	var pollDBRow pollDBSchema
+	err := row.Scan(
+		&pollDBRow.ID,
+		&pollDBRow.Name,
+		&pollDBRow.Delay,
+		&pollDBRow.Screen)
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.Poll{}, errors.New("") // ErrPinNotFound
+	}
+	if err != nil {
+		return domain.Poll{}, errors.New("") // ErrUntracked
+	}
 
-// 	questions, err := p.getQuestions(ctx, pollID)
-// 	if err != nil {
-// 		return domain.Poll{}, err
-// 	}
+	questions, err := p.getQuestions(ctx, pollID)
+	if err != nil {
+		return domain.Poll{}, err
+	}
 
-// 	poll := domain.Poll{
-// 		ID:        pollDBRow.ID,
-// 		Header:    pollDBRow.Name.String,
-// 		Questions: questions,
-// 		Delay:     pollDBRow.Delay,
-// 		Screen:    strings.Split(pollDBRow.Screen.String, ","),
-// 	}
+	poll := domain.Poll{
+		ID:        pollDBRow.ID,
+		Header:    pollDBRow.Name.String,
+		Questions: questions,
+		Delay:     pollDBRow.Delay,
+		Screen:    strings.Split(pollDBRow.Screen.String, ","),
+	}
 
-// 	return poll, nil
-// }
+	return poll, nil
+}
 
 func (p *pgPollStorage) GetAllPolls(ctx context.Context) ([]domain.Poll, error) {
 	rows, err := p.db.QueryContext(ctx, `
@@ -224,4 +224,89 @@ func (p *pgPollStorage) AddAnswer(ctx context.Context, pollID uint64, userID uin
 	}
 
 	return tx.Commit()
+}
+
+func (p *pgPollStorage) GetAllStarStat(ctx context.Context) ([]domain.QuestionStarAvg, error) {
+	rows, err := p.db.QueryContext(ctx, `
+		SELECT poll_id, question_id, AVG(content::int)
+		FROM answer
+		WHERE type = 'stars'
+		GROUP BY poll_id, question_id
+		ORDER BY poll_id ASC, question_id ASC;
+	`)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var stats []domain.QuestionStarAvg
+
+	type DBSchema struct {
+		PollID     int
+		QuestionID int
+		Avg        float64
+	}
+
+	for rows.Next() {
+		var DBRow DBSchema
+		err = rows.Scan(
+			&DBRow.PollID,
+			&DBRow.QuestionID,
+			&DBRow.Avg)
+		if err != nil {
+			return nil, err
+		}
+
+		stat := domain.QuestionStarAvg{
+			PollID:     DBRow.PollID,
+			QuestionID: DBRow.QuestionID,
+			Average:    DBRow.Avg,
+		}
+		stats = append(stats, stat)
+	}
+
+	return stats, nil
+}
+
+func (p *pgPollStorage) GetAllAnswers(ctx context.Context) ([]domain.QuestionAnswer, error) {
+	rows, err := p.db.QueryContext(ctx, `
+		SELECT poll_id, question_id, content
+		FROM answer
+		WHERE type = 'text'
+		ORDER BY poll_id ASC, question_id ASC;
+	`)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var answers []domain.QuestionAnswer
+
+	type DBSchema struct {
+		PollID     int
+		QuestionID int
+		Content    string
+	}
+
+	for rows.Next() {
+		var DBRow DBSchema
+		err = rows.Scan(
+			&DBRow.PollID,
+			&DBRow.QuestionID,
+			&DBRow.Content)
+		if err != nil {
+			return nil, err
+		}
+
+		answer := domain.QuestionAnswer{
+			PollID:     DBRow.PollID,
+			QuestionID: DBRow.QuestionID,
+			Content:    DBRow.Content,
+		}
+		answers = append(answers, answer)
+	}
+
+	return answers, nil
 }
