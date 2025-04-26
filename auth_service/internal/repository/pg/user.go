@@ -40,7 +40,7 @@ func (p *pgUserStorage) AddUser(ctx context.Context, userInfo models.User) (uint
 	WITH conflict_check AS (
 		SELECT id
 		FROM flow_user
-		WHERE email = $3 OR username = $1
+		WHERE username = $1 OR email = $4
 	)
 	INSERT INTO flow_user (username, avatar, public_name, email, password)
 	SELECT $1, $2, $3, $4, $5

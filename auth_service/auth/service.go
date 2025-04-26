@@ -79,7 +79,7 @@ func (u *UserService) LoginUser(ctx context.Context, email, password string) (ui
 func (u *UserService) LoginExternalUser(ctx context.Context, email string, externalID string) (int, string, error) {
 	id, gotEmail, err := u.userRepo.FindExternalServiceUser(ctx, email, externalID)
 	if err != nil {
-		return 0, "", err
+		return 0, "", mapToGrpcError(err)
 	}
 
 	// this error shouldn't happen ever
@@ -141,7 +141,7 @@ func mapToGrpcError(err error) error {
     switch {
     case errors.Is(err, models.ErrInvalidCredentials):
         return status.Errorf(codes.Unauthenticated, "invalid credentials")
-    case errors.Is(err, models.ErrUserNotFound):
+    case errors.Is(err, models.ErrUserNotFound), errors.Is(err, models.ErrNotFound):
         return status.Errorf(codes.NotFound, "user not found")
 	case errors.Is(err, models.ErrForbidden):
 		return status.Errorf(codes.PermissionDenied, "forbidden")

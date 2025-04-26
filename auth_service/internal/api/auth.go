@@ -49,7 +49,7 @@ func (h *GrpcAuthHandler) AddUser(ctx context.Context, in *gen.AddUserRequest) (
 
 func (h *GrpcAuthHandler) LoginUser(ctx context.Context, in *gen.LoginUserRequest) (*gen.LoginUserResponse, error) {
 	id, err := h.usecase.LoginUser(ctx, in.Email, in.Password)
-	if err != nil {
+	if err != nil { 
 		return nil, err
 	}
 
