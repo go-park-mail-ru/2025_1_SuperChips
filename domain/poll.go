@@ -3,8 +3,9 @@ package domain
 import "html"
 
 type Answer struct {
-	Type    string `json:"type"`
-	Content string `json:"content"`
+	Type       string `json:"type"`
+	Content    string `json:"content"`
+	QuestionID int    `json:"question_id"`
 }
 
 type Question struct {
