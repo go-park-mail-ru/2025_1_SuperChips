@@ -218,7 +218,6 @@ func (p *pgPollStorage) GetAllAnswers(ctx context.Context) ([]domain.QuestionAns
 			ON a.question_id = q.id
 		JOIN poll p
 			ON q.poll_id = p.id
-		WHERE a.type = 'text'
 		ORDER BY a.poll_id ASC, a.question_id ASC;
 	`)
 	if err != nil {
