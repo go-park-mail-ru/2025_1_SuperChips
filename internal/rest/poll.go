@@ -108,7 +108,9 @@ func (h *PollHandler) GetAllStarStat(w http.ResponseWriter, r *http.Request) {
 	for i := range resp.Result {
 		stat := domain.QuestionStarAvg{
 			PollID: int(resp.Result[i].PollId),
+			PollHeader: resp.Result[i].PollHeader,
 			QuestionID: int(resp.Result[i].QuestionId),
+			QuestionText: resp.Result[i].QuestionText,
 			Average: float64(resp.Result[i].Average),
 		}
 		normalResp = append(normalResp, stat)
@@ -136,7 +138,9 @@ func (h *PollHandler) GetAllAnswers(w http.ResponseWriter, r *http.Request) {
 	for i := range resp.Result {
 		stat := domain.QuestionAnswer{
 			PollID: int(resp.Result[i].PollId),
+			PollHeader: resp.Result[i].PollHeader,
 			QuestionID: int(resp.Result[i].QuestionId),
+			QuestionText: resp.Result[i].QuestionText,
 			Content: resp.Result[i].Content,
 		}
 		normalResp = append(normalResp, stat)

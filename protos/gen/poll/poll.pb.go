@@ -332,8 +332,10 @@ func (x *AddAnswerRequest) GetAnswers() []*Answer {
 type QuestionStarAvg struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	PollId        int64                  `protobuf:"varint,1,opt,name=poll_id,json=pollId,proto3" json:"poll_id,omitempty"`
-	QuestionId    int64                  `protobuf:"varint,2,opt,name=question_id,json=questionId,proto3" json:"question_id,omitempty"`
-	Average       float32                `protobuf:"fixed32,3,opt,name=average,proto3" json:"average,omitempty"`
+	PollHeader    string                 `protobuf:"bytes,2,opt,name=poll_header,json=pollHeader,proto3" json:"poll_header,omitempty"`
+	QuestionId    int64                  `protobuf:"varint,3,opt,name=question_id,json=questionId,proto3" json:"question_id,omitempty"`
+	QuestionText  string                 `protobuf:"bytes,4,opt,name=question_text,json=questionText,proto3" json:"question_text,omitempty"`
+	Average       float32                `protobuf:"fixed32,5,opt,name=average,proto3" json:"average,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -375,11 +377,25 @@ func (x *QuestionStarAvg) GetPollId() int64 {
 	return 0
 }
 
+func (x *QuestionStarAvg) GetPollHeader() string {
+	if x != nil {
+		return x.PollHeader
+	}
+	return ""
+}
+
 func (x *QuestionStarAvg) GetQuestionId() int64 {
 	if x != nil {
 		return x.QuestionId
 	}
 	return 0
+}
+
+func (x *QuestionStarAvg) GetQuestionText() string {
+	if x != nil {
+		return x.QuestionText
+	}
+	return ""
 }
 
 func (x *QuestionStarAvg) GetAverage() float32 {
@@ -392,8 +408,10 @@ func (x *QuestionStarAvg) GetAverage() float32 {
 type QuestionAnswer struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	PollId        int64                  `protobuf:"varint,1,opt,name=poll_id,json=pollId,proto3" json:"poll_id,omitempty"`
-	QuestionId    int64                  `protobuf:"varint,2,opt,name=question_id,json=questionId,proto3" json:"question_id,omitempty"`
-	Content       string                 `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`
+	PollHeader    string                 `protobuf:"bytes,2,opt,name=poll_header,json=pollHeader,proto3" json:"poll_header,omitempty"`
+	QuestionId    int64                  `protobuf:"varint,3,opt,name=question_id,json=questionId,proto3" json:"question_id,omitempty"`
+	QuestionText  string                 `protobuf:"bytes,4,opt,name=question_text,json=questionText,proto3" json:"question_text,omitempty"`
+	Content       string                 `protobuf:"bytes,5,opt,name=content,proto3" json:"content,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -435,11 +453,25 @@ func (x *QuestionAnswer) GetPollId() int64 {
 	return 0
 }
 
+func (x *QuestionAnswer) GetPollHeader() string {
+	if x != nil {
+		return x.PollHeader
+	}
+	return ""
+}
+
 func (x *QuestionAnswer) GetQuestionId() int64 {
 	if x != nil {
 		return x.QuestionId
 	}
 	return 0
+}
+
+func (x *QuestionAnswer) GetQuestionText() string {
+	if x != nil {
+		return x.QuestionText
+	}
+	return ""
 }
 
 func (x *QuestionAnswer) GetContent() string {
@@ -600,17 +632,23 @@ const file_protos_proto_poll_poll_proto_rawDesc = "" +
 	"\x10AddAnswerRequest\x12\x17\n" +
 	"\apoll_id\x18\x01 \x01(\x03R\x06pollId\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\x03R\x06userId\x12,\n" +
-	"\aanswers\x18\x03 \x03(\v2\x12.proto_poll.AnswerR\aanswers\"e\n" +
+	"\aanswers\x18\x03 \x03(\v2\x12.proto_poll.AnswerR\aanswers\"\xab\x01\n" +
 	"\x0fQuestionStarAvg\x12\x17\n" +
 	"\apoll_id\x18\x01 \x01(\x03R\x06pollId\x12\x1f\n" +
-	"\vquestion_id\x18\x02 \x01(\x03R\n" +
-	"questionId\x12\x18\n" +
-	"\aaverage\x18\x03 \x01(\x02R\aaverage\"d\n" +
+	"\vpoll_header\x18\x02 \x01(\tR\n" +
+	"pollHeader\x12\x1f\n" +
+	"\vquestion_id\x18\x03 \x01(\x03R\n" +
+	"questionId\x12#\n" +
+	"\rquestion_text\x18\x04 \x01(\tR\fquestionText\x12\x18\n" +
+	"\aaverage\x18\x05 \x01(\x02R\aaverage\"\xaa\x01\n" +
 	"\x0eQuestionAnswer\x12\x17\n" +
 	"\apoll_id\x18\x01 \x01(\x03R\x06pollId\x12\x1f\n" +
-	"\vquestion_id\x18\x02 \x01(\x03R\n" +
-	"questionId\x12\x18\n" +
-	"\acontent\x18\x03 \x01(\tR\acontent\"J\n" +
+	"\vpoll_header\x18\x02 \x01(\tR\n" +
+	"pollHeader\x12\x1f\n" +
+	"\vquestion_id\x18\x03 \x01(\x03R\n" +
+	"questionId\x12#\n" +
+	"\rquestion_text\x18\x04 \x01(\tR\fquestionText\x12\x18\n" +
+	"\acontent\x18\x05 \x01(\tR\acontent\"J\n" +
 	"\x13GetStarStatResponse\x123\n" +
 	"\x06result\x18\x01 \x03(\v2\x1b.proto_poll.QuestionStarAvgR\x06result\"K\n" +
 	"\x15GetAllAnswersResponse\x122\n" +

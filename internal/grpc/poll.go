@@ -75,7 +75,9 @@ func (p *GrpcPollHandler) GetAllStarStat(ctx context.Context, in *gen.Empty) (*g
 	for i := range res {
 		grpcRes = append(grpcRes, &gen.QuestionStarAvg{
 			PollId: int64(res[i].PollID),
+			PollHeader: res[i].PollHeader,
 			QuestionId: int64(res[i].QuestionID),
+			QuestionText: res[i].QuestionText,
 			Average: float32(res[i].Average),
 		})
 	}
@@ -96,7 +98,9 @@ func (p *GrpcPollHandler) GetAllAnswers(ctx context.Context, in *gen.Empty) (*ge
 	for i := range res {
 		grpcRes = append(grpcRes, &gen.QuestionAnswer{
 			PollId: int64(res[i].PollID),
+			PollHeader: res[i].PollHeader,
 			QuestionId: int64(res[i].QuestionID),
+			QuestionText: res[i].QuestionText,
 			Content: res[i].Content,
 		})
 	}
