@@ -51,6 +51,7 @@ func (p *GrpcPollHandler) AddAnswer(ctx context.Context, in *gen.AddAnswerReques
 		normalAnswers = append(normalAnswers, domain.Answer{
 			Type: in.Answers[i].Type,
 			Content: in.Answers[i].Content,
+			QuestionID: int(in.Answers[i].QuestionId),
 		})
 	}
 
