@@ -24,15 +24,19 @@ type Poll struct {
 }
 
 type QuestionStarAvg struct {
-	PollID     int     `json:"poll_id"`
-	QuestionID int     `json:"question_id"`
-	Average    float64 `json:"average"`
+	PollID       int     `json:"poll_id"`
+	PollHeader   string  `json:"poll_header"`
+	QuestionID   int     `json:"question_id"`
+	QuestionText string  `json:"question_text"`
+	Average      float64 `json:"average"`
 }
 
 type QuestionAnswer struct {
-	PollID     int    `json:"poll_id"`
-	QuestionID int    `json:"question_id"`
-	Content    string `json:"content"`
+	PollID       int    `json:"poll_id"`
+	PollHeader   string `json:"poll_header"`
+	QuestionID   int    `json:"question_id"`
+	QuestionText string `json:"question_text"`
+	Content      string `json:"content"`
 }
 
 func (q *Question) Escape() {
