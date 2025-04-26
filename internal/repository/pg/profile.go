@@ -7,6 +7,19 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
 
+type userDB struct {
+	Id         uint64         `db:"id"`
+	Username   string         `db:"username"`
+	Avatar     sql.NullString `db:"avatar"`
+	PublicName string         `db:"public_name"`
+	Email      string         `db:"email"`
+	CreatedAt  string         `db:"created_at"`
+	UpdatedAt  string         `db:"updated_at"`
+	Password   string         `db:"password"`
+	Birthday   sql.NullTime   `db:"birthday"`
+	About      sql.NullString `db:"about"`
+}
+
 type pgProfileStorage struct {
 	db        *sql.DB
 }

@@ -1,23 +1,26 @@
-package user
+package auth
 
 import (
 	"context"
+	"errors"
 
-	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/auth_service"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/security"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type UserRepository interface {
-	AddUser(ctx context.Context, user domain.User) (uint64, error)
+	AddUser(ctx context.Context, user models.User) (uint64, error)
 	GetHash(ctx context.Context, email, password string) (uint64, string, error)
-	GetUserPublicInfo(ctx context.Context, email string) (domain.PublicUser, error)
+	GetUserPublicInfo(ctx context.Context, email string) (models.PublicUser, error)
 	GetUserId(ctx context.Context, email string) (uint64, error)
 	FindExternalServiceUser(ctx context.Context, email string, externalID string) (int, string, error)
 	AddExternalUser(ctx context.Context, email, username, password string, externalID string) (uint64, error)
 }
 
 type BoardRepository interface {
-	CreateBoard(ctx context.Context, board *domain.Board, username string, userID int) error
+	CreateBoard(ctx context.Context, board *models.Board, username string, userID int) error
 }
 
 type UserService struct {
@@ -32,9 +35,9 @@ func NewUserService(u UserRepository, b BoardRepository) *UserService {
 	}
 }
 
-func (u *UserService) AddUser(ctx context.Context, user domain.User) (uint64, error) {
+func (u *UserService) AddUser(ctx context.Context, user models.User) (uint64, error) {
 	if err := user.ValidateUser(); err != nil {
-		return 0, err
+		return 0, mapToGrpcError(err)
 	}
 
 	hashed, err := security.HashPassword(user.Password)
@@ -46,19 +49,19 @@ func (u *UserService) AddUser(ctx context.Context, user domain.User) (uint64, er
 
 	id, err := u.userRepo.AddUser(ctx, user)
 	if err != nil {
-		return 0, err
+		return 0, mapToGrpcError(err)
 	}
 
 	if err := u.createUserBoards(ctx, user.Username, int(id)); err != nil {
-		return 0, err
+		return 0, mapToGrpcError(err)
 	}
 
 	return id, nil
 }
 
 func (u *UserService) LoginUser(ctx context.Context, email, password string) (uint64, error) {
-	if err := domain.ValidateEmailAndPassword(email, password); err != nil {
-		return 0, err
+	if err := models.ValidateEmailAndPassword(email, password); err != nil {
+		return 0, mapToGrpcError(err)
 	}
 
 	id, pswd, err := u.userRepo.GetHash(ctx, email, password)
@@ -67,7 +70,7 @@ func (u *UserService) LoginUser(ctx context.Context, email, password string) (ui
 	}
 
 	if !security.ComparePassword(password, pswd) {
-		return 0, domain.ErrInvalidCredentials
+		return 0, mapToGrpcError(models.ErrInvalidCredentials)
 	}
 
 	return id, nil
@@ -81,7 +84,7 @@ func (u *UserService) LoginExternalUser(ctx context.Context, email string, exter
 
 	// this error shouldn't happen ever
 	if gotEmail != email {
-		return 0, "", domain.ErrForbidden
+		return 0, "", mapToGrpcError(models.ErrForbidden)
 	}
 
 	return id, gotEmail, nil
@@ -110,7 +113,7 @@ func (u *UserService) AddExternalUser(ctx context.Context, email, username strin
 	return id, nil
 }
 
-func (u *UserService) GetUserPublicInfo(ctx context.Context, email string) (domain.PublicUser, error) {
+func (u *UserService) GetUserPublicInfo(ctx context.Context, email string) (models.PublicUser, error) {
 	return u.userRepo.GetUserPublicInfo(ctx, email)
 }
 
@@ -119,17 +122,34 @@ func (u *UserService) GetUserId(ctx context.Context, email string) (uint64, erro
 }
 
 func (u *UserService) createUserBoards(ctx context.Context, username string, id int) error {
-	if err := u.boardRepo.CreateBoard(ctx, &domain.Board{
+	if err := u.boardRepo.CreateBoard(ctx, &models.Board{
 		Name: "Созданные вами",
 	}, username, int(id)); err != nil {
 		return err
 	}
 
-	if err := u.boardRepo.CreateBoard(ctx, &domain.Board{
+	if err := u.boardRepo.CreateBoard(ctx, &models.Board{
 		Name: "Сохраненные",
 	}, username, int(id)); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func mapToGrpcError(err error) error {
+    switch {
+    case errors.Is(err, models.ErrInvalidCredentials):
+        return status.Errorf(codes.Unauthenticated, "invalid credentials")
+    case errors.Is(err, models.ErrUserNotFound):
+        return status.Errorf(codes.NotFound, "user not found")
+	case errors.Is(err, models.ErrForbidden):
+		return status.Errorf(codes.PermissionDenied, "forbidden")
+	case errors.Is(err, models.ErrConflict):
+		return status.Errorf(codes.AlreadyExists, "conflict")
+	case errors.Is(err, models.ErrValidation):
+		return status.Errorf(codes.InvalidArgument, "validation error")
+    default:
+        return status.Errorf(codes.Internal, "internal server error")
+    }
 }

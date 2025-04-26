@@ -39,6 +39,31 @@ services:
     volumes:
       - ./static:/app/static
 
+  auth:
+    networks:
+      - flow_network
+    container_name: auth
+    build:
+      context: .
+      dockerfile: auth_service/Dockerfile
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - IP=${IP}
+      - ENVIRONMENT=${ENVIRONMENT}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - PORT=${PORT}
+      - EXPIRATION_TIME=${EXPIRATION_TIME}
+      - COOKIE_SECURE=${COOKIE_SECURE}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - VK_CLIENT_ID=${VK_CLIENT_ID}
+    ports:
+      - "8010:8010"
+    depends_on:
+      - database
+
 networks:
   flow_network:
     driver: bridge

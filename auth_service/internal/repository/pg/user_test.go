@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/auth_service"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -26,7 +26,7 @@ func TestAddUser_Success(t *testing.T) {
     mock, storage := setupMock(t)
     defer mock.ExpectClose()
 
-    userInfo := domain.User{
+    userInfo := models.User{
         Username:  "user1",
         Avatar:    "avatar_url",
         PublicName: "user1",
@@ -78,7 +78,7 @@ func TestGetHash_UserNotFound(t *testing.T) {
         WillReturnError(sql.ErrNoRows)
 
     _, _, err := storage.GetHash(context.Background(), email, "")
-    assert.Equal(t, domain.ErrInvalidCredentials, err)
+    assert.Equal(t, models.ErrInvalidCredentials, err)
     assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -143,7 +143,7 @@ func TestGetUserPublicInfo_UserNotFound(t *testing.T) {
         WillReturnError(sql.ErrNoRows)
 
     _, err := storage.GetUserPublicInfo(context.Background(), email)
-    assert.Equal(t, domain.ErrInvalidCredentials, err)
+    assert.Equal(t, models.ErrInvalidCredentials, err)
     assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -177,7 +177,7 @@ func TestGetUserId_UserNotFound(t *testing.T) {
         WillReturnError(sql.ErrNoRows)
 
     _, err := storage.GetUserId(context.Background(), email)
-    assert.Equal(t, domain.ErrUserNotFound, err)
+    assert.Equal(t, models.ErrUserNotFound, err)
     assert.NoError(t, mock.ExpectationsWereMet())
 }
 

@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package proto_auth;
+
+option go_package = "./protos/gen/auth/;gen";
+
+message AddUserRequest {
+    string Username = 1;
+    string Password = 2;
+    string Email = 3;
+}
+
+message AddUserResponse {
+    int64 ID = 1;
+}
+
+message LoginUserRequest {
+    string Email = 1;
+    string Password = 2;
+}
+
+message LoginUserResponse {
+    int64 ID = 1;
+}
+
+message LoginExternalUserRequest {
+    string Email = 1;
+    string ExternalID = 2;
+}
+
+message LoginExternalUserResponse {
+    int64 ID = 1;
+    string Email = 2;
+}
+
+message AddExternalUserRequest {
+    string Email = 1;
+    string Username = 2;
+    string externalID = 3;
+}
+
+message AddExternalUserResponse {
+    int64 ID = 1;
+}
+
+service Auth {
+    rpc AddUser(AddUserRequest) returns (AddUserResponse) {}
+    rpc LoginUser(LoginUserRequest) returns (LoginUserResponse) {}
+    rpc LoginExternalUser(LoginExternalUserRequest) returns (LoginExternalUserResponse) {}
+    rpc AddExternalUser(AddExternalUserRequest) returns (AddExternalUserResponse) {}
+}

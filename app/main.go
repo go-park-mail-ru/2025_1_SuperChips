@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	genAuth "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/auth"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/board"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	_ "github.com/go-park-mail-ru/2025_1_SuperChips/docs"
@@ -25,9 +26,10 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/pin"
 	pincrudService "github.com/go-park-mail-ru/2025_1_SuperChips/pincrud"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/profile"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/user"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/swaggo/http-swagger"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 var (
@@ -72,11 +74,6 @@ func main() {
 
 	defer db.Close()
 
-	userStorage, err := pgStorage.NewPGUserStorage(db)
-	if err != nil {
-		log.Fatalf("Cannot launch due to user storage db error: %s", err)
-	}
-
 	pinStorage, err := pgStorage.NewPGPinStorage(db, config.ImageBaseDir, config.BaseUrl)
 	if err != nil {
 		log.Fatalf("Cannot launch due to pin storage db error: %s", err)
@@ -97,16 +94,26 @@ func main() {
 
 	jwtManager := auth.NewJWTManager(config)
 
-	userService := user.NewUserService(userStorage, boardStorage)
 	pinCRUDService := pincrudService.NewPinCRUDService(pinStorage, boardStorage, imageStorage)
 	pinService := pin.NewPinService(pinStorage, config.BaseUrl, config.ImageBaseDir)
 	profileService := profile.NewProfileService(profileStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
 	boardService := board.NewBoardService(boardStorage, config.BaseUrl, config.ImageBaseDir)
 	likeService := like.NewLikeService(likeStorage)
 
+	grpcConnAuth, err := grpc.NewClient(
+		"auth:8010",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer grpcConnAuth.Close()
+
+	authClient := genAuth.NewAuthClient(grpcConnAuth)
+
 	authHandler := rest.AuthHandler{
 		Config:      config,
-		UserService: userService,
+		UserService: authClient,
 		JWTManager:  *jwtManager,
 		ContextDuration: config.ContextExpiration,
 	}

@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	user "github.com/go-park-mail-ru/2025_1_SuperChips/domain"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/auth_service"
 	_ "github.com/jmoiron/sqlx"
 )
 
@@ -34,7 +34,7 @@ func NewPGUserStorage(db *sql.DB) (*pgUserStorage, error) {
 	return storage, nil
 }
 
-func (p *pgUserStorage) AddUser(ctx context.Context, userInfo user.User) (uint64, error) {
+func (p *pgUserStorage) AddUser(ctx context.Context, userInfo models.User) (uint64, error) {
 	var id uint64
 	err := p.db.QueryRowContext(ctx, `
 	WITH conflict_check AS (
@@ -48,7 +48,7 @@ func (p *pgUserStorage) AddUser(ctx context.Context, userInfo user.User) (uint64
 	RETURNING id;
     `, userInfo.Username, userInfo.Avatar, userInfo.Username, userInfo.Email, userInfo.Password).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
-		return 0, user.ErrConflict
+		return 0, models.ErrConflict
 	} else if err != nil {
 		return 0, err
 	}
@@ -64,7 +64,7 @@ func (p *pgUserStorage) GetHash(ctx context.Context, email, password string) (ui
         SELECT id, password FROM flow_user WHERE email = $1
     `, email).Scan(&id, &hashedPassword)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
-		return 0, "", user.ErrInvalidCredentials
+		return 0, "", models.ErrInvalidCredentials
 	} else if err != nil {
 		return 0, "", err
 	}
@@ -72,7 +72,7 @@ func (p *pgUserStorage) GetHash(ctx context.Context, email, password string) (ui
 	return id, hashedPassword, nil
 }
 
-func (p *pgUserStorage) GetUserPublicInfo(ctx context.Context, email string) (user.PublicUser, error) {
+func (p *pgUserStorage) GetUserPublicInfo(ctx context.Context, email string) (models.PublicUser, error) {
 	var userDB userDB
 
 	err := p.db.QueryRowContext(ctx, `
@@ -80,12 +80,12 @@ func (p *pgUserStorage) GetUserPublicInfo(ctx context.Context, email string) (us
 		FROM flow_user WHERE email = $1
     `, email).Scan(&userDB.Username, &userDB.Email, &userDB.Avatar, &userDB.Birthday)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
-		return user.PublicUser{}, user.ErrInvalidCredentials
+		return models.PublicUser{}, models.ErrInvalidCredentials
 	} else if err != nil {
-		return user.PublicUser{}, err
+		return models.PublicUser{}, err
 	}
 
-	publicUser := user.PublicUser{
+	publicUser := models.PublicUser{
 		Username: userDB.Username,
 		Email:    userDB.Email,
 		Avatar:   userDB.Avatar.String,
@@ -103,7 +103,7 @@ func (p *pgUserStorage) GetUserId(ctx context.Context, email string) (uint64, er
     `, email).Scan(&id)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return 0, user.ErrUserNotFound
+			return 0, models.ErrUserNotFound
 		}
 		return 0, err
 	}
@@ -121,7 +121,7 @@ func (p *pgUserStorage) FindExternalServiceUser(ctx context.Context, email strin
 	WHERE external_id = $1
 	AND email = $2`, externalID, email).Scan(&id, &gotEmail)
 	if errors.Is(err, sql.ErrNoRows) {
-		return 0, "", user.ErrNotFound
+		return 0, "", models.ErrNotFound
 	}
 	if err != nil {
 		return 0, "", err
@@ -145,7 +145,7 @@ func (p *pgUserStorage) AddExternalUser(ctx context.Context, email, username, pa
 	RETURNING id;
     `, username, username, email, password, externalID).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
-		return 0, user.ErrConflict
+		return 0, models.ErrConflict
 	} else if err != nil {
 		return 0, err
 	}
