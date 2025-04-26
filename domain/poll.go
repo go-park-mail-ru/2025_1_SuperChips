@@ -8,14 +8,14 @@ type Answer struct {
 }
 
 type Question struct {
-	ID    int    `json:"question_id"`
+	ID    uint64 `json:"question_id"`
 	Text  string `json:"text"`
-	Order int    `json:"order"`
+	Order int64  `json:"order"`
 	Type  string `json:"type"`
 }
 
 type Poll struct {
-	ID        int        `json:"id"`
+	ID        uint64     `json:"id"`
 	Header    string     `json:"header"`
 	Questions []Question `json:"questions,omitempty"`
 	Delay     int        `json:"delay"`
