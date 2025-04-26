@@ -39,7 +39,6 @@ func NewPGPollStorage(db *sql.DB) *pgPollStorage {
 	return storage
 }
 
-
 func (p *pgPollStorage) GetAllPolls(ctx context.Context) ([]domain.Poll, error) {
 	rows, err := p.db.QueryContext(ctx, `
 		SELECT 
@@ -146,11 +145,24 @@ func (p *pgPollStorage) AddAnswer(ctx context.Context, pollID uint64, userID uin
 
 func (p *pgPollStorage) GetAllStarStat(ctx context.Context) ([]domain.QuestionStarAvg, error) {
 	rows, err := p.db.QueryContext(ctx, `
-		SELECT poll_id, question_id, AVG(content::int)
-		FROM answer
-		WHERE type = 'stars'
-		GROUP BY poll_id, question_id
-		ORDER BY poll_id ASC, question_id ASC;
+		SELECT 
+			a.poll_id,
+			p.name, 
+			a.question_id, 
+			q.content,
+			AVG(a.content::int) as average_rating
+		FROM answer a
+		JOIN question q
+			ON a.question_id = q.id
+		JOIN poll p
+			ON q.poll_id = p.id
+		WHERE a.type = 'stars'
+		GROUP BY 
+			a.poll_id,
+			p.name, 
+			a.question_id, 
+			q.content
+		ORDER BY a.poll_id ASC, a.question_id ASC;
 	`)
 	if err != nil {
 		return nil, err
@@ -162,7 +174,9 @@ func (p *pgPollStorage) GetAllStarStat(ctx context.Context) ([]domain.QuestionSt
 
 	type DBSchema struct {
 		PollID     int
+		Name       string
 		QuestionID int
+		Content    string
 		Avg        float64
 	}
 
@@ -170,16 +184,20 @@ func (p *pgPollStorage) GetAllStarStat(ctx context.Context) ([]domain.QuestionSt
 		var DBRow DBSchema
 		err = rows.Scan(
 			&DBRow.PollID,
+			&DBRow.Name,
 			&DBRow.QuestionID,
+			&DBRow.Content,
 			&DBRow.Avg)
 		if err != nil {
 			return nil, err
 		}
 
 		stat := domain.QuestionStarAvg{
-			PollID:     DBRow.PollID,
-			QuestionID: DBRow.QuestionID,
-			Average:    DBRow.Avg,
+			PollID:       DBRow.PollID,
+			PollHeader:   DBRow.Name,
+			QuestionID:   DBRow.QuestionID,
+			QuestionText: DBRow.Content,
+			Average:      DBRow.Avg,
 		}
 		stats = append(stats, stat)
 	}
@@ -189,10 +207,19 @@ func (p *pgPollStorage) GetAllStarStat(ctx context.Context) ([]domain.QuestionSt
 
 func (p *pgPollStorage) GetAllAnswers(ctx context.Context) ([]domain.QuestionAnswer, error) {
 	rows, err := p.db.QueryContext(ctx, `
-		SELECT poll_id, question_id, content
-		FROM answer
-		WHERE type = 'text'
-		ORDER BY poll_id ASC, question_id ASC;
+		SELECT 
+			a.poll_id,
+			p.name, 
+			a.question_id, 
+			q.content as question,
+			a.content as answer
+		FROM answer a
+		JOIN question q
+			ON a.question_id = q.id
+		JOIN poll p
+			ON q.poll_id = p.id
+		WHERE a.type = 'text'
+		ORDER BY a.poll_id ASC, a.question_id ASC;
 	`)
 	if err != nil {
 		return nil, err
@@ -203,29 +230,34 @@ func (p *pgPollStorage) GetAllAnswers(ctx context.Context) ([]domain.QuestionAns
 	var answers []domain.QuestionAnswer
 
 	type DBSchema struct {
-		PollID     int
-		QuestionID int
-		Content    string
+		PollID          int
+		Name            string
+		QuestionID      int
+		QuestionContent string
+		AnswerContent   string
 	}
 
 	for rows.Next() {
 		var DBRow DBSchema
 		err = rows.Scan(
 			&DBRow.PollID,
+			&DBRow.Name,
 			&DBRow.QuestionID,
-			&DBRow.Content)
+			&DBRow.QuestionContent,
+			&DBRow.AnswerContent)
 		if err != nil {
 			return nil, err
 		}
 
 		answer := domain.QuestionAnswer{
-			PollID:     DBRow.PollID,
-			QuestionID: DBRow.QuestionID,
-			Content:    DBRow.Content,
+			PollID:       DBRow.PollID,
+			PollHeader:   DBRow.Name,
+			QuestionID:   DBRow.QuestionID,
+			QuestionText: DBRow.QuestionContent,
+			Content:      DBRow.AnswerContent,
 		}
 		answers = append(answers, answer)
 	}
 
 	return answers, nil
 }
-
