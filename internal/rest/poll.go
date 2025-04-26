@@ -75,13 +75,15 @@ func (h *PollHandler) GetPolls(w http.ResponseWriter, r *http.Request) {
 
 	var polls []domain.Poll
 	for i := range grpcResp.Polls {
-		polls = append(polls, domain.Poll{
+		poll := domain.Poll{
 			ID: uint64(grpcResp.Polls[i].Id),
 			Header: grpcResp.Polls[i].Header,
 			Delay: int(grpcResp.Polls[i].Delay),
 			Screen: grpcResp.Polls[i].Screen,
 			Questions: formatQuestions(grpcResp.Polls[i].Questions),
-		})
+		}
+		poll.Escape()
+		polls = append(polls, poll)
 	}
 
 	resp := ServerResponse{
@@ -95,12 +97,14 @@ func (h *PollHandler) GetPolls(w http.ResponseWriter, r *http.Request) {
 func formatQuestions(grpcQuestions []*gen.Question) []domain.Question {
 	var questions []domain.Question
 	for i := range grpcQuestions {
-		questions = append(questions, domain.Question{
+		question := domain.Question{
 			ID: uint64(grpcQuestions[i].Id),
 			Text: grpcQuestions[i].Text,
 			Order: grpcQuestions[i].Order,
 			Type: grpcQuestions[i].Type,
-		})
+		}
+		question.Escape()
+		questions = append(questions, question)
 	}
 
 	return questions

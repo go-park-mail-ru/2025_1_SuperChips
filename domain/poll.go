@@ -23,6 +23,18 @@ type Poll struct {
 	Screen    []string   `json:"screen"`
 }
 
+type QuestionStarAvg struct {
+	PollID     int     `json:"poll_id"`
+	QuestionID int     `json:"question_id"`
+	Average    float64 `json:"average"`
+}
+
+type QuestionAnswer struct {
+	PollID     int    `json:"poll_id"`
+	QuestionID int    `json:"question_id"`
+	Content    string `json:"content"`
+}
+
 func (q *Question) Escape() {
 	q.Text = html.EscapeString(q.Text)
 }

@@ -39,46 +39,46 @@ func NewPGPollStorage(db *sql.DB) *pgPollStorage {
 	return storage
 }
 
-func (p *pgPollStorage) getPoll(ctx context.Context, pollID uint64) (domain.Poll, error) {
-	row := p.db.QueryRowContext(ctx, `
-        SELECT
-			id,
-			name,
-			delay,
-			screen
-		FROM poll
-		WHERE id = $1
-		LIMIT 1;
-    `, pollID)
+// func (p *pgPollStorage) getPoll(ctx context.Context, pollID uint64) (domain.Poll, error) {
+// 	row := p.db.QueryRowContext(ctx, `
+//         SELECT
+// 			id,
+// 			name,
+// 			delay,
+// 			screen
+// 		FROM poll
+// 		WHERE id = $1
+// 		LIMIT 1;
+//     `, pollID)
 
-	var pollDBRow pollDBSchema
-	err := row.Scan(
-		&pollDBRow.ID,
-		&pollDBRow.Name,
-		&pollDBRow.Delay,
-		&pollDBRow.Screen)
-	if errors.Is(err, sql.ErrNoRows) {
-		return domain.Poll{}, errors.New("") // ErrPinNotFound
-	}
-	if err != nil {
-		return domain.Poll{}, errors.New("") // ErrUntracked
-	}
+// 	var pollDBRow pollDBSchema
+// 	err := row.Scan(
+// 		&pollDBRow.ID,
+// 		&pollDBRow.Name,
+// 		&pollDBRow.Delay,
+// 		&pollDBRow.Screen)
+// 	if errors.Is(err, sql.ErrNoRows) {
+// 		return domain.Poll{}, errors.New("") // ErrPinNotFound
+// 	}
+// 	if err != nil {
+// 		return domain.Poll{}, errors.New("") // ErrUntracked
+// 	}
 
-	questions, err := p.getQuestions(ctx, pollID)
-	if err != nil {
-		return domain.Poll{}, err
-	}
+// 	questions, err := p.getQuestions(ctx, pollID)
+// 	if err != nil {
+// 		return domain.Poll{}, err
+// 	}
 
-	poll := domain.Poll{
-		ID:        pollDBRow.ID,
-		Header:    pollDBRow.Name.String,
-		Questions: questions,
-		Delay:     pollDBRow.Delay,
-		Screen:    strings.Split(pollDBRow.Screen.String, ","),
-	}
+// 	poll := domain.Poll{
+// 		ID:        pollDBRow.ID,
+// 		Header:    pollDBRow.Name.String,
+// 		Questions: questions,
+// 		Delay:     pollDBRow.Delay,
+// 		Screen:    strings.Split(pollDBRow.Screen.String, ","),
+// 	}
 
-	return poll, nil
-}
+// 	return poll, nil
+// }
 
 func (p *pgPollStorage) GetAllPolls(ctx context.Context) ([]domain.Poll, error) {
 	rows, err := p.db.QueryContext(ctx, `
