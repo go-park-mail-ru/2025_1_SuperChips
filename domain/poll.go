@@ -18,6 +18,8 @@ type Poll struct {
 	ID        int        `json:"id"`
 	Header    string     `json:"header"`
 	Questions []Question `json:"questions,omitempty"`
+	Delay     int        `json:"delay"`
+	Screen    []string   `json:"screen"`
 }
 
 func (q *Question) Escape() {
