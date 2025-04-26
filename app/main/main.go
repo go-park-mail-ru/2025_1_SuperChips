@@ -361,7 +361,8 @@ func main() {
 		middleware.Log()))
 
 	mux.HandleFunc("/api/v1/polls/{id}/answers",
-	middleware.ChainMiddleware(pollHandler.AddAnswer, 
+	middleware.ChainMiddleware(pollHandler.AddAnswer,
+		middleware.AuthMiddleware(jwtManager, true), 
 		middleware.CSRFMiddleware(),
 		middleware.CorsMiddleware(config, allowedPostOptions),
 		middleware.Log()))
