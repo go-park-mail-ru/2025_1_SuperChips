@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS question(
 	poll_id INT NOT NULL,
 	order_num INT DEFAULT 0,
 	content TEXT CHECK (LENGTH(content) <= 1023),
-	type POLL_TYPE NOT NULL,
+	type TEXT NOT NULL CHECK (LENGTH(content) <= 63),
 	created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 	FOREIGN KEY (poll_id) REFERENCES poll(id) ON DELETE CASCADE
 );
