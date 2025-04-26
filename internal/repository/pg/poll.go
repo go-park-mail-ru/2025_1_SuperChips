@@ -31,15 +31,15 @@ type pgPollStorage struct {
 	db *sql.DB
 }
 
-func NewPGPollStorage(db *sql.DB) (*pgPollStorage, error) {
+func NewPGPollStorage(db *sql.DB) *pgPollStorage {
 	storage := &pgPollStorage{
 		db: db,
 	}
 
-	return storage, nil
+	return storage
 }
 
-func (p *pgPollStorage) GetPoll(ctx context.Context, pollID uint64) (domain.Poll, error) {
+func (p *pgPollStorage) getPoll(ctx context.Context, pollID uint64) (domain.Poll, error) {
 	row := p.db.QueryRowContext(ctx, `
         SELECT
 			id,
@@ -80,7 +80,7 @@ func (p *pgPollStorage) GetPoll(ctx context.Context, pollID uint64) (domain.Poll
 	return poll, nil
 }
 
-func (p *pgPollStorage) GetPolls(ctx context.Context) ([]domain.Poll, error) {
+func (p *pgPollStorage) GetAllPolls(ctx context.Context) ([]domain.Poll, error) {
 	rows, err := p.db.QueryContext(ctx, `
 		SELECT id
 		FROM poll
@@ -105,7 +105,7 @@ func (p *pgPollStorage) GetPolls(ctx context.Context) ([]domain.Poll, error) {
 	var polls []domain.Poll
 
 	for _, pollID := range pollIDs {
-		poll, err := p.GetPoll(ctx, pollID)
+		poll, err := p.getPoll(ctx, pollID)
 		if err != nil {
 			return nil, err
 		}

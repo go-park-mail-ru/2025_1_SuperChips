@@ -57,10 +57,7 @@ func main() {
 
 	server := grpc.NewServer()
 
-	pollRepo, err := repository.NewPGPollStorage(db)
-	if err != nil {
-		log.Fatalf("Error creating pg poll storage: %v", err)
-	}
+	pollRepo := repository.NewPGPollStorage(db)
 
 	usecase := pollService.NewPollService(pollRepo)
 

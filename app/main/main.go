@@ -12,6 +12,7 @@ import (
 	"time"
 
 	genAuth "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/auth"
+	genPoll "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/poll"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/board"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	_ "github.com/go-park-mail-ru/2025_1_SuperChips/docs"
@@ -109,7 +110,17 @@ func main() {
 	}
 	defer grpcConnAuth.Close()
 
+	grpcConnPoll, err := grpc.NewClient(
+		"poll:8011",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer grpcConnPoll.Close()
+
 	authClient := genAuth.NewAuthClient(grpcConnAuth)
+	pollClient := genPoll.NewPollServiceClient(grpcConnPoll)
 
 	authHandler := rest.AuthHandler{
 		Config:      config,
@@ -146,6 +157,11 @@ func main() {
 	boardHandler := rest.BoardHandler{
 		BoardService:    boardService,
 		ContextDeadline: config.ContextExpiration,
+	}
+
+	pollHandler := rest.PollHandler{
+		Usecase: pollClient,
+		ContextTimeout: config.ContextExpiration,
 	}
 
 	fs := http.FileServer(http.Dir("." + config.StaticBaseDir))
@@ -337,6 +353,20 @@ func main() {
 			middleware.CorsMiddleware(config, allowedPostOptions),
 			middleware.Log()))
 
+	// poll
+
+	mux.HandleFunc("/api/v1/polls",
+	middleware.ChainMiddleware(pollHandler.GetPolls, 
+		middleware.CorsMiddleware(config, allowedGetOptions),
+		middleware.Log()))
+
+	mux.HandleFunc("/api/v1/polls/{id}/answers",
+	middleware.ChainMiddleware(pollHandler.AddAnswer, 
+		middleware.CSRFMiddleware(),
+		middleware.CorsMiddleware(config, allowedPostOptions),
+		middleware.Log()))
+
+	//
 	server := http.Server{
 		Addr:    config.Port,
 		Handler: mux,
