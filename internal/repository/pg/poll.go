@@ -82,8 +82,19 @@ func (p *pgPollStorage) getPoll(ctx context.Context, pollID uint64) (domain.Poll
 
 func (p *pgPollStorage) GetAllPolls(ctx context.Context) ([]domain.Poll, error) {
 	rows, err := p.db.QueryContext(ctx, `
-		SELECT id
-		FROM poll
+		SELECT 
+			p.id,
+			p.name,
+			p.screen,
+			p.delay,
+			q.id,
+			q.order_num,
+			q.content,
+			q.type
+		FROM poll p
+		JOIN question q
+			ON p.id = q.poll_id
+		ORDER BY q.id ASC, q.order_num ASC;
 	`)
 	if err != nil {
 		return nil, err
@@ -91,25 +102,56 @@ func (p *pgPollStorage) GetAllPolls(ctx context.Context) ([]domain.Poll, error) 
 
 	defer rows.Close()
 
-	var pollIDs []uint64
-
-	for rows.Next() {
-		var pollID uint64
-		err = rows.Scan(&pollID)
-		if err != nil {
-			return nil, err
-		}
-		pollIDs = append(pollIDs, pollID)
-	}
-
 	var polls []domain.Poll
 
-	for _, pollID := range pollIDs {
-		poll, err := p.getPoll(ctx, pollID)
+	isFirst := true
+	for rows.Next() {
+		var pollDBRow pollDBSchema
+		var questionDBRow questionDBSchema
+		err = rows.Scan(
+			&pollDBRow.ID,
+			&pollDBRow.Name,
+			&pollDBRow.Screen,
+			&pollDBRow.Delay,
+			&questionDBRow.ID,
+			&questionDBRow.OrderNum,
+			&questionDBRow.Content,
+			&questionDBRow.Type)
 		if err != nil {
 			return nil, err
 		}
-		polls = append(polls, poll)
+
+		question := domain.Question{
+			ID:    questionDBRow.ID,
+			Text:  questionDBRow.Content.String,
+			Order: questionDBRow.OrderNum,
+			Type:  questionDBRow.Type.String,
+		}
+
+		if isFirst {
+			polls = append(polls, domain.Poll{
+				ID:        pollDBRow.ID,
+				Header:    pollDBRow.Name.String,
+				Questions: []domain.Question{question},
+				Delay:     pollDBRow.Delay,
+				Screen:    strings.Split(pollDBRow.Screen.String, ","),
+			})
+			isFirst = false
+			continue
+		}
+
+		lastPoll := &polls[len(polls)-1]
+		if lastPoll.ID != pollDBRow.ID {
+			polls = append(polls, domain.Poll{
+				ID:        pollDBRow.ID,
+				Header:    pollDBRow.Name.String,
+				Questions: []domain.Question{question},
+				Delay:     pollDBRow.Delay,
+				Screen:    strings.Split(pollDBRow.Screen.String, ","),
+			})
+		} else {
+			lastPoll.Questions = append(lastPoll.Questions, question)
+		}
 	}
 
 	return polls, nil
@@ -123,7 +165,8 @@ func (p *pgPollStorage) getQuestions(ctx context.Context, pollID uint64) ([]doma
 			content,
 			type
 		FROM question
-		WHERE poll_id = $1;
+		WHERE poll_id = $1
+		ORDER BY order_num ASC;
     `, pollID)
 	if err != nil {
 		return nil, err
