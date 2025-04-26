@@ -1,10 +1,12 @@
 CREATE TABLE IF NOT EXISTS answer(
 	id INT GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1) PRIMARY KEY,
 	poll_id INT NOT NULL,
+	question_id INT NOT NULL, 
 	content TEXT CHECK (LENGTH(content) <= 1023),
 	type POLL_TYPE NOT NULL,
 	author_id INT NOT NULL,
 	created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 	FOREIGN KEY (poll_id) REFERENCES poll(id) ON DELETE CASCADE,
-	UNIQUE (author_id, poll_id)
+	FOREIGN KEY (question_id) REFERENCES question(id) ON DELETE CASCADE,
+	UNIQUE (author_id, question_id)
 );
