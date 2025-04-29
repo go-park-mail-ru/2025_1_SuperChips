@@ -47,13 +47,13 @@ func (p *pgProfileStorage) GetUserPublicInfoByEmail(email string) (domain.User, 
 	}
 
 	user := domain.User{
-		Id:         userDB.Id,
-		Username:   userDB.Username,
-		Email:      userDB.Email,
-		Avatar:     userDB.Avatar.String,
-		Birthday:   userDB.Birthday.Time,
-		PublicName: userDB.PublicName,
-		About:      userDB.About.String,
+		Id:               userDB.Id,
+		Username:         userDB.Username,
+		Email:            userDB.Email,
+		Avatar:           userDB.Avatar.String,
+		Birthday:         userDB.Birthday.Time,
+		PublicName:       userDB.PublicName,
+		About:            userDB.About.String,
 		IsExternalAvatar: userDB.IsExternalAvatar.Bool,
 	}
 
@@ -74,13 +74,13 @@ func (p *pgProfileStorage) GetUserPublicInfoByUsername(username string) (domain.
 	}
 
 	user := domain.User{
-		Id:         userDB.Id,
-		Username:   userDB.Username,
-		Email:      userDB.Email,
-		Avatar:     userDB.Avatar.String,
-		Birthday:   userDB.Birthday.Time,
-		PublicName: userDB.PublicName,
-		About:      userDB.About.String,
+		Id:               userDB.Id,
+		Username:         userDB.Username,
+		Email:            userDB.Email,
+		Avatar:           userDB.Avatar.String,
+		Birthday:         userDB.Birthday.Time,
+		PublicName:       userDB.PublicName,
+		About:            userDB.About.String,
 		IsExternalAvatar: userDB.IsExternalAvatar.Bool,
 	}
 
