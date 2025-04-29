@@ -19,7 +19,7 @@ type User struct {
 	About            string    `json:"about,omitempty"`
 	PublicName       string    `json:"public_name,omitempty"`
 	JWTVersion       uint64    `json:"-"`
-	IsExternalAvatar bool
+	IsExternalAvatar bool      `json:"-"`
 }
 
 type PublicUser struct {
