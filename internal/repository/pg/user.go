@@ -117,7 +117,7 @@ func (p *pgUserStorage) FindExternalServiceUser(ctx context.Context, email strin
 	return id, gotEmail, nil
 }
 
-func (p *pgUserStorage) AddExternalUser(ctx context.Context, email, username, password string, externalID string) (uint64, error) {
+func (p *pgUserStorage) AddExternalUser(ctx context.Context, email, username, password, avatarURL string, externalID string) (uint64, error) {
 	var id uint64
 
 	err := p.db.QueryRowContext(ctx, `
@@ -126,11 +126,11 @@ func (p *pgUserStorage) AddExternalUser(ctx context.Context, email, username, pa
 		FROM flow_user
 		WHERE email = $3 OR username = $1
 	)
-	INSERT INTO flow_user (username, public_name, email, password, external_id)
+	INSERT INTO flow_user (username, public_name, email, password, external_id, avatar)
 	SELECT $1, $2, $3, $4, $5
 	WHERE NOT EXISTS (SELECT 1 FROM conflict_check)
 	RETURNING id;
-    `, username, username, email, password, externalID).Scan(&id)
+    `, username, username, email, password, externalID, avatarURL).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return 0, domain.ErrConflict
 	} else if err != nil {

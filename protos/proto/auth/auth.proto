@@ -37,6 +37,7 @@ message AddExternalUserRequest {
     string Email = 1;
     string Username = 2;
     string externalID = 3;
+    string Avatar = 4;
 }
 
 message AddExternalUserResponse {

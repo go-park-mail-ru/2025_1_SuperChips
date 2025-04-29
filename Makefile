@@ -5,10 +5,7 @@ COVERAGE_FILE=coverage.out
 MOCK_DST=./mocks
 TESTED_DIRS := ./internal/rest/... ./domain/... ./internal/repository/...
 
-build : cmd/main.go
-	$(GO) build -o $(NAME) $<
-
-.PHONY : build test mocks
+.PHONY : test mocks
 
 mocks:
 	@mkdir -p $(MOCK_DST)/pin $(MOCK_DST)/user

@@ -130,6 +130,7 @@ func main() {
 	pinsHandler := rest.PinsHandler{
 		Config:     config,
 		FeedClient: feedClient,
+		ContextExpiration: config.ContextExpiration,
 	}
 
 	profileHandler := rest.ProfileHandler{

@@ -8,13 +8,13 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o auth_service ./auth_service/app/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build ./app/auth/main.go
 
 FROM alpine:latest
 
 WORKDIR /root
 
-COPY --from=builder /app/auth_service .
+COPY --from=builder /app .
 
 EXPOSE 8010
 

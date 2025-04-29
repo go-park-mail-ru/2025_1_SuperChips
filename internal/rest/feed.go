@@ -48,6 +48,7 @@ func (app PinsHandler) FeedHandler(w http.ResponseWriter, r *http.Request) {
 		PageSize: int64(pageSize),
 	})
 	if err != nil {
+		println(err.Error())
 		HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}

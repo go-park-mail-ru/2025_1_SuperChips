@@ -29,6 +29,12 @@ type ExternalData struct {
 	Username    string `json:"username,omitempty"`
 }
 
+type VKUser struct {
+	UserID string `json:"user_id"`
+	Email  string `json:"email"`
+	Avatar string `json:"avatar"`
+}
+
 type CSRFResponse struct {
 	CSRFToken string `json:"csrf_token"`
 }
@@ -190,15 +196,15 @@ func (app AuthHandler) ExternalLogin(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), app.ContextDuration)
 	defer cancel()
 
-	VKid, VKemail, err := vkGetData(data.AccessToken, app.Config.VKClientID)
+	vkData, err := vkGetData(data.AccessToken, app.Config.VKClientID)
 	if err != nil {
 		handleAuthError(w, err)
 		return
 	}
 
 	grpcResp, err := app.UserService.LoginExternalUser(ctx, &gen.LoginExternalUserRequest{
-		Email: VKemail,
-		ExternalID: VKid,
+		Email: vkData.Email,
+		ExternalID: vkData.UserID,
 	})
 	if err != nil {
 		handleGRPCAuthError(w, err)
@@ -237,7 +243,7 @@ func (app AuthHandler) ExternalRegister(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	VKid, VKemail, err := vkGetData(data.AccessToken, app.Config.VKClientID)
+	vkData, err := vkGetData(data.AccessToken, app.Config.VKClientID)
 	if err != nil {
 		handleAuthError(w, err)
 		return
@@ -247,16 +253,17 @@ func (app AuthHandler) ExternalRegister(w http.ResponseWriter, r *http.Request) 
 	defer cancel()
 
 	grpcResp, err := app.UserService.AddExternalUser(ctx, &gen.AddExternalUserRequest{
-		Email: VKemail,
+		Email: vkData.Email,
 		Username: data.Username,
-		ExternalID: VKid,
+		Avatar: vkData.Avatar,
+		ExternalID: vkData.UserID,
 	})
 	if err != nil {
 		handleGRPCAuthError(w, err)
 		return
 	}
 
-	if err := app.setCookieJWT(w, app.Config, VKemail, uint64(grpcResp.ID)); err != nil {
+	if err := app.setCookieJWT(w, app.Config, vkData.Email, uint64(grpcResp.ID)); err != nil {
 		handleAuthError(w, err)
 		return
 	}
@@ -281,12 +288,7 @@ func (app AuthHandler) ExternalRegister(w http.ResponseWriter, r *http.Request) 
 	ServerGenerateJSONResponse(w, resp, http.StatusOK)
 }
 
-func vkGetData(accessToken string, clientID string) (string, string, error) {
-	type VKUser struct {
-		UserID string `json:"user_id"`
-		Email  string `json:"email"`
-	}
-
+func vkGetData(accessToken string, clientID string) (VKUser, error) {
 	type VKUserTop struct {
 		User VKUser `json:"user"`
 	}
@@ -299,7 +301,7 @@ func vkGetData(accessToken string, clientID string) (string, string, error) {
 
 	req, err := http.NewRequest("POST", postURL, bytes.NewBufferString(formData.Encode()))
 	if err != nil {
-		return "", "", err
+		return VKUser{}, err
 	}
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -307,16 +309,16 @@ func vkGetData(accessToken string, clientID string) (string, string, error) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", "", err
+		return VKUser{}, err
 	}
 	defer resp.Body.Close()
 
 	var data VKUserTop
 	if err := DecodeData(nil, resp.Body, &data); err != nil {
-		return "", "", err
+		return VKUser{}, err
 	}
 
-	return data.User.UserID, data.User.Email, nil
+	return data.User, nil
 }
 
 func setCookie(w http.ResponseWriter, config configs.Config, name string, value string, httpOnly bool) {
