@@ -127,7 +127,7 @@ func (p *pgUserStorage) AddExternalUser(ctx context.Context, email, username, pa
 		WHERE email = $3 OR username = $1
 	)
 	INSERT INTO flow_user (username, public_name, email, password, external_id, avatar)
-	SELECT $1, $2, $3, $4, $5
+	SELECT $1, $2, $3, $4, $5, $6
 	WHERE NOT EXISTS (SELECT 1 FROM conflict_check)
 	RETURNING id;
     `, username, username, email, password, externalID, avatarURL).Scan(&id)

@@ -42,7 +42,9 @@ func (p *ProfileService) GetUserPublicInfoByEmail(email string) (domain.User, er
 		return domain.User{}, err
 	}
 
-	user.Avatar = p.generateAvatarURL(user.Avatar)
+	if (!user.IsExternalAvatar) {
+		user.Avatar = p.generateAvatarURL(user.Avatar)
+	}
 
 	return user, nil
 }
@@ -57,7 +59,9 @@ func (p *ProfileService) GetUserPublicInfoByUsername(username string) (domain.Us
 		return domain.User{}, err
 	}
 
-	user.Avatar = p.generateAvatarURL(user.Avatar)
+	if (!user.IsExternalAvatar) {
+		user.Avatar = p.generateAvatarURL(user.Avatar)
+	}
 
 	return user, nil
 }
