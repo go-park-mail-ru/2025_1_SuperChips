@@ -66,7 +66,7 @@ func (u *UserService) LoginUser(ctx context.Context, email, password string) (ui
 
 	id, pswd, err := u.userRepo.GetHash(ctx, email, password)
 	if err != nil {
-		return 0, err
+		return 0, mapToGrpcError(err)
 	}
 
 	if !security.ComparePassword(password, pswd) {
