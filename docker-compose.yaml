@@ -18,7 +18,7 @@ services:
     container_name: flow_backend
     build: 
       context: .
-      dockerfile: flow.Dockerfile
+      dockerfile: app/main/Dockerfile
     environment:
       - JWT_SECRET=${JWT_SECRET}
       - IP=${IP}
@@ -45,22 +45,21 @@ services:
     container_name: auth
     build:
       context: .
-      dockerfile: auth_service/Dockerfile
-    environment:
-      - JWT_SECRET=${JWT_SECRET}
-      - IP=${IP}
-      - ENVIRONMENT=${ENVIRONMENT}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
-      - PORT=${PORT}
-      - EXPIRATION_TIME=${EXPIRATION_TIME}
-      - COOKIE_SECURE=${COOKIE_SECURE}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_HOST=${POSTGRES_HOST}
-      - VK_CLIENT_ID=${VK_CLIENT_ID}
+      dockerfile: app/auth/Dockerfile
     ports:
       - "8010:8010"
+    depends_on:
+      - database
+    
+  feed:
+    networks:
+      - flow_network
+    container_name: feed
+    build:
+      context: .
+      dockerfile: app/feed/Dockerfile
+    ports:
+      - "8011:8011"
     depends_on:
       - database
 

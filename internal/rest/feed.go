@@ -1,11 +1,14 @@
 package rest
 
 import (
+	"context"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
+	gen "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/feed"
 )
 
 type PinServiceInterface interface {
@@ -13,8 +16,9 @@ type PinServiceInterface interface {
 }
 
 type PinsHandler struct {
-    Config      configs.Config
-	PinService  PinServiceInterface
+	Config            configs.Config
+	FeedClient        gen.FeedClient
+	ContextExpiration time.Duration
 }
 
 // FeedHandler godoc
@@ -36,11 +40,19 @@ func (app PinsHandler) FeedHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pagedImages, err := app.PinService.GetPins(page, pageSize)
+	ctx, cancel := context.WithTimeout(context.Background(), app.ContextExpiration)
+	defer cancel()
+
+	grpcResp, err := app.FeedClient.GetPins(ctx, &gen.GetPinsRequest{
+		Page: int64(page),
+		PageSize: int64(pageSize),
+	})
 	if err != nil {
 		HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+
+	pagedImages := grpcToNormal(grpcResp.Pins)
 
 	if len(pagedImages) == 0 {
 		HttpErrorToJson(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
@@ -64,3 +76,26 @@ func parsePageQueryParam(pageStr string) int {
 	return page
 }
 
+func grpcToNormal(grpcPins []*gen.Pin) []domain.PinData {
+	var pins []domain.PinData
+	for i := range grpcPins {
+		grpcPin := grpcPins[i]
+		pins = append(pins, domain.PinData{
+			FlowID: grpcPin.FlowId,
+			Header: grpcPin.Header,
+			AuthorID: grpcPin.AuthorId,
+			AuthorUsername: grpcPin.AuthorUsername,
+			Description: grpcPin.Description,
+			MediaURL: grpcPin.MediaUrl,
+			IsPrivate: grpcPin.IsPrivate,
+			CreatedAt: grpcPin.CreatedAt,
+			UpdatedAt: grpcPin.UpdatedAt,
+			IsLiked: grpcPin.IsLiked,
+			LikeCount: int(grpcPin.LikeCount),
+			Width: int(grpcPin.Width),
+			Height: int(grpcPin.Height),
+		})
+	}
+
+	return pins
+}

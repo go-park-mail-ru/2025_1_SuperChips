@@ -12,6 +12,7 @@ import (
 	"time"
 
 	genAuth "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/auth"
+	genFeed "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/feed"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/board"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	_ "github.com/go-park-mail-ru/2025_1_SuperChips/docs"
@@ -23,7 +24,6 @@ import (
 	middleware "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/middleware"
 	pincrudDelivery "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/pincrud"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/like"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/pin"
 	pincrudService "github.com/go-park-mail-ru/2025_1_SuperChips/pincrud"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/profile"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -95,7 +95,6 @@ func main() {
 	jwtManager := auth.NewJWTManager(config)
 
 	pinCRUDService := pincrudService.NewPinCRUDService(pinStorage, boardStorage, imageStorage)
-	pinService := pin.NewPinService(pinStorage, config.BaseUrl, config.ImageBaseDir)
 	profileService := profile.NewProfileService(profileStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
 	boardService := board.NewBoardService(boardStorage, config.BaseUrl, config.ImageBaseDir)
 	likeService := like.NewLikeService(likeStorage)
@@ -109,7 +108,17 @@ func main() {
 	}
 	defer grpcConnAuth.Close()
 
+	grpcConnFeed, err := grpc.NewClient(
+		"feed:8011",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer grpcConnFeed.Close()
+
 	authClient := genAuth.NewAuthClient(grpcConnAuth)
+	feedClient := genFeed.NewFeedClient(grpcConnFeed)
 
 	authHandler := rest.AuthHandler{
 		Config:      config,
@@ -120,7 +129,7 @@ func main() {
 
 	pinsHandler := rest.PinsHandler{
 		Config:     config,
-		PinService: pinService,
+		FeedClient: feedClient,
 	}
 
 	profileHandler := rest.ProfileHandler{

@@ -11,10 +11,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/go-park-mail-ru/2025_1_SuperChips/auth_service/auth"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/auth_service/internal/api"
-	gen "github.com/go-park-mail-ru/2025_1_SuperChips/auth_service/internal/proto/gen/auth"
-	repository "github.com/go-park-mail-ru/2025_1_SuperChips/auth_service/internal/repository/pg"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/auth"
+	microserviceGrpc "github.com/go-park-mail-ru/2025_1_SuperChips/internal/grpc"
+	gen "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/auth"
+	repository "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/pg"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -29,11 +29,6 @@ func main() {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
-
-	config := configs.Config{}
-	if err := config.LoadConfigFromEnv(); err != nil {
-		log.Fatalf("Cannot launch due to config error: %s", err)
-	}
 
 	pgConfig := configs.PostgresConfig{}
 	if err := pgConfig.LoadConfigFromEnv(); err != nil {
@@ -66,7 +61,7 @@ func main() {
 
 	usecase := auth.NewUserService(authRepo, boardRepo)
 
-	authServer := api.NewGrpcAuthHandler(usecase)
+	authServer := microserviceGrpc.NewGrpcAuthHandler(usecase)
 	gen.RegisterAuthServer(server, authServer)
 
 	go func() {
@@ -84,3 +79,4 @@ func main() {
 	<-shutdown
 	server.GracefulStop()
 }
+

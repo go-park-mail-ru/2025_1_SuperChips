@@ -10,15 +10,11 @@ COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o auth_service ./auth_service/app/main.go
 
-RUN ls -l /app
-
 FROM alpine:latest
 
 WORKDIR /root
 
 COPY --from=builder /app/auth_service .
-
-RUN ls -l /root
 
 EXPOSE 8010
 

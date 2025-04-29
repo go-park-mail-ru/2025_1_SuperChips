@@ -1,14 +1,14 @@
-package api
+package grpc
 
 import (
 	"context"
 
-	"github.com/go-park-mail-ru/2025_1_SuperChips/auth_service"
-	gen "github.com/go-park-mail-ru/2025_1_SuperChips/auth_service/internal/proto/gen/auth"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
+	gen "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/auth"
 )
 
 type UserUsecaseInterface interface {
-	AddUser(ctx context.Context, user models.User) (uint64, error)
+	AddUser(ctx context.Context, user domain.User) (uint64, error)
 	LoginUser(ctx context.Context, email, password string) (uint64, error)
 	LoginExternalUser(ctx context.Context, email string, externalID string) (int, string, error)
 	AddExternalUser(ctx context.Context, email, username string, externalID string) (uint64, error)
@@ -31,7 +31,7 @@ func NewGrpcAuthHandler(usecase UserUsecaseInterface) *GrpcAuthHandler {
 }
 
 func (h *GrpcAuthHandler) AddUser(ctx context.Context, in *gen.AddUserRequest) (*gen.AddUserResponse, error) {
-	userData := models.User{
+	userData := domain.User{
 		Email:    in.Email,
 		Username: in.Username,
 		Password: in.Password,

@@ -8,9 +8,8 @@ import (
 	"net/url"
 	"time"
 
-	models "github.com/go-park-mail-ru/2025_1_SuperChips/auth_service"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/csrf"
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
 	gen "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/auth"
@@ -121,7 +120,7 @@ func (app AuthHandler) RegistrationHandler(w http.ResponseWriter, r *http.Reques
 
 	statusCode := http.StatusCreated
 
-	userData := models.User{
+	userData := domain.User{
 		Username: regData.Username,
 		Password: regData.Password,
 		Email:    regData.Email,
@@ -324,7 +323,7 @@ func setCookie(w http.ResponseWriter, config configs.Config, name string, value 
 	http.SetCookie(w, &http.Cookie{
 		Name:  name,
 		Value: value,
-		// models:   "yourflow.ru",
+		// domain:   "yourflow.ru",
 		Path:     "/",
 		HttpOnly: httpOnly,
 		Secure:   config.CookieSecure,
@@ -363,7 +362,7 @@ func CheckAuth(r *http.Request, manager auth.JWTManager) (*auth.Claims, error) {
 }
 
 func handleAuthError(w http.ResponseWriter, err error) {
-	var authErr models.StatusError
+	var authErr domain.StatusError
 
 	errorResp := ServerResponse{
 		Description: http.StatusText(http.StatusInternalServerError),
@@ -379,13 +378,13 @@ func handleAuthError(w http.ResponseWriter, err error) {
 	case errors.Is(err, ErrBadRequest):
 		errorResp.Description = http.StatusText(http.StatusBadRequest)
 		ServerGenerateJSONResponse(w, errorResp, http.StatusBadRequest)
-	case errors.Is(err, models.ErrInvalidCredentials), errors.Is(err, models.ErrValidation):
+	case errors.Is(err, domain.ErrInvalidCredentials), errors.Is(err, domain.ErrValidation):
 		errorResp.Description = "invalid credentials"
 		ServerGenerateJSONResponse(w, errorResp, http.StatusUnauthorized)
 	case errors.Is(err, auth.ErrorExpiredToken):
 		errorResp.Description = http.StatusText(http.StatusUnauthorized)
 		ServerGenerateJSONResponse(w, errorResp, http.StatusUnauthorized)
-	case errors.Is(err, models.ErrConflict):
+	case errors.Is(err, domain.ErrConflict):
 		errorResp.Description = "account with that username or email already exists"
 		ServerGenerateJSONResponse(w, errorResp, http.StatusConflict)
 	default:
