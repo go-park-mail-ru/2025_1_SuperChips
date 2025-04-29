@@ -409,7 +409,7 @@ func handleGRPCAuthError(w http.ResponseWriter, err error) {
 		case codes.NotFound:
 			HttpErrorToJson(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		case codes.InvalidArgument:
-			HttpErrorToJson(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			HttpErrorToJson(w, st.Message(), http.StatusBadRequest)
 		default:
 			HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
