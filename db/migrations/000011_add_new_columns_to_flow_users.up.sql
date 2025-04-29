@@ -1,0 +1,2 @@
+ALTER TABLE flow_user
+ADD COLUMN subscriber_count INTEGER NOT NULL DEFAULT 0;
