@@ -8,7 +8,7 @@ import (
 )
 
 type flowDBSchema struct {
-	Id             uint64
+	ID             uint64
 	Title          sql.NullString
 	Description    sql.NullString
 	AuthorId       uint64
@@ -73,7 +73,7 @@ func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
 
 	for rows.Next() {
 		var flowDBRow flowDBSchema
-		err := rows.Scan(&flowDBRow.Id, &flowDBRow.Title, &flowDBRow.Description,
+		err := rows.Scan(&flowDBRow.ID, &flowDBRow.Title, &flowDBRow.Description,
 		&flowDBRow.AuthorId, &flowDBRow.IsPrivate, &flowDBRow.MediaURL, &flowDBRow.Width,
 		&flowDBRow.Height, &flowDBRow.AuthorUsername)
 		if err != nil {
@@ -81,7 +81,7 @@ func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
 		}
 
 		pin := pin.PinData{
-			FlowID:         flowDBRow.Id,
+			FlowID:         flowDBRow.ID,
 			Description:    flowDBRow.Description.String,
 			Header:         flowDBRow.Title.String,
 			MediaURL:       p.assembleMediaURL(flowDBRow.MediaURL),

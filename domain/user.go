@@ -25,10 +25,10 @@ type User struct {
 
 type PublicUser struct {
 	Username   string    `json:"username"`
-	Email      string    `json:"email"`
+	Email      string    `json:"email,omitempty"`
 	Avatar     string    `json:"avatar,omitempty"`
 	Birthday   time.Time `json:"birthday,omitempty"`
-	PublicName string    `json:"public_name,omitempty"`
+	PublicName string    `json:"public_name"`
 	About      string    `json:"about,omitempty"`
 }
 

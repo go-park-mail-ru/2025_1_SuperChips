@@ -36,7 +36,7 @@ func (p *pgPinStorage) GetPin(ctx context.Context, pinID, userID uint64) (domain
 
 	var isLiked bool
 	var flowDBRow flowDBSchema
-	err := row.Scan(&flowDBRow.Id, &flowDBRow.Title, &flowDBRow.Description,
+	err := row.Scan(&flowDBRow.ID, &flowDBRow.Title, &flowDBRow.Description,
 		&flowDBRow.AuthorId, &flowDBRow.IsPrivate, &flowDBRow.MediaURL,
 		&flowDBRow.AuthorUsername, &flowDBRow.LikeCount, &flowDBRow.Width, &flowDBRow.Height, &isLiked)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -47,7 +47,7 @@ func (p *pgPinStorage) GetPin(ctx context.Context, pinID, userID uint64) (domain
 	}
 
 	pin := domain.PinData{
-		FlowID:         flowDBRow.Id,
+		FlowID:         flowDBRow.ID,
 		Header:         flowDBRow.Title.String,
 		AuthorUsername: flowDBRow.AuthorUsername,
 		Description:    flowDBRow.Description.String,

@@ -11,8 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	genAuth "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/auth"
-	genFeed "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/feed"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/board"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	_ "github.com/go-park-mail-ru/2025_1_SuperChips/docs"
@@ -26,6 +24,9 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/like"
 	pincrudService "github.com/go-park-mail-ru/2025_1_SuperChips/pincrud"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/profile"
+	genAuth "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/auth"
+	genFeed "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/feed"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/search"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/swaggo/http-swagger"
 	"google.golang.org/grpc"
@@ -91,6 +92,7 @@ func main() {
 
 	likeStorage := pgStorage.NewPgLikeStorage(db)
 	boardStorage := pgStorage.NewBoardStorage(db)
+	searchStorage := pgStorage.NewSearchRepository(db)
 
 	jwtManager := auth.NewJWTManager(config)
 
@@ -98,6 +100,7 @@ func main() {
 	profileService := profile.NewProfileService(profileStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
 	boardService := board.NewBoardService(boardStorage, config.BaseUrl, config.ImageBaseDir)
 	likeService := like.NewLikeService(likeStorage)
+	searchService := search.NewSearchService(searchStorage, config.BaseUrl, config.ImageBaseDir, config.StaticBaseDir, config.AvatarDir)
 
 	grpcConnAuth, err := grpc.NewClient(
 		"auth:8010",
@@ -157,6 +160,11 @@ func main() {
 		BoardService:    boardService,
 		ContextDeadline: config.ContextExpiration,
 	}
+	
+	searchHander := rest.SearchHandler{
+		Service: searchService,
+		ContextTimeout: config.ContextExpiration,
+	}
 
 	fs := http.FileServer(http.Dir("." + config.StaticBaseDir))
 	fsHandler := func(w http.ResponseWriter, r *http.Request) {
@@ -169,19 +177,23 @@ func main() {
 		mux.HandleFunc("/swagger/", httpSwagger.WrapHandler)
 	}
 
+	// static
 	mux.Handle("/static/", http.StripPrefix(config.StaticBaseDir, middleware.ChainMiddleware(
 		fsHandler,
 		middleware.CorsMiddleware(config, allowedGetOptionsHead),
 	)))
 
+	// health
 	mux.HandleFunc("/health",
 		middleware.ChainMiddleware(rest.HealthCheckHandler, middleware.CorsMiddleware(config, allowedGetOptions),
 		middleware.Log()))
 
+	// feed
 	mux.HandleFunc("/api/v1/feed",
 		middleware.ChainMiddleware(pinsHandler.FeedHandler, middleware.CorsMiddleware(config, allowedGetOptions),
 		middleware.Log()))
 
+	// auth
 	mux.HandleFunc("/api/v1/auth/login",
 		middleware.ChainMiddleware(authHandler.LoginHandler, middleware.CorsMiddleware(config, allowedPostOptions),
 		middleware.Log()))
@@ -192,6 +204,7 @@ func main() {
 		middleware.ChainMiddleware(authHandler.LogoutHandler, middleware.CorsMiddleware(config, allowedPostOptions),
 		middleware.Log()))
 
+	// profile
 	mux.HandleFunc("/api/v1/profile",
 		middleware.ChainMiddleware(profileHandler.CurrentUserProfileHandler,
 			middleware.AuthMiddleware(jwtManager, true),
@@ -220,6 +233,7 @@ func main() {
 			middleware.CorsMiddleware(config, allowedPostOptions),
 			middleware.Log()))
 
+	// flows
 	mux.HandleFunc("OPTIONS /api/v1/flows",
 		middleware.ChainMiddleware(func(http.ResponseWriter, *http.Request) {},
 			middleware.CorsMiddleware(config, allowedGetOptions),
@@ -248,6 +262,7 @@ func main() {
 			middleware.CorsMiddleware(config, allowedPostOptions),
 			middleware.Log()))
 
+	// likes
 	mux.HandleFunc("POST /api/v1/like",
 		middleware.ChainMiddleware(likeHandler.LikeFlow, 
 			middleware.AuthMiddleware(jwtManager, true),
@@ -261,6 +276,8 @@ func main() {
 		middleware.CorsMiddleware(config, allowedGetOptions),
 		middleware.Log()))
 
+	
+	// boards
 	mux.HandleFunc("POST /api/v1/boards/{id}/flows",
 		middleware.ChainMiddleware(boardHandler.AddToBoard,
 			middleware.AuthMiddleware(jwtManager, true),
@@ -347,6 +364,26 @@ func main() {
 			middleware.CorsMiddleware(config, allowedPostOptions),
 			middleware.Log()))
 
+	// search
+	mux.HandleFunc("/api/v1/search/flows", 
+		middleware.ChainMiddleware(searchHander.SearchPins,
+			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.Log(),
+			middleware.Recovery()))
+
+	mux.HandleFunc("/api/v1/search/boards", 
+	middleware.ChainMiddleware(searchHander.SearchBoards,
+		middleware.CorsMiddleware(config, allowedGetOptions),
+		middleware.Log(),
+		middleware.Recovery()))
+
+	mux.HandleFunc("/api/v1/search/users", 
+	middleware.ChainMiddleware(searchHander.SearchUsers,
+		middleware.CorsMiddleware(config, allowedGetOptions),
+		middleware.Log(),
+		middleware.Recovery()))
+
+	// server
 	server := http.Server{
 		Addr:    config.Port,
 		Handler: mux,
