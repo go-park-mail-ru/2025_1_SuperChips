@@ -335,6 +335,10 @@ func vkGetData(accessToken string, clientID string) (string, string, error) {
 		return "", "", err
 	}
 
+	if data.User.UserID == "" || data.User.Email == "" {
+		return "", "", domain.ErrInternal
+	}
+
 	return data.User.UserID, data.User.Email, nil
 }
 
