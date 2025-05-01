@@ -10,16 +10,17 @@ import (
 )
 
 type User struct {
-	Id         uint64    `json:"user_id,omitempty"`
-	Username   string    `json:"username"`
-	Password   string    `json:"password,omitempty"`
-	Email      string    `json:"email"`
-	Avatar     string    `json:"avatar,omitempty"`
-	Birthday   time.Time `json:"birthday,omitempty"`
-	About      string    `json:"about,omitempty"`
-	PublicName string    `json:"public_name,omitempty"`
-	JWTVersion uint64    `json:"-"`
-	IsExternal bool      `json:"is_external"`
+	Id               uint64    `json:"user_id,omitempty"`
+	Username         string    `json:"username"`
+	Password         string    `json:"password,omitempty"`
+	Email            string    `json:"email"`
+	Avatar           string    `json:"avatar,omitempty"`
+	Birthday         time.Time `json:"birthday,omitempty"`
+	About            string    `json:"about,omitempty"`
+	PublicName       string    `json:"public_name,omitempty"`
+	JWTVersion       uint64    `json:"-"`
+	IsExternal       bool      `json:"is_external"`
+	IsExternalAvatar bool      `json:"-"`
 }
 
 type PublicUser struct {

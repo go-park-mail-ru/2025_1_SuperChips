@@ -145,12 +145,12 @@ func (config *Config) LoadConfigFromEnv() error {
 
 	config.VKClientID = VKClientID
 
-	printConfig(*config)
+	config.printConfig()
 
 	return nil
 }
 
-func printConfig(cfg Config) {
+func (cfg Config) printConfig() {
 	log.Println("-----------------------------------------------")
 	log.Println("Resulting config: ")
 	log.Printf("Port: %s\n", cfg.Port)

@@ -101,6 +101,7 @@ func (s *PinCRUDService) UpdatePin(ctx context.Context, patch domain.PinDataUpda
 func (s *PinCRUDService) CreatePin(ctx context.Context, data domain.PinDataCreate, file multipart.File, header *multipart.FileHeader, userID uint64) (uint64, error) {
 	imgName, err := s.imgStrg.Save(file, header)
 	if err != nil {
+		println(err.Error())
 		return 0, err
 	}
 
@@ -114,6 +115,7 @@ func (s *PinCRUDService) CreatePin(ctx context.Context, data domain.PinDataCreat
 
 	pinID, err := s.pinRepo.CreatePin(ctx, data, imgName, userID)
 	if err != nil {
+		println(err.Error())
 		return 0, err
 	}
 
