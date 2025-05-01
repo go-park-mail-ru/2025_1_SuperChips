@@ -21,11 +21,12 @@ func NewPGProfileStorage(db *sql.DB) (*pgProfileStorage, error) {
 
 func (p *pgProfileStorage) GetUserPublicInfoByEmail(email string) (domain.User, error) {
 	var userDB userDB
+	var externalID sql.NullString
 
 	err := p.db.QueryRow(`
-		SELECT id, username, email, avatar, birthday, about, public_name
+		SELECT id, username, email, avatar, birthday, about, public_name, external_id
 		FROM flow_user WHERE email = $1
-	`, email).Scan(&userDB.Id, &userDB.Username, &userDB.Email, &userDB.Avatar, &userDB.Birthday, &userDB.About, &userDB.PublicName)
+	`, email).Scan(&userDB.Id, &userDB.Username, &userDB.Email, &userDB.Avatar, &userDB.Birthday, &userDB.About, &userDB.PublicName, &externalID)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return domain.User{}, domain.ErrUserNotFound
 	} else if err != nil {
@@ -40,6 +41,7 @@ func (p *pgProfileStorage) GetUserPublicInfoByEmail(email string) (domain.User, 
 		Birthday:   userDB.Birthday.Time,
 		PublicName: userDB.PublicName,
 		About:      userDB.About.String,
+		IsExternal: externalID.String != "",
 	}
 
 	return user, nil

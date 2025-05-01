@@ -7,3 +7,4 @@ static/img/*
 auto_restart.sh
 static/
 mocks/
+pyenv
