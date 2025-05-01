@@ -19,6 +19,7 @@ type userDB struct {
 	Birthday         sql.NullTime   `db:"birthday"`
 	About            sql.NullString `db:"about"`
 	IsExternalAvatar sql.NullBool
+	SubscriberCount  uint64
 }
 
 type pgProfileStorage struct {

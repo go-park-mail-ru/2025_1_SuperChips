@@ -30,6 +30,8 @@ type PublicUser struct {
 	Birthday   time.Time `json:"birthday,omitempty"`
 	PublicName string    `json:"public_name"`
 	About      string    `json:"about,omitempty"`
+	SubscriberCount  int       `json:"subscriber_count"`
+	IsExternalAvatar bool      `json:"-"`
 }
 
 var (
