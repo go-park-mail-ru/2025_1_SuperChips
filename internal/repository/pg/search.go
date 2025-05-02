@@ -62,9 +62,9 @@ func (s *SearchRepository) SearchPins(ctx context.Context, query string, page, p
 			&pin.AuthorID,
 			&pin.IsPrivate,
 			&pin.MediaURL,
-			&pin.AuthorUsername,
 			&pin.Width,
 			&pin.Height,
+			&pin.AuthorUsername,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
