@@ -114,7 +114,7 @@ func main() {
 		ContextDuration: config.ContextExpiration,
 	}
 
-	subHandler := rest.SubscriptionHandler{
+	subscriptionHandler := rest.SubscriptionHandler{
 		ContextExpiration: config.ContextExpiration,
 		SubscriptionService: subscriptionService,
 	}
@@ -339,26 +339,26 @@ func main() {
 			middleware.Log()))
 
 	mux.HandleFunc("GET /api/v1/profile/followers",
-		middleware.ChainMiddleware(subHandler.GetUserFollowers,
+		middleware.ChainMiddleware(subscriptionHandler.GetUserFollowers,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedGetOptions),
 			middleware.Log()))
 
 	mux.HandleFunc("GET /api/v1/profile/following",
-		middleware.ChainMiddleware(subHandler.GetUserFollowing, 
+		middleware.ChainMiddleware(subscriptionHandler.GetUserFollowing, 
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedGetOptions),
 			middleware.Log()))
 
 	mux.HandleFunc("POST /api/v1/subscription",
-		middleware.ChainMiddleware(subHandler.CreateSubscription,
+		middleware.ChainMiddleware(subscriptionHandler.CreateSubscription,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedPostOptions),
 			middleware.Log()))
 
 	mux.HandleFunc("DELETE /api/v1/subscription",
-	middleware.ChainMiddleware(subHandler.DeleteSubscription,
+	middleware.ChainMiddleware(subscriptionHandler.DeleteSubscription,
 		middleware.AuthMiddleware(jwtManager, true),
 		middleware.CSRFMiddleware(),
 		middleware.CorsMiddleware(config, allowedDeleteOptions),

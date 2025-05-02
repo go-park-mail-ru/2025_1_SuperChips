@@ -33,7 +33,7 @@ func (p *pgProfileStorage) GetUserPublicInfoByEmail(email string) (domain.User, 
 	}
 
 	user := domain.User{
-		Id:         userDB.Id,
+		ID:         userDB.Id,
 		Username:   userDB.Username,
 		Email:      userDB.Email,
 		Avatar:     userDB.Avatar.String,
@@ -59,7 +59,7 @@ func (p *pgProfileStorage) GetUserPublicInfoByUsername(username string) (domain.
 	}
 
 	user := domain.User{
-		Id:         userDB.Id,
+		ID:         userDB.Id,
 		Username:   userDB.Username,
 		Email:      userDB.Email,
 		Avatar:     userDB.Avatar.String,

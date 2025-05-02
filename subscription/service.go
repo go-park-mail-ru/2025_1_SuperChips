@@ -7,8 +7,8 @@ import (
 )
 
 type SubscriptionRepository interface {
-	GetUserFollowers(ctx context.Context, id int) ([]domain.PublicUser, error)
-	GetUserFollowing(ctx context.Context, id int) ([]domain.PublicUser, error)
+	GetUserFollowers(ctx context.Context, id, page, size int) ([]domain.PublicUser, error)
+	GetUserFollowing(ctx context.Context, id, page, size int) ([]domain.PublicUser, error)
 	CreateSubscription(ctx context.Context, targetUsername string, currentID int) error
 	DeleteSubscription(ctx context.Context, targetUsername string, currentID int) error	
 }
@@ -23,12 +23,12 @@ func NewSubscriptionUsecase(repo SubscriptionRepository) *SubscriptionService {
 	}
 }
 
-func (service *SubscriptionService) GetUserFollowers(ctx context.Context, id int) ([]domain.PublicUser, error) {
-	return service.repo.GetUserFollowers(ctx, id)
+func (service *SubscriptionService) GetUserFollowers(ctx context.Context, id, page, size int) ([]domain.PublicUser, error) {
+	return service.repo.GetUserFollowers(ctx, id, page, size)
 }
 
-func (service *SubscriptionService) GetUserFollowing(ctx context.Context, id int) ([]domain.PublicUser, error) {
-	return service.repo.GetUserFollowing(ctx, id)
+func (service *SubscriptionService) GetUserFollowing(ctx context.Context, id, page, size int) ([]domain.PublicUser, error) {
+	return service.repo.GetUserFollowing(ctx, id, page, size)
 }
 
 func (service *SubscriptionService) CreateSubscription(ctx context.Context, targetUsername string, currentID int) error {

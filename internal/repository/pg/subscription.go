@@ -18,13 +18,17 @@ func NewSubscriptionStorage(db *sql.DB) *SubscriptionStorage {
 	}
 }
 
-func (repo *SubscriptionStorage) GetUserFollowers(ctx context.Context, id int) ([]domain.PublicUser, error) {
+func (repo *SubscriptionStorage) GetUserFollowers(ctx context.Context, id, page, size int) ([]domain.PublicUser, error) {
+	offset := (page - 1) * size
 	rows, err := repo.db.QueryContext(ctx, `
 	SELECT u.username, u.avatar, u.birthday, u.about, u.public_name, u.subscriber_count, u.is_external_avatar
 	FROM subscription
 	LEFT JOIN flow_user u ON subscription.target_id = u.id
 	WHERE subscription.target_id = $1
-	`, id)
+	ORDER BY CASE WHEN subscription.created_at IS NULL THEN 1 ELSE 0 END, subscription.created_at DESC
+	OFFSET $2
+	LIMIT $3
+	`, id, offset, size)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +65,8 @@ func (repo *SubscriptionStorage) GetUserFollowers(ctx context.Context, id int) (
 	return users, nil
 }
 
-func (repo *SubscriptionStorage) GetUserFollowing(ctx context.Context, id int) ([]domain.PublicUser, error) {
+func (repo *SubscriptionStorage) GetUserFollowing(ctx context.Context, id, page, size int) ([]domain.PublicUser, error) {
+	offset := (page - 1) * size
 	rows, err := repo.db.QueryContext(ctx, `
 	SELECT
 		u.username,
@@ -74,7 +79,10 @@ func (repo *SubscriptionStorage) GetUserFollowing(ctx context.Context, id int) (
 	FROM subscription
 	LEFT JOIN flow_user u ON subscription.target_id = u.id
 	WHERE subscription.user_id = $1
-	`, id)
+	ORDER BY CASE WHEN subscription.created_at IS NULL THEN 1 ELSE 0 END, subscription.created_at DESC
+	OFFSET $2
+	LIMIT $3
+	`, id, offset, size)
 	if err != nil {
 		return nil, err
 	}
