@@ -102,7 +102,7 @@ func TestCurrentUserProfileHandler_GET(t *testing.T) {
 
 			if tc.Name == "Valid request" {
 				mockService.EXPECT().GetUserPublicInfoByEmail("email@email.ru").Return(domain.User{
-					Id:       1,
+					ID:       1,
 					Birthday: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
 					Username: "JohnDoe",
 				}, nil)
@@ -185,14 +185,14 @@ func TestCurrentUserProfileHandler_PATCH(t *testing.T) {
 			switch tc.Name {
 			case "Patch profile":
 				mockService.EXPECT().GetUserPublicInfoByEmail("email@email.ru").Return(domain.User{
-					Id:       1,
+					ID:       1,
 					Birthday: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
 					Username: "JohnDoe",
 				}, nil)
 				mockService.EXPECT().UpdateUserData(gomock.Any(), "email@email.ru").Return(nil)
 			case "patch validation error":
 				mockService.EXPECT().GetUserPublicInfoByEmail("email@email.ru").Return(domain.User{
-					Id:       1,
+					ID:       1,
 					Birthday: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
 					Username: "JohnDoe",
 				}, nil)
