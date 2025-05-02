@@ -1,4 +1,4 @@
-package user
+package auth
 
 import (
 	"context"
@@ -13,7 +13,7 @@ type UserRepository interface {
 	GetUserPublicInfo(ctx context.Context, email string) (domain.PublicUser, error)
 	GetUserId(ctx context.Context, email string) (uint64, error)
 	FindExternalServiceUser(ctx context.Context, email string, externalID string) (int, string, error)
-	AddExternalUser(ctx context.Context, email, username, password string, externalID string) (uint64, error)
+	AddExternalUser(ctx context.Context, email, username, password, avatarURL string, externalID string) (uint64, error)
 }
 
 type BoardRepository interface {
@@ -67,7 +67,7 @@ func (u *UserService) LoginUser(ctx context.Context, email, password string) (ui
 	}
 
 	if !security.ComparePassword(password, pswd) {
-		return 0, domain.ErrInvalidCredentials
+		return 0, (domain.ErrInvalidCredentials)
 	}
 
 	return id, nil
@@ -81,13 +81,13 @@ func (u *UserService) LoginExternalUser(ctx context.Context, email string, exter
 
 	// this error shouldn't happen ever
 	if gotEmail != email {
-		return 0, "", domain.ErrForbidden
+		return 0, "", (domain.ErrForbidden)
 	}
 
 	return id, gotEmail, nil
 }
 
-func (u *UserService) AddExternalUser(ctx context.Context, email, username string, externalID string) (uint64, error) {
+func (u *UserService) AddExternalUser(ctx context.Context, email, username, avatarURL string, externalID string) (uint64, error) {
 	dummyPassword, err := security.GenerateRandomHash()
 	if err != nil {
 		return 0, err
@@ -98,7 +98,7 @@ func (u *UserService) AddExternalUser(ctx context.Context, email, username strin
 		return 0, err
 	}
 
-	id, err := u.userRepo.AddExternalUser(ctx, email, username, dummyPassword, externalID)
+	id, err := u.userRepo.AddExternalUser(ctx, email, username, dummyPassword, avatarURL, externalID)
 	if err != nil {
 		return 0, err
 	}

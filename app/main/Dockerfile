@@ -7,13 +7,13 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -v -o main ./app/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -v ./app/main/main.go
 
 FROM alpine:latest
 
 WORKDIR /app
 
-COPY --from=builder /app/main .
+COPY --from=builder /app .
 
 COPY --from=builder /app/db/migrations ./db/migrations
 COPY --from=builder /app/static/ ./static/
