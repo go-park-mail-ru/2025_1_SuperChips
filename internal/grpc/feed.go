@@ -41,22 +41,21 @@ func pinsToGrpc(pins []domain.PinData) []*gen.Pin {
 	for i := range pins {
 		pin := pins[i]
 		grpcPins = append(grpcPins, &gen.Pin{
-			FlowId: pin.FlowID,
-			Header: pin.Header,
-			AuthorId: pin.AuthorID,
+			FlowId:         pin.FlowID,
+			Header:         pin.Header,
+			AuthorId:       pin.AuthorID,
 			AuthorUsername: pin.AuthorUsername,
-			Description: pin.Description,
-			MediaUrl: pin.MediaURL,
-			IsPrivate: pin.IsPrivate,
-			CreatedAt: pin.CreatedAt,
-			UpdatedAt: pin.UpdatedAt,
-			IsLiked: pin.IsLiked,
-			LikeCount: int64(pin.LikeCount),
-			Width: int64(pin.Width),
-			Height: int64(pin.Height),
+			Description:    pin.Description,
+			MediaUrl:       pin.MediaURL,
+			IsPrivate:      pin.IsPrivate,
+			CreatedAt:      pin.CreatedAt,
+			UpdatedAt:      pin.UpdatedAt,
+			IsLiked:        pin.IsLiked,
+			LikeCount:      int64(pin.LikeCount),
+			Width:          int64(pin.Width),
+			Height:         int64(pin.Height),
 		})
 	}
 
 	return grpcPins
 }
-

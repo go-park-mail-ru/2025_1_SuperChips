@@ -34,13 +34,11 @@ func (strg *osImageStorage) Save(file multipart.File, header *multipart.FileHead
 
 	dst, err := os.Create(imgPath)
 	if err != nil {
-		println(err.Error())
 		return "", pincrudService.ErrUntracked
 	}
 	defer dst.Close()
 
 	if _, err := io.Copy(dst, file); err != nil {
-		println(err.Error())
 		return "", pincrudService.ErrUntracked
 	}
 

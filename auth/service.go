@@ -2,12 +2,9 @@ package auth
 
 import (
 	"context"
-	"errors"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/security"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type UserRepository interface {
@@ -37,7 +34,7 @@ func NewUserService(u UserRepository, b BoardRepository) *UserService {
 
 func (u *UserService) AddUser(ctx context.Context, user domain.User) (uint64, error) {
 	if err := user.ValidateUser(); err != nil {
-		return 0, mapToGrpcError(err)
+		return 0, err
 	}
 
 	hashed, err := security.HashPassword(user.Password)
@@ -49,11 +46,11 @@ func (u *UserService) AddUser(ctx context.Context, user domain.User) (uint64, er
 
 	id, err := u.userRepo.AddUser(ctx, user)
 	if err != nil {
-		return 0, mapToGrpcError(err)
+		return 0, err
 	}
 
 	if err := u.createUserBoards(ctx, user.Username, int(id)); err != nil {
-		return 0, mapToGrpcError(err)
+		return 0, err
 	}
 
 	return id, nil
@@ -61,16 +58,16 @@ func (u *UserService) AddUser(ctx context.Context, user domain.User) (uint64, er
 
 func (u *UserService) LoginUser(ctx context.Context, email, password string) (uint64, error) {
 	if err := domain.ValidateEmailAndPassword(email, password); err != nil {
-		return 0, mapToGrpcError(err)
+		return 0, err
 	}
 
 	id, pswd, err := u.userRepo.GetHash(ctx, email, password)
 	if err != nil {
-		return 0, mapToGrpcError(err)
+		return 0, err
 	}
 
 	if !security.ComparePassword(password, pswd) {
-		return 0, mapToGrpcError(domain.ErrInvalidCredentials)
+		return 0, (domain.ErrInvalidCredentials)
 	}
 
 	return id, nil
@@ -79,12 +76,12 @@ func (u *UserService) LoginUser(ctx context.Context, email, password string) (ui
 func (u *UserService) LoginExternalUser(ctx context.Context, email string, externalID string) (int, string, error) {
 	id, gotEmail, err := u.userRepo.FindExternalServiceUser(ctx, email, externalID)
 	if err != nil {
-		return 0, "", mapToGrpcError(err)
+		return 0, "", err
 	}
 
 	// this error shouldn't happen ever
 	if gotEmail != email {
-		return 0, "", mapToGrpcError(domain.ErrForbidden)
+		return 0, "", (domain.ErrForbidden)
 	}
 
 	return id, gotEmail, nil
@@ -103,7 +100,7 @@ func (u *UserService) AddExternalUser(ctx context.Context, email, username, avat
 
 	id, err := u.userRepo.AddExternalUser(ctx, email, username, dummyPassword, avatarURL, externalID)
 	if err != nil {
-		return 0, mapToGrpcError(err)
+		return 0, err
 	}
 
 	if err := u.createUserBoards(ctx, username, int(id)); err != nil {
@@ -135,21 +132,4 @@ func (u *UserService) createUserBoards(ctx context.Context, username string, id 
 	}
 
 	return nil
-}
-
-func mapToGrpcError(err error) error {
-    switch {
-    case errors.Is(err, domain.ErrInvalidCredentials):
-        return status.Errorf(codes.Unauthenticated, "invalid credentials")
-    case errors.Is(err, domain.ErrUserNotFound), errors.Is(err, domain.ErrNotFound):
-        return status.Errorf(codes.NotFound, "user not found")
-	case errors.Is(err, domain.ErrForbidden):
-		return status.Errorf(codes.PermissionDenied, "forbidden")
-	case errors.Is(err, domain.ErrConflict):
-		return status.Errorf(codes.AlreadyExists, "conflict")
-	case errors.Is(err, domain.ErrValidation):
-		return status.Errorf(codes.InvalidArgument, "validation error")
-    default:
-        return status.Errorf(codes.Internal, "internal server error")
-    }
 }
