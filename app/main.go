@@ -25,6 +25,7 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/pin"
 	pincrudService "github.com/go-park-mail-ru/2025_1_SuperChips/pincrud"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/profile"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/subscription"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/user"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/swaggo/http-swagger"
@@ -92,11 +93,13 @@ func main() {
 		log.Fatalf("Cannot launch due to profile storage db error: %s", err)
 	}
 
+	subscriptionStorage := pgStorage.NewSubscriptionStorage(db)
 	likeStorage := pgStorage.NewPgLikeStorage(db)
 	boardStorage := pgStorage.NewBoardStorage(db)
 
 	jwtManager := auth.NewJWTManager(config)
 
+	subscriptionService := subscription.NewSubscriptionUsecase(subscriptionStorage)
 	userService := user.NewUserService(userStorage, boardStorage)
 	pinCRUDService := pincrudService.NewPinCRUDService(pinStorage, boardStorage, imageStorage)
 	pinService := pin.NewPinService(pinStorage, config.BaseUrl, config.ImageBaseDir)
@@ -109,6 +112,11 @@ func main() {
 		UserService: userService,
 		JWTManager:  *jwtManager,
 		ContextDuration: config.ContextExpiration,
+	}
+
+	subscriptionHandler := rest.SubscriptionHandler{
+		ContextExpiration: config.ContextExpiration,
+		SubscriptionService: subscriptionService,
 	}
 
 	pinsHandler := rest.PinsHandler{
@@ -329,6 +337,38 @@ func main() {
 		middleware.ChainMiddleware(authHandler.ExternalRegister,
 			middleware.CorsMiddleware(config, allowedPostOptions),
 			middleware.Log()))
+
+	mux.HandleFunc("GET /api/v1/profile/followers",
+		middleware.ChainMiddleware(subscriptionHandler.GetUserFollowers,
+			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.Log()))
+
+	mux.HandleFunc("GET /api/v1/profile/following",
+		middleware.ChainMiddleware(subscriptionHandler.GetUserFollowing, 
+			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.Log()))
+
+	mux.HandleFunc("POST /api/v1/subscription",
+		middleware.ChainMiddleware(subscriptionHandler.CreateSubscription,
+			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CSRFMiddleware(),
+			middleware.CorsMiddleware(config, allowedPostOptions),
+			middleware.Log()))
+
+	mux.HandleFunc("DELETE /api/v1/subscription",
+	middleware.ChainMiddleware(subscriptionHandler.DeleteSubscription,
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CSRFMiddleware(),
+		middleware.CorsMiddleware(config, allowedDeleteOptions),
+		middleware.Log()))
+
+	mux.HandleFunc("OPTIONS /api/v1/subscription", 	
+	middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}, middleware.CorsMiddleware(config, allowedOptions),
+	middleware.Log()))
 
 	server := http.Server{
 		Addr:    config.Port,
