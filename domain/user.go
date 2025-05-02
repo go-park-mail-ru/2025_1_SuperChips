@@ -30,6 +30,7 @@ type PublicUser struct {
 	About            string    `json:"about,omitempty"`
 	SubscriberCount  int       `json:"subscriber_count"`
 	IsExternalAvatar bool      `json:"-"`
+	IsExternal       bool      `json:"is_external"`
 }
 
 var (
