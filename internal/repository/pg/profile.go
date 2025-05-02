@@ -7,20 +7,6 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
 
-type userDB struct {
-	Id               uint64         `db:"id"`
-	Username         string         `db:"username"`
-	Avatar           sql.NullString `db:"avatar"`
-	PublicName       string         `db:"public_name"`
-	Email            string         `db:"email"`
-	CreatedAt        string         `db:"created_at"`
-	UpdatedAt        string         `db:"updated_at"`
-	Password         string         `db:"password"`
-	Birthday         sql.NullTime   `db:"birthday"`
-	About            sql.NullString `db:"about"`
-	IsExternalAvatar sql.NullBool
-}
-
 type pgProfileStorage struct {
 	db *sql.DB
 }
@@ -40,7 +26,7 @@ func (p *pgProfileStorage) GetUserPublicInfoByEmail(email string) (domain.User, 
 	err := p.db.QueryRow(`
 		SELECT id, username, email, avatar, birthday, about, public_name, external_id, is_external_avatar
 		FROM flow_user WHERE email = $1
-	`, email).Scan(&userDB.Id, &userDB.Username, &userDB.Email, &userDB.Avatar, &userDB.Birthday, &userDB.About, &userDB.PublicName, &externalID, &userDB.IsExternalAvatar)
+	`, email).Scan(&userDB.ID, &userDB.Username, &userDB.Email, &userDB.Avatar, &userDB.Birthday, &userDB.About, &userDB.PublicName, &externalID, &userDB.IsExternalAvatar)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return domain.User{}, domain.ErrUserNotFound
 	} else if err != nil {
@@ -48,7 +34,7 @@ func (p *pgProfileStorage) GetUserPublicInfoByEmail(email string) (domain.User, 
 	}
 
 	user := domain.User{
-		Id:         userDB.Id,
+		ID:         userDB.ID,
 		Username:   userDB.Username,
 		Email:      userDB.Email,
 		Avatar:     userDB.Avatar.String,
@@ -68,7 +54,7 @@ func (p *pgProfileStorage) GetUserPublicInfoByUsername(username string) (domain.
 	err := p.db.QueryRow(`
 		SELECT id, username, email, avatar, birthday, about, public_name, is_external_avatar
 		FROM flow_user WHERE username = $1
-	`, username).Scan(&userDB.Id, &userDB.Username, &userDB.Email, &userDB.Avatar, &userDB.Birthday, &userDB.About, &userDB.PublicName, &userDB.IsExternalAvatar)
+	`, username).Scan(&userDB.ID, &userDB.Username, &userDB.Email, &userDB.Avatar, &userDB.Birthday, &userDB.About, &userDB.PublicName, &userDB.IsExternalAvatar)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return domain.User{}, domain.ErrUserNotFound
 	} else if err != nil {
@@ -76,7 +62,7 @@ func (p *pgProfileStorage) GetUserPublicInfoByUsername(username string) (domain.
 	}
 
 	user := domain.User{
-		Id:               userDB.Id,
+		ID:               userDB.ID,
 		Username:         userDB.Username,
 		Email:            userDB.Email,
 		Avatar:           userDB.Avatar.String,

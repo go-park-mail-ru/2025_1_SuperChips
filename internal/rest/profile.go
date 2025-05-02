@@ -23,7 +23,7 @@ var allowedTypes = map[string]bool{
 	"image/webp": true,
 	"image/bmp":  true,
 	"image/tiff": true,
-	"image/gif": true,
+	"image/gif":  true,
 }
 
 type passwordChange struct {
@@ -270,7 +270,7 @@ func (h *ProfileHandler) PatchUserProfileHandler(w http.ResponseWriter, r *http.
 			ExpirationTime: h.ExpirationTime,
 			CookieSecure:   h.CookieSecure,
 		}
-		if err := updateAuthToken(w, h.JwtManager, conf, existingUser.Email, int(existingUser.Id)); err != nil {
+		if err := updateAuthToken(w, h.JwtManager, conf, existingUser.Email, int(existingUser.ID)); err != nil {
 			handleProfileError(w, err)
 			return
 		}

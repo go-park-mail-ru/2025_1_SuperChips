@@ -1,2 +1,2 @@
 ALTER TABLE flow_user
-ADD COLUMN external_id TEXT;
+ADD COLUMN IF NOT EXISTS external_id TEXT;

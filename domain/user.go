@@ -10,7 +10,7 @@ import (
 )
 
 type User struct {
-	Id               uint64    `json:"user_id,omitempty"`
+	ID               uint64    `json:"user_id,omitempty"`
 	Username         string    `json:"username"`
 	Password         string    `json:"password,omitempty"`
 	Email            string    `json:"email"`
@@ -24,12 +24,15 @@ type User struct {
 }
 
 type PublicUser struct {
-	Username   string    `json:"username"`
-	Email      string    `json:"email"`
-	Avatar     string    `json:"avatar,omitempty"`
-	Birthday   time.Time `json:"birthday,omitempty"`
-	PublicName string    `json:"public_name,omitempty"`
-	About      string    `json:"about,omitempty"`
+	Username         string    `json:"username"`
+	Email            string    `json:"email,omitempty"`
+	Avatar           string    `json:"avatar,omitempty"`
+	Birthday         time.Time `json:"birthday,omitempty"`
+	PublicName       string    `json:"public_name,omitempty"`
+	About            string    `json:"about,omitempty"`
+	SubscriberCount  int       `json:"subscriber_count"`
+	IsExternalAvatar bool      `json:"-"`
+	IsExternal       bool      `json:"is_external"`
 }
 
 var (
