@@ -365,19 +365,19 @@ func main() {
 	// search
 	mux.HandleFunc("/api/v1/search/flows", 
 		middleware.ChainMiddleware(searchHander.SearchPins,
-			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.CorsMiddleware(config, allowedGetOptionsHead),
 			middleware.Log(),
 			middleware.Recovery()))
 
 	mux.HandleFunc("/api/v1/search/boards", 
 	middleware.ChainMiddleware(searchHander.SearchBoards,
-		middleware.CorsMiddleware(config, allowedGetOptions),
+		middleware.CorsMiddleware(config, allowedGetOptionsHead),
 		middleware.Log(),
 		middleware.Recovery()))
 
 	mux.HandleFunc("/api/v1/search/users", 
 	middleware.ChainMiddleware(searchHander.SearchUsers,
-		middleware.CorsMiddleware(config, allowedGetOptions),
+		middleware.CorsMiddleware(config, allowedGetOptionsHead),
 		middleware.Log(),
 		middleware.Recovery()))
 
