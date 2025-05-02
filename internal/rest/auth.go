@@ -1,8 +1,11 @@
 package rest
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
@@ -12,14 +15,22 @@ import (
 )
 
 type UserUsecaseInterface interface {
-	AddUser(user domain.User) (uint64, error)
-	LoginUser(email, password string) (uint64, error)
+	AddUser(ctx context.Context, user domain.User) (uint64, error)
+	LoginUser(ctx context.Context, email, password string) (uint64, error)
+	LoginExternalUser(ctx context.Context, email string, externalID string) (int, string, error)
+	AddExternalUser(ctx context.Context, email, username string, externalID string) (uint64, error)
 }
-  
+
 type AuthHandler struct {
-	Config      configs.Config
-	UserService UserUsecaseInterface
-	JWTManager  auth.JWTManager
+	Config          configs.Config
+	UserService     UserUsecaseInterface
+	JWTManager      auth.JWTManager
+	ContextDuration time.Duration
+}
+
+type ExternalData struct {
+	AccessToken string `json:"access_token,omitempty"`
+	Username    string `json:"username,omitempty"`
 }
 
 type CSRFResponse struct {
@@ -44,9 +55,12 @@ func (app AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), app.ContextDuration)
+	defer cancel()
+
 	var response ServerResponse
 
-	id, err := app.UserService.LoginUser(data.Email, data.Password)
+	id, err := app.UserService.LoginUser(ctx, data.Email, data.Password)
 	if err != nil {
 		handleAuthError(w, err)
 		return
@@ -113,7 +127,10 @@ func (app AuthHandler) RegistrationHandler(w http.ResponseWriter, r *http.Reques
 		Email:    regData.Email,
 	}
 
-	id, err := app.UserService.AddUser(userData)
+	ctx, cancel := context.WithTimeout(context.Background(), app.ContextDuration)
+	defer cancel()
+
+	id, err := app.UserService.AddUser(ctx, userData)
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrValidation):
@@ -185,11 +202,150 @@ func (app AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	ServerGenerateJSONResponse(w, response, http.StatusOK)
 }
 
+func (app AuthHandler) ExternalLogin(w http.ResponseWriter, r *http.Request) {
+	var data ExternalData
+	if err := DecodeData(w, r.Body, &data); err != nil {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), app.ContextDuration)
+	defer cancel()
+
+	VKid, VKemail, err := vkGetData(data.AccessToken, app.Config.VKClientID)
+	if err != nil {
+		handleAuthError(w, err)
+		return
+	}
+
+	id, email, err := app.UserService.LoginExternalUser(ctx, VKemail, VKid)
+	if errors.Is(err, domain.ErrNotFound) {
+		HttpErrorToJson(w, "not found; need to register first", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		println(err.Error())
+		handleAuthError(w, err)
+		return
+	}
+
+	if err := app.setCookieJWT(w, app.Config, email, uint64(id)); err != nil {
+		handleAuthError(w, err)
+		return
+	}
+
+	resp := ServerResponse{
+		Description: "OK",
+	}
+
+	token, err := csrf.GenerateCSRF()
+	if err != nil {
+		handleAuthError(w, err)
+		return
+	}
+
+	app.setCookieCSRF(w, app.Config, token)
+
+	csrf := CSRFResponse{
+		CSRFToken: token,
+	}
+
+	resp.Data = csrf
+
+	ServerGenerateJSONResponse(w, resp, http.StatusOK)
+}
+
+func (app AuthHandler) ExternalRegister(w http.ResponseWriter, r *http.Request) {
+	var data ExternalData
+	if err := DecodeData(w, r.Body, &data); err != nil {
+		return
+	}
+
+	VKid, VKemail, err := vkGetData(data.AccessToken, app.Config.VKClientID)
+	if err != nil {
+		handleAuthError(w, err)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), app.ContextDuration)
+	defer cancel()
+
+	id, err := app.UserService.AddExternalUser(ctx, VKemail, data.Username, VKid)
+	if err != nil {
+		handleAuthError(w, err)
+		return
+	}
+
+	if err := app.setCookieJWT(w, app.Config, VKemail, uint64(id)); err != nil {
+		handleAuthError(w, err)
+		return
+	}
+
+	token, err := csrf.GenerateCSRF()
+	if err != nil {
+		handleAuthError(w, err)
+		return
+	}
+
+	app.setCookieCSRF(w, app.Config, token)
+
+	csrf := CSRFResponse{
+		CSRFToken: token,
+	}
+
+	resp := ServerResponse{
+		Description: "OK",
+		Data: csrf,
+	}
+
+	ServerGenerateJSONResponse(w, resp, http.StatusOK)
+}
+
+func vkGetData(accessToken string, clientID string) (string, string, error) {
+	type VKUser struct {
+		UserID string `json:"user_id"`
+		Email  string `json:"email"`
+	}
+
+	type VKUserTop struct {
+		User VKUser `json:"user"`
+	}
+
+	postURL := "https://id.vk.com/oauth2/user_info"
+
+	formData := url.Values{}
+	formData.Set("client_id", clientID)
+	formData.Set("access_token", accessToken)
+
+	req, err := http.NewRequest("POST", postURL, bytes.NewBufferString(formData.Encode()))
+	if err != nil {
+		return "", "", err
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", "", err
+	}
+	defer resp.Body.Close()
+
+	var data VKUserTop
+	if err := DecodeData(nil, resp.Body, &data); err != nil {
+		return "", "", err
+	}
+
+	if data.User.UserID == "" || data.User.Email == "" {
+		return "", "", domain.ErrInternal
+	}
+
+	return data.User.UserID, data.User.Email, nil
+}
 
 func setCookie(w http.ResponseWriter, config configs.Config, name string, value string, httpOnly bool) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     name,
-		Value:    value,
+		Name:  name,
+		Value: value,
 		// Domain:   "yourflow.ru",
 		Path:     "/",
 		HttpOnly: httpOnly,
@@ -251,6 +407,9 @@ func handleAuthError(w http.ResponseWriter, err error) {
 	case errors.Is(err, auth.ErrorExpiredToken):
 		errorResp.Description = http.StatusText(http.StatusUnauthorized)
 		ServerGenerateJSONResponse(w, errorResp, http.StatusUnauthorized)
+	case errors.Is(err, domain.ErrConflict):
+		errorResp.Description = "account with that username or email already exists"
+		ServerGenerateJSONResponse(w, errorResp, http.StatusConflict)
 	default:
 		ServerGenerateJSONResponse(w, errorResp, http.StatusInternalServerError)
 	}

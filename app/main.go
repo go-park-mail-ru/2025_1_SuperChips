@@ -26,6 +26,7 @@ import (
 	pincrudService "github.com/go-park-mail-ru/2025_1_SuperChips/pincrud"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/profile"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/search"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/subscription"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/user"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/swaggo/http-swagger"
@@ -93,14 +94,16 @@ func main() {
 		log.Fatalf("Cannot launch due to profile storage db error: %s", err)
 	}
 
+	subscriptionStorage := pgStorage.NewSubscriptionStorage(db)
 	likeStorage := pgStorage.NewPgLikeStorage(db)
 	boardStorage := pgStorage.NewBoardStorage(db)
 	searchStorage := pgStorage.NewSearchRepository(db)
 
 	jwtManager := auth.NewJWTManager(config)
 
-	userService := user.NewUserService(userStorage)
-	pinCRUDService := pincrudService.NewPinCRUDService(pinStorage, imageStorage)
+	subscriptionService := subscription.NewSubscriptionUsecase(subscriptionStorage)
+	userService := user.NewUserService(userStorage, boardStorage)
+	pinCRUDService := pincrudService.NewPinCRUDService(pinStorage, boardStorage, imageStorage)
 	pinService := pin.NewPinService(pinStorage, config.BaseUrl, config.ImageBaseDir)
 	profileService := profile.NewProfileService(profileStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
 	boardService := board.NewBoardService(boardStorage, config.BaseUrl, config.ImageBaseDir)
@@ -111,6 +114,12 @@ func main() {
 		Config:      config,
 		UserService: userService,
 		JWTManager:  *jwtManager,
+		ContextDuration: config.ContextExpiration,
+	}
+
+	subscriptionHandler := rest.SubscriptionHandler{
+		ContextExpiration: config.ContextExpiration,
+		SubscriptionService: subscriptionService,
 	}
 
 	pinsHandler := rest.PinsHandler{
@@ -194,7 +203,7 @@ func main() {
 			middleware.Log()))
 	mux.HandleFunc("/api/v1/users/{username}",
 		middleware.ChainMiddleware(profileHandler.PublicProfileHandler,
-			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.CorsMiddleware(config, allowedGetOptionsHead),
 			middleware.Log()))
 	mux.HandleFunc("/api/v1/profile/update",
 		middleware.ChainMiddleware(profileHandler.PatchUserProfileHandler,
@@ -356,6 +365,48 @@ func main() {
 		middleware.Recovery()))
 
 	// server
+	mux.HandleFunc("/api/v1/auth/vkid/login",
+		middleware.ChainMiddleware(authHandler.ExternalLogin,
+			middleware.CorsMiddleware(config, allowedPostOptions),
+			middleware.Log()))
+
+	mux.HandleFunc("/api/v1/auth/vkid/register",
+		middleware.ChainMiddleware(authHandler.ExternalRegister,
+			middleware.CorsMiddleware(config, allowedPostOptions),
+			middleware.Log()))
+
+	mux.HandleFunc("GET /api/v1/profile/followers",
+		middleware.ChainMiddleware(subscriptionHandler.GetUserFollowers,
+			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.Log()))
+
+	mux.HandleFunc("GET /api/v1/profile/following",
+		middleware.ChainMiddleware(subscriptionHandler.GetUserFollowing, 
+			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.Log()))
+
+	mux.HandleFunc("POST /api/v1/subscription",
+		middleware.ChainMiddleware(subscriptionHandler.CreateSubscription,
+			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CSRFMiddleware(),
+			middleware.CorsMiddleware(config, allowedPostOptions),
+			middleware.Log()))
+
+	mux.HandleFunc("DELETE /api/v1/subscription",
+	middleware.ChainMiddleware(subscriptionHandler.DeleteSubscription,
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CSRFMiddleware(),
+		middleware.CorsMiddleware(config, allowedDeleteOptions),
+		middleware.Log()))
+
+	mux.HandleFunc("OPTIONS /api/v1/subscription", 	
+	middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}, middleware.CorsMiddleware(config, allowedOptions),
+	middleware.Log()))
+
 	server := http.Server{
 		Addr:    config.Port,
 		Handler: mux,

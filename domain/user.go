@@ -17,17 +17,20 @@ type User struct {
 	Avatar     string    `json:"avatar,omitempty"`
 	Birthday   time.Time `json:"birthday,omitempty"`
 	About      string    `json:"about,omitempty"`
-	PublicName string    `json:"public_name"`
+	PublicName string    `json:"public_name,omitempty"`
 	JWTVersion uint64    `json:"-"`
 }
 
 type PublicUser struct {
-	Username   string    `json:"username"`
-	Email      string    `json:"email,omitempty"`
-	Avatar     string    `json:"avatar,omitempty"`
-	Birthday   time.Time `json:"birthday,omitempty"`
-	PublicName string    `json:"public_name"`
-	About      string    `json:"about,omitempty"`
+	Username         string    `json:"username"`
+	Email            string    `json:"email,omitempty"`
+	Avatar           string    `json:"avatar,omitempty"`
+	Birthday         time.Time `json:"birthday,omitempty"`
+	PublicName       string    `json:"public_name,omitempty"`
+	About            string    `json:"about,omitempty"`
+	SubscriberCount  int       `json:"subscriber_count"`
+	IsExternalAvatar bool      `json:"-"`
+	IsExternal       bool      `json:"is_external"`
 }
 
 var (
@@ -123,18 +126,12 @@ func (u User) ValidateUser() error {
 }
 
 func (u User) ValidateUserNoPassword() error {
-	v := validator.New()
-
 	if err := ValidateEmail(u.Email); err != nil {
 		return wrapper.WrapError(ErrValidation, err)
 	}
 
 	if err := ValidateUsername(u.Username); err != nil {
 		return wrapper.WrapError(ErrValidation, err)
-	}
-
-	if v.Check(u.Birthday.After(time.Now()) || time.Since(u.Birthday) > 150*365*24*time.Hour, "birthday", "cannot be too old") {
-		return wrapper.WrapError(ErrValidation, v.GetError("birthday"))
 	}
 
 	return nil
