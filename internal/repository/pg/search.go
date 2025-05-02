@@ -29,6 +29,8 @@ func (s *SearchRepository) SearchPins(ctx context.Context, query string, page, p
         f.author_id, 
         f.is_private, 
         f.media_url,
+		f.width,
+		f.height,
         fu.username
     FROM flow f
     JOIN flow_user fu ON f.author_id = fu.id
@@ -61,6 +63,8 @@ func (s *SearchRepository) SearchPins(ctx context.Context, query string, page, p
 			&pin.IsPrivate,
 			&pin.MediaURL,
 			&pin.AuthorUsername,
+			&pin.Width,
+			&pin.Height,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
@@ -81,8 +85,10 @@ func (s *SearchRepository) SearchPins(ctx context.Context, query string, page, p
 func (s *SearchRepository) SearchUsers(ctx context.Context, query string, page, pageSize int) ([]domain.PublicUser, error) {
 	offset := (page - 1) * pageSize
 
+	var isExternalAvatar sql.NullBool
+
 	rows, err := s.db.QueryContext(ctx, `
-    SELECT username, email, avatar, birthday, about, public_name
+    SELECT username, email, avatar, birthday, about, public_name, is_external_avatar
     FROM flow_user
     WHERE to_tsvector(username) @@ plainto_tsquery($1) OR 
 	username ILIKE '%' || $1 || '%'
@@ -105,11 +111,13 @@ func (s *SearchRepository) SearchUsers(ctx context.Context, query string, page, 
 			&user.Birthday,
 			&about,
 			&user.PublicName,
+			&isExternalAvatar,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan row %w", err)
 		}
 
 		user.About = about.String
+		user.IsExternalAvatar = isExternalAvatar.Bool
 
 		users = append(users, user)
 	}

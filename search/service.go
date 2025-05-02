@@ -61,7 +61,9 @@ func (s *SearchService) SearchUsers(ctx context.Context, query string, page, pag
 	}
 
 	for i := range users {
-		users[i].Avatar = s.generateAvatarURL(users[i].Avatar)
+		if !users[i].IsExternalAvatar {
+			users[i].Avatar = s.generateAvatarURL(users[i].Avatar)
+		}
 	}
 
 	return users, nil
