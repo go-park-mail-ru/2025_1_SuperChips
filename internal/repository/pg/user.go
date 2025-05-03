@@ -58,20 +58,24 @@ func (p *pgUserStorage) AddUser(ctx context.Context, userInfo domain.User) (uint
 	return id, nil
 }
 
-func (p *pgUserStorage) GetHash(ctx context.Context, email, password string) (uint64, string, error) {
+func (p *pgUserStorage) GetHash(ctx context.Context, email, password string) (uint64, string, string, error) {
 	var hashedPassword string
 	var id uint64
+	var username string
 
 	err := p.db.QueryRowContext(ctx, `
-        SELECT id, password FROM flow_user WHERE email = $1
-    `, email).Scan(&id, &hashedPassword)
-	if err != nil && errors.Is(err, sql.ErrNoRows) {
-		return 0, "", domain.ErrInvalidCredentials
-	} else if err != nil {
-		return 0, "", err
+        SELECT id, password, username
+		FROM flow_user
+		WHERE email = $1
+    `, email).Scan(&id, &hashedPassword, &username)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, "", "", domain.ErrInvalidCredentials
+	}
+	if err != nil {
+		return 0, "", "", err
 	}
 
-	return id, hashedPassword, nil
+	return id, hashedPassword, username, nil
 }
 
 func (p *pgUserStorage) GetUserPublicInfo(ctx context.Context, email string) (domain.PublicUser, error) {
@@ -113,23 +117,24 @@ func (p *pgUserStorage) GetUserId(ctx context.Context, email string) (uint64, er
 	return id, nil
 }
 
-func (p *pgUserStorage) FindExternalServiceUser(ctx context.Context, email string, externalID string) (int, string, error) {
+func (p *pgUserStorage) FindExternalServiceUser(ctx context.Context, email string, externalID string) (int, string, string, error) {
 	var id int
 	var gotEmail string
+	var username string
 
 	err := p.db.QueryRowContext(ctx, `
-	SELECT id, email
+	SELECT id, email, username
 	FROM flow_user
 	WHERE external_id = $1
-	AND email = $2`, externalID, email).Scan(&id, &gotEmail)
+	AND email = $2`, externalID, email).Scan(&id, &gotEmail, &username)
 	if errors.Is(err, sql.ErrNoRows) {
-		return 0, "", domain.ErrNotFound
+		return 0, "", "", domain.ErrNotFound
 	}
 	if err != nil {
-		return 0, "", err
+		return 0, "", "", err
 	}
 
-	return id, gotEmail, nil
+	return id, gotEmail, username, nil
 }
 
 func (p *pgUserStorage) AddExternalUser(ctx context.Context, email, username, password, avatarURL string, externalID string) (uint64, error) {

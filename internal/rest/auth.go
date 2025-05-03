@@ -71,7 +71,7 @@ func (app AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := app.setCookieJWT(w, app.Config, data.Email, uint64(grpcResp.ID)); err != nil {
+	if err := app.setCookieJWT(w, app.Config, data.Email, grpcResp.Username, uint64(grpcResp.ID)); err != nil {
 		handleAuthError(w, err)
 		return
 	}
@@ -145,7 +145,7 @@ func (app AuthHandler) RegistrationHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err := app.setCookieJWT(w, app.Config, userData.Email, uint64(grpcResp.ID)); err != nil {
+	if err := app.setCookieJWT(w, app.Config, userData.Email, userData.Username, uint64(grpcResp.ID)); err != nil {
 		handleAuthError(w, err)
 		return
 	}
@@ -211,7 +211,7 @@ func (app AuthHandler) ExternalLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := app.setCookieJWT(w, app.Config, grpcResp.Email, uint64(grpcResp.ID)); err != nil {
+	if err := app.setCookieJWT(w, app.Config, grpcResp.Email, grpcResp.Username, uint64(grpcResp.ID)); err != nil {
 		handleAuthError(w, err)
 		return
 	}
@@ -263,7 +263,7 @@ func (app AuthHandler) ExternalRegister(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if err := app.setCookieJWT(w, app.Config, vkData.Email, uint64(grpcResp.ID)); err != nil {
+	if err := app.setCookieJWT(w, app.Config, vkData.Email, data.Username, uint64(grpcResp.ID)); err != nil {
 		handleAuthError(w, err)
 		return
 	}
@@ -334,8 +334,8 @@ func setCookie(w http.ResponseWriter, config configs.Config, name string, value 
 	})
 }
 
-func (app AuthHandler) setCookieJWT(w http.ResponseWriter, config configs.Config, email string, userID uint64) error {
-	tokenString, err := app.JWTManager.CreateJWT(email, int(userID))
+func (app AuthHandler) setCookieJWT(w http.ResponseWriter, config configs.Config, email, username string, userID uint64) error {
+	tokenString, err := app.JWTManager.CreateJWT(email, username, int(userID))
 	if err != nil {
 		return err
 	}

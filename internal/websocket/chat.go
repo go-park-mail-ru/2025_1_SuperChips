@@ -17,7 +17,7 @@ var (
 )
 
 type ChatRepository interface {
-	GetNewMessages(ctx context.Context, userID int64, offset time.Time) ([]string, error)
+	GetNewMessages(ctx context.Context, username string, offset time.Time) ([]string, error)
 	AddMessage(ctx context.Context, message domain.Message) error
 }
 
@@ -35,8 +35,8 @@ func CreateHub(repo ChatRepository) *Hub {
 	}
 }
 
-func (h *Hub) AddClient(userID int64, client *websocket.Conn) {
-	h.connect.Store(client, userID)
+func (h *Hub) AddClient(username string, client *websocket.Conn) {
+	h.connect.Store(client, username)
 
 	go func() {
 		for {
@@ -57,14 +57,14 @@ func (h *Hub) AddClient(userID int64, client *websocket.Conn) {
 	})
 }
 
-func (h *Hub) Send(ctx context.Context, message domain.Message, targetUserID int64) error {
+func (h *Hub) Send(ctx context.Context, message domain.Message, targetUsername string) error {
 	found := false
 	var targetConn *websocket.Conn
 
 	h.connect.Range(func(key, value any) bool {
 		conn := key.(*websocket.Conn)
-		userID := value.(int64)
-		if targetUserID == userID {
+		username := value.(string)
+		if targetUsername == username {
 			found = true
 			targetConn = conn
 			// range realization neat:
@@ -74,13 +74,14 @@ func (h *Hub) Send(ctx context.Context, message domain.Message, targetUserID int
 
 		return true
 	})
-
-	if !found {
-		return ErrTargetNotFound
-	}
 	
 	if err := h.repo.AddMessage(ctx, message); err != nil {
 		return fmt.Errorf("error while adding message to db: %v", err)
+	}
+
+	// target user offline
+	if !found {
+		return ErrTargetNotFound
 	}
 
 	err := targetConn.WriteJSON(message)
@@ -102,10 +103,10 @@ func (h *Hub) Run(ctx context.Context) {
 		case <-t.C:
 			h.connect.Range(func(key, value any) bool {
 				connect := key.(*websocket.Conn)
-				userID := value.(int64)
+				username := value.(string)
 				//для каждлого клиента читаем новые изменения
 				//тут может быть что угодно - сообщения, тексты, тд
-				messages, _ := h.repo.GetNewMessages(ctx, userID, h.currentOffset)
+				messages, _ := h.repo.GetNewMessages(ctx, username, h.currentOffset)
 				for _, message := range messages {
 					err := connect.WriteJSON(message)
 					if err != nil {

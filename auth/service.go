@@ -9,10 +9,10 @@ import (
 
 type UserRepository interface {
 	AddUser(ctx context.Context, user domain.User) (uint64, error)
-	GetHash(ctx context.Context, email, password string) (uint64, string, error)
+	GetHash(ctx context.Context, email, password string) (uint64, string, string, error)
 	GetUserPublicInfo(ctx context.Context, email string) (domain.PublicUser, error)
 	GetUserId(ctx context.Context, email string) (uint64, error)
-	FindExternalServiceUser(ctx context.Context, email string, externalID string) (int, string, error)
+	FindExternalServiceUser(ctx context.Context, email string, externalID string) (int, string, string, error)
 	AddExternalUser(ctx context.Context, email, username, password, avatarURL string, externalID string) (uint64, error)
 }
 
@@ -56,35 +56,35 @@ func (u *UserService) AddUser(ctx context.Context, user domain.User) (uint64, er
 	return id, nil
 }
 
-func (u *UserService) LoginUser(ctx context.Context, email, password string) (uint64, error) {
+func (u *UserService) LoginUser(ctx context.Context, email, password string) (uint64, string, error) {
 	if err := domain.ValidateEmailAndPassword(email, password); err != nil {
-		return 0, err
+		return 0, "", err
 	}
 
-	id, pswd, err := u.userRepo.GetHash(ctx, email, password)
-	if err != nil {
-		return 0, err
-	}
-
-	if !security.ComparePassword(password, pswd) {
-		return 0, (domain.ErrInvalidCredentials)
-	}
-
-	return id, nil
-}
-
-func (u *UserService) LoginExternalUser(ctx context.Context, email string, externalID string) (int, string, error) {
-	id, gotEmail, err := u.userRepo.FindExternalServiceUser(ctx, email, externalID)
+	id, pswd, username, err := u.userRepo.GetHash(ctx, email, password)
 	if err != nil {
 		return 0, "", err
 	}
 
-	// this error shouldn't happen ever
-	if gotEmail != email {
-		return 0, "", (domain.ErrForbidden)
+	if !security.ComparePassword(password, pswd) {
+		return 0, "", domain.ErrInvalidCredentials
 	}
 
-	return id, gotEmail, nil
+	return id, username, nil
+}
+
+func (u *UserService) LoginExternalUser(ctx context.Context, email string, externalID string) (int, string, string, error) {
+	id, gotEmail, username, err := u.userRepo.FindExternalServiceUser(ctx, email, externalID)
+	if err != nil {
+		return 0, "", "", err
+	}
+
+	// this error shouldn't happen ever
+	if gotEmail != email {
+		return 0, "", "", domain.ErrForbidden
+	}
+
+	return id, gotEmail, username, nil
 }
 
 func (u *UserService) AddExternalUser(ctx context.Context, email, username, avatarURL string, externalID string) (uint64, error) {

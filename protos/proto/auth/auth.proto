@@ -21,6 +21,7 @@ message LoginUserRequest {
 
 message LoginUserResponse {
     int64 ID = 1;
+    string Username = 2;
 }
 
 message LoginExternalUserRequest {
@@ -30,7 +31,8 @@ message LoginExternalUserRequest {
 
 message LoginExternalUserResponse {
     int64 ID = 1;
-    string Email = 2;
+    string Username = 2;
+    string Email = 3;
 }
 
 message AddExternalUserRequest {
