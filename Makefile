@@ -25,7 +25,9 @@ proto_generate:
     --go_opt=module=protos \
     --go-grpc_out=./protos \
     --go-grpc_opt=module=protos \
-    protos/proto/auth/auth.proto protos/proto/feed/feed.proto
+    protos/proto/auth/auth.proto \
+	protos/proto/feed/feed.proto \
+	protos/proto/chat/chat.proto
 
 test: mocks
 	go test $(TESTED_DIRS) -coverprofile=$(COVERAGE_FILE)

@@ -18,7 +18,7 @@ var (
 
 type ChatRepository interface {
 	GetNewMessages(ctx context.Context, username string, offset time.Time) ([]string, error)
-	AddMessage(ctx context.Context, message domain.Message) error
+	AddMessage(ctx context.Context, message domain.Message, targetUsername string) error
 }
 
 type Hub struct {
@@ -75,7 +75,7 @@ func (h *Hub) Send(ctx context.Context, message domain.Message, targetUsername s
 		return true
 	})
 	
-	if err := h.repo.AddMessage(ctx, message); err != nil {
+	if err := h.repo.AddMessage(ctx, message, targetUsername); err != nil {
 		return fmt.Errorf("error while adding message to db: %v", err)
 	}
 

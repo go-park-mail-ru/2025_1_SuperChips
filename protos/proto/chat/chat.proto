@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+package proto_auth;
+
+option go_package = "./protos/gen/chat/;gen";
+
+message Message {
+    string Content = 1;
+    string Sender = 2;
+    google.protobuf.Timestamp Timestamp = 3;
+    bool IsRead = 4;
+}
+
+message MessagesStruct {
+    repeated Message Messages = 1;
+}
+
+message Chat {
+    uint64 ChatID = 1;
+    string Username = 2;
+    string Avatar = 3;
+    uint64 MessageCount = 4;
+    MessagesStruct Messages = 5;
+}
+
+message ChatsStruct {
+    repeated Chat Chats = 1;
+}
+
+message GetChatsRequest {
+    string Username = 1;
+}
+
+message CreateChatRequest {
+    string Username = 1;
+}
+
+message CreateChatResponse {
+    uint64 ChatID = 1;
+    string Avatar = 2;
+}
+
+message GetContactsRequest {
+    string Username = 1;
+}
+
+message Contact {
+    string Username = 1;
+    string PublicUsername = 2;
+    string Avatar = 3;
+}
+
+message ContactsStruct {
+    repeated Contact Contacts = 1;
+}
+
+message GetChatRequest {
+    uint64 ChatID = 1;
+}
+
+message GetChatMessagesRequest {
+    uint64 ChatID = 1;
+    int64 Page = 2;
+}
+
+service ChatService {
+    rpc GetChats(GetChatsRequest) returns (ChatsStruct) {}
+    rpc CreateChat(CreateChatRequest) returns (CreateChatResponse) {}
+    rpc GetContacts(GetContactsRequest) returns (ContactsStruct) {}
+    rpc GetChat(GetChatRequest) returns (Chat) {}
+    rpc GetChatMessages(GetChatMessagesRequest) returns (MessagesStruct) {}
+}
