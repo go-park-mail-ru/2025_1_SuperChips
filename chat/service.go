@@ -26,6 +26,9 @@ type ChatService struct {
 func NewChatService(repo ChatRepository, baseURL, staticDir, avatarDir string) *ChatService {
 	return &ChatService{
 		repo: repo,
+		baseURL: baseURL,
+		staticDir: staticDir,
+		avatarDir: avatarDir,
 	}
 }
 
@@ -58,7 +61,18 @@ func (service *ChatService) CreateChat(ctx context.Context, username, targetUser
 }
 
 func (service *ChatService) GetContacts(ctx context.Context, username string) ([]domain.Contact, error) {
-	return service.repo.GetContacts(ctx, username)
+	contacts, err := service.repo.GetContacts(ctx, username)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range contacts {
+		if !contacts[i].IsExternalAvatar {
+			contacts[i].Avatar = service.generateAvatarURL(contacts[i].Avatar)
+		}
+	}
+
+	return contacts, nil
 }
 
 func (service *ChatService) CreateContact(ctx context.Context, username, targetUsername string) (domain.Chat, error) {

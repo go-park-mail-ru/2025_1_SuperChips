@@ -236,8 +236,10 @@ func (repo *ChatRepository) CreateChat(ctx context.Context, targetUsername, user
 }
 
 func (repo *ChatRepository) GetContacts(ctx context.Context, username string) ([]domain.Contact, error) {
+	var isExternalAvatar sql.NullBool
+	
 	rows, err := repo.db.QueryContext(ctx, `
-	SELECT u.username, u.public_name, u.avatar
+	SELECT u.username, u.public_name, u.avatar, u.is_external_avatar
 	FROM contact c
 	INNER JOIN flow_user u ON u.username = c.contact_username
 	WHERE c.user_username = $1
@@ -253,13 +255,17 @@ func (repo *ChatRepository) GetContacts(ctx context.Context, username string) ([
 		if err := rows.Scan(
 			&contact.Username,
 			&contact.PublicName,
-			&contact.PublicName,
+			&contact.Avatar,
+			&isExternalAvatar,
 		); err != nil {
 			return nil, err
 		}
 
+		contact.IsExternalAvatar = isExternalAvatar.Bool
+
 		contacts = append(contacts, contact)
 	}
+
 
 	if err := rows.Err(); err != nil {
 		return nil, err

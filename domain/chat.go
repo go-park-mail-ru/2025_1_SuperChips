@@ -23,7 +23,8 @@ type Chat struct {
 }
 
 type Contact struct {
-	Username   string `json:"username"`
-	PublicName string `json:"public_name"`
-	Avatar     string `json:"avatar"`
+	Username         string `json:"username"`
+	PublicName       string `json:"public_name"`
+	Avatar           string `json:"avatar"`
+	IsExternalAvatar bool   `json:"-"`
 }
