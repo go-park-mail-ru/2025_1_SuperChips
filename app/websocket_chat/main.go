@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/pg"
 	repository "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
@@ -41,6 +42,16 @@ func main() {
 
 	defer db.Close()
 
+	authConfig := configs.AuthConfig{}
+	if err := authConfig.LoadConfigFromEnv(); err != nil {
+		log.Fatalf("%s", err.Error())
+	}
+
+	jwtManager := auth.NewJWTManager(configs.Config{
+		JWTSecret: authConfig.JWTSecret,
+		ExpirationTime: authConfig.ExpirationTime,
+	})
+
 	chatRepo := repository.NewChatRepository(db)
 
 	hubCtx, cancel := context.WithCancel(context.Background())
@@ -58,6 +69,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/ws", middleware.ChainMiddleware(chatWebsocketHandler.WebSocketUpgrader,
+		middleware.AuthMiddleware(jwtManager, true),
 		middleware.Log()))
 
 	server := http.Server{
