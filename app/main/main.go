@@ -61,8 +61,14 @@ func handleWebSocketProxy(w http.ResponseWriter, r *http.Request) {
     }
     defer clientConn.Close()
 
+    headers := http.Header{}
+    if cookies := r.Header.Get("Cookie"); cookies != "" {
+        headers.Add("Cookie", cookies)
+    }
+
+
     microserviceURL := "ws://websocket_chat:8013/ws"
-    microserviceConn, resp, err := websocket.DefaultDialer.Dial(microserviceURL, nil)
+    microserviceConn, resp, err := websocket.DefaultDialer.Dial(microserviceURL, headers)
     if err != nil {
 		if resp != nil {
 			bodyBytes, readErr := io.ReadAll(resp.Body)
