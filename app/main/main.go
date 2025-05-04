@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"log/slog"
 	"net/http"
@@ -61,8 +62,16 @@ func handleWebSocketProxy(w http.ResponseWriter, r *http.Request) {
     defer clientConn.Close()
 
     microserviceURL := "ws://websocket_chat:8013/ws"
-    microserviceConn, _, err := websocket.DefaultDialer.Dial(microserviceURL, nil)
+    microserviceConn, resp, err := websocket.DefaultDialer.Dial(microserviceURL, nil)
     if err != nil {
+		if resp != nil {
+			bodyBytes, readErr := io.ReadAll(resp.Body)
+			if readErr != nil {
+				log.Printf("Failed to read response body: %v", readErr)
+			} else {
+				log.Printf("Response body from microservice: %s", string(bodyBytes))
+			}
+		}
         log.Println("Failed to connect to microservice:", err)
         return
     }
