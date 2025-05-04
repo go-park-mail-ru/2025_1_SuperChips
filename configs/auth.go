@@ -41,6 +41,8 @@ func (config *AuthConfig) LoadConfigFromEnv() error {
 		log.Fatalln("error parsing cookie_secure variable")
 	}
 
+	config.printConfig()
+
 	return nil
 }
 
