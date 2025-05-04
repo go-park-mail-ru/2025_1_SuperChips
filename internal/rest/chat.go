@@ -222,12 +222,14 @@ func (h *ChatWebsocketHandler) WebSocketUpgrader(w http.ResponseWriter, r *http.
 	upgrader := websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool { return true },
 	}
+	log.Println("Attempting to upgrade WebSocket connection...")
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
+		log.Printf("WebSocket upgrade failed: %v", err)
 		HttpErrorToJson(w, fmt.Errorf("failed to upgrade to websockets: %v", err).Error(), http.StatusInternalServerError)
 		return
 	}
-	defer conn.Close()
+	log.Println("WebSocket connection upgraded successfully.")
 
 	claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
 

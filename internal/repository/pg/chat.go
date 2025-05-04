@@ -89,7 +89,7 @@ func (repo *ChatRepository) MarkRead(ctx context.Context, messageID, chatID int)
 }
 
 func (repo *ChatRepository) GetChats(ctx context.Context, username string) ([]domain.Chat, error) {
-    query := `
+	query := `
     WITH unread_counts AS (
         SELECT 
             chat_id,
@@ -117,6 +117,7 @@ func (repo *ChatRepository) GetChats(ctx context.Context, username string) ([]do
         END AS other_user_username,
         u.public_name AS other_user_name,
         u.avatar AS other_user_avatar,
+		u.is_external_avatar,
         lm.message_id,
         lm.content AS message_content,
         lm.sender AS message_sender,
@@ -135,79 +136,82 @@ func (repo *ChatRepository) GetChats(ctx context.Context, username string) ([]do
     ORDER BY lm.timestamp DESC NULLS LAST;
     `
 
-    rows, err := repo.db.QueryContext(ctx, query, username)
-    if err != nil {
-        return nil, err
-    }
-    defer rows.Close()
+	rows, err := repo.db.QueryContext(ctx, query, username)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
-    chatsMap := make(map[int]*domain.Chat)
+	chatsMap := make(map[int]*domain.Chat)
 
-    for rows.Next() {
-        var (
-            chatID              int
-            otherUserUsername   string
-            otherUserPublicName string
-            otherUserAvatar     string
-            messageID           sql.NullInt64
-            messageContent      sql.NullString
-            messageSender       sql.NullString
+	for rows.Next() {
+		var (
+			chatID              int
+			otherUserUsername   string
+			otherUserPublicName string
+			otherUserAvatar     string
+			isExternalAvatar    sql.NullBool
+			messageID           sql.NullInt64
+			messageContent      sql.NullString
+			messageSender       sql.NullString
 			messageRecipient    sql.NullString
-            messageTimestamp    sql.NullTime
-            messageIsRead       sql.NullBool
-            unreadCount         sql.NullInt64
-        )
+			messageTimestamp    sql.NullTime
+			messageIsRead       sql.NullBool
+			unreadCount         sql.NullInt64
+		)
 
-        err := rows.Scan(
-            &chatID,
-            &otherUserUsername,
-            &otherUserPublicName,
-            &otherUserAvatar,
-            &messageID,
-            &messageContent,
-            &messageSender,
+		err := rows.Scan(
+			&chatID,
+			&otherUserUsername,
+			&otherUserPublicName,
+			&otherUserAvatar,
+			&isExternalAvatar,
+			&messageID,
+			&messageContent,
+			&messageSender,
 			&messageRecipient,
-            &messageTimestamp,
-            &messageIsRead,
-            &unreadCount,
-        )
-        if err != nil {
-            return nil, err
-        }
+			&messageTimestamp,
+			&messageIsRead,
+			&unreadCount,
+		)
+		if err != nil {
+			return nil, err
+		}
 
-        if _, exists := chatsMap[chatID]; !exists {
-            chatsMap[chatID] = &domain.Chat{
-                ChatID:       uint(chatID),
-                Username:     otherUserUsername,
-                PublicName:   otherUserPublicName,
-                Avatar:       otherUserAvatar,
-                MessageCount: uint(unreadCount.Int64),
-                Messages:     []domain.Message{},
-            }
-        }
+		if _, exists := chatsMap[chatID]; !exists {
+			chatsMap[chatID] = &domain.Chat{
+				ChatID:           uint(chatID),
+				Username:         otherUserUsername,
+				PublicName:       otherUserPublicName,
+				Avatar:           otherUserAvatar,
+				IsExternalAvatar: isExternalAvatar.Bool,
+				MessageCount:     uint(unreadCount.Int64),
+				Messages:         []domain.Message{},
+			}
+		}
 
-        if messageID.Valid {
-            chatsMap[chatID].Messages = append(chatsMap[chatID].Messages, domain.Message{
-                MessageID: uint(messageID.Int64),
-                Content:   messageContent.String,
-                Sender:    messageSender.String,
+		if messageID.Valid {
+			chatsMap[chatID].Messages = append(chatsMap[chatID].Messages, domain.Message{
+				MessageID: uint(messageID.Int64),
+				Content:   messageContent.String,
+				Sender:    messageSender.String,
 				Recipient: messageRecipient.String,
-                Timestamp: messageTimestamp.Time,
-                IsRead:    messageIsRead.Bool,
-            })
-        }
-    }
+				Timestamp: messageTimestamp.Time,
+				IsRead:    messageIsRead.Bool,
+			})
+		}
+	}
 
-    if err := rows.Err(); err != nil {
-        return nil, err
-    }
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
-    chats := make([]domain.Chat, 0, len(chatsMap))
-    for _, chat := range chatsMap {
-        chats = append(chats, *chat)
-    }
+	chats := make([]domain.Chat, 0, len(chatsMap))
+	for _, chat := range chatsMap {
+		chats = append(chats, *chat)
+	}
 
-    return chats, nil
+	return chats, nil
 }
 
 func (repo *ChatRepository) CreateChat(ctx context.Context, targetUsername, username string) (domain.Chat, error) {
@@ -237,7 +241,7 @@ func (repo *ChatRepository) CreateChat(ctx context.Context, targetUsername, user
 
 func (repo *ChatRepository) GetContacts(ctx context.Context, username string) ([]domain.Contact, error) {
 	var isExternalAvatar sql.NullBool
-	
+
 	rows, err := repo.db.QueryContext(ctx, `
 	SELECT u.username, u.public_name, u.avatar, u.is_external_avatar
 	FROM contact c
@@ -266,7 +270,6 @@ func (repo *ChatRepository) GetContacts(ctx context.Context, username string) ([
 		contacts = append(contacts, contact)
 	}
 
-
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -290,7 +293,7 @@ func (repo *ChatRepository) CreateContact(ctx context.Context, username, targetU
 }
 
 func (repo *ChatRepository) GetChat(ctx context.Context, id uint64, username string) (domain.Chat, error) {
-    query := `
+	query := `
     WITH ranked_messages AS (
         SELECT 
             m.id AS message_id,
@@ -326,74 +329,74 @@ func (repo *ChatRepository) GetChat(ctx context.Context, id uint64, username str
     WHERE c.id = $1;
     `
 
-    rows, err := repo.db.QueryContext(ctx, query, id, username)
-    if err != nil {
-        return domain.Chat{}, err
-    }
-    defer rows.Close()
+	rows, err := repo.db.QueryContext(ctx, query, id, username)
+	if err != nil {
+		return domain.Chat{}, err
+	}
+	defer rows.Close()
 
-    var chat *domain.Chat
+	var chat *domain.Chat
 
-    for rows.Next() {
-        var (
-            otherUserUsername   string
-            otherUserPublicName string
-            otherUserAvatar     string
-            messageID           sql.NullInt64
-            messageContent      sql.NullString
-            messageSender       sql.NullString
-			messageRecipient 	string
-            messageTimestamp    sql.NullTime
-            messageIsRead       sql.NullBool
-        )
+	for rows.Next() {
+		var (
+			otherUserUsername   string
+			otherUserPublicName string
+			otherUserAvatar     string
+			messageID           sql.NullInt64
+			messageContent      sql.NullString
+			messageSender       sql.NullString
+			messageRecipient    string
+			messageTimestamp    sql.NullTime
+			messageIsRead       sql.NullBool
+		)
 
-        err := rows.Scan(
-            &id,
-            &otherUserUsername,
-            &otherUserPublicName,
-            &otherUserAvatar,
-            &messageID,
-            &messageContent,
-            &messageSender,
+		err := rows.Scan(
+			&id,
+			&otherUserUsername,
+			&otherUserPublicName,
+			&otherUserAvatar,
+			&messageID,
+			&messageContent,
+			&messageSender,
 			&messageRecipient,
-            &messageTimestamp,
-            &messageIsRead,
-        )
-        if err != nil {
-            return domain.Chat{}, err
-        }
+			&messageTimestamp,
+			&messageIsRead,
+		)
+		if err != nil {
+			return domain.Chat{}, err
+		}
 
-        if chat == nil {
-            chat = &domain.Chat{
-                ChatID:     uint(id),
-                Username:   otherUserUsername,
-                PublicName: otherUserPublicName,
-                Avatar:     otherUserAvatar,
-                Messages:   []domain.Message{},
-            }
-        }
+		if chat == nil {
+			chat = &domain.Chat{
+				ChatID:     uint(id),
+				Username:   otherUserUsername,
+				PublicName: otherUserPublicName,
+				Avatar:     otherUserAvatar,
+				Messages:   []domain.Message{},
+			}
+		}
 
-        if messageID.Valid {
-            chat.Messages = append(chat.Messages, domain.Message{
-                MessageID: uint(messageID.Int64),
-                Content:   messageContent.String,
-                Sender:    messageSender.String,
-                Timestamp: messageTimestamp.Time,
-                IsRead:    messageIsRead.Bool,
+		if messageID.Valid {
+			chat.Messages = append(chat.Messages, domain.Message{
+				MessageID: uint(messageID.Int64),
+				Content:   messageContent.String,
+				Sender:    messageSender.String,
+				Timestamp: messageTimestamp.Time,
+				IsRead:    messageIsRead.Bool,
 				Recipient: messageRecipient,
-            })
-        }
-    }
+			})
+		}
+	}
 
-    if err := rows.Err(); err != nil {
-        return domain.Chat{}, err
-    }
+	if err := rows.Err(); err != nil {
+		return domain.Chat{}, err
+	}
 
-    if chat == nil {
-        return domain.Chat{}, domain.ErrNotFound
-    }
+	if chat == nil {
+		return domain.Chat{}, domain.ErrNotFound
+	}
 
-    return *chat, nil
+	return *chat, nil
 }
 
 func (repo *ChatRepository) GetChatMessages(ctx context.Context, id, page uint64) ([]domain.Message, error) {
