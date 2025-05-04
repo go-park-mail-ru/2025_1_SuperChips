@@ -7,10 +7,13 @@ package proto_auth;
 option go_package = "./protos/gen/chat/;gen";
 
 message Message {
-    string Content = 1;
-    string Sender = 2;
-    google.protobuf.Timestamp Timestamp = 3;
-    bool IsRead = 4;
+    uint64 MessageID = 1;
+    string Content = 2;
+    string Sender = 3;
+    google.protobuf.Timestamp Timestamp = 4;
+    bool IsRead = 5;
+    string Recipient = 6;
+    uint64 ChatID = 7;
 }
 
 message MessagesStruct {
@@ -21,8 +24,9 @@ message Chat {
     uint64 ChatID = 1;
     string Username = 2;
     string Avatar = 3;
-    uint64 MessageCount = 4;
-    MessagesStruct Messages = 5;
+    string PublicName = 4;
+    uint64 MessageCount = 5;
+    MessagesStruct Messages = 6;
 }
 
 message ChatsStruct {
@@ -35,11 +39,11 @@ message GetChatsRequest {
 
 message CreateChatRequest {
     string Username = 1;
+    string TargetUsername = 2;
 }
 
 message CreateChatResponse {
-    uint64 ChatID = 1;
-    string Avatar = 2;
+    Chat Chat = 1;
 }
 
 message GetContactsRequest {
@@ -58,6 +62,7 @@ message ContactsStruct {
 
 message GetChatRequest {
     uint64 ChatID = 1;
+    string Username = 2;
 }
 
 message GetChatMessagesRequest {
@@ -65,10 +70,22 @@ message GetChatMessagesRequest {
     int64 Page = 2;
 }
 
+message CreateContactRequest {
+    string Username = 1;
+    string TargetUsername = 2;
+}
+
+message CreateContactResponse {
+    uint64 ChatID = 1;
+    string Avatar = 2;
+    string PublicName = 3;
+}
+
 service ChatService {
     rpc GetChats(GetChatsRequest) returns (ChatsStruct) {}
     rpc CreateChat(CreateChatRequest) returns (CreateChatResponse) {}
     rpc GetContacts(GetContactsRequest) returns (ContactsStruct) {}
+    rpc CreateContact(CreateContactRequest) returns (CreateContactResponse) {}
     rpc GetChat(GetChatRequest) returns (Chat) {}
     rpc GetChatMessages(GetChatMessagesRequest) returns (MessagesStruct) {}
 }

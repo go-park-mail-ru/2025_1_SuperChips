@@ -21,6 +21,7 @@ type ChatServiceClient interface {
 	GetChats(ctx context.Context, in *GetChatsRequest, opts ...grpc.CallOption) (*ChatsStruct, error)
 	CreateChat(ctx context.Context, in *CreateChatRequest, opts ...grpc.CallOption) (*CreateChatResponse, error)
 	GetContacts(ctx context.Context, in *GetContactsRequest, opts ...grpc.CallOption) (*ContactsStruct, error)
+	CreateContact(ctx context.Context, in *CreateContactRequest, opts ...grpc.CallOption) (*CreateContactResponse, error)
 	GetChat(ctx context.Context, in *GetChatRequest, opts ...grpc.CallOption) (*Chat, error)
 	GetChatMessages(ctx context.Context, in *GetChatMessagesRequest, opts ...grpc.CallOption) (*MessagesStruct, error)
 }
@@ -60,6 +61,15 @@ func (c *chatServiceClient) GetContacts(ctx context.Context, in *GetContactsRequ
 	return out, nil
 }
 
+func (c *chatServiceClient) CreateContact(ctx context.Context, in *CreateContactRequest, opts ...grpc.CallOption) (*CreateContactResponse, error) {
+	out := new(CreateContactResponse)
+	err := c.cc.Invoke(ctx, "/proto_auth.ChatService/CreateContact", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *chatServiceClient) GetChat(ctx context.Context, in *GetChatRequest, opts ...grpc.CallOption) (*Chat, error) {
 	out := new(Chat)
 	err := c.cc.Invoke(ctx, "/proto_auth.ChatService/GetChat", in, out, opts...)
@@ -85,6 +95,7 @@ type ChatServiceServer interface {
 	GetChats(context.Context, *GetChatsRequest) (*ChatsStruct, error)
 	CreateChat(context.Context, *CreateChatRequest) (*CreateChatResponse, error)
 	GetContacts(context.Context, *GetContactsRequest) (*ContactsStruct, error)
+	CreateContact(context.Context, *CreateContactRequest) (*CreateContactResponse, error)
 	GetChat(context.Context, *GetChatRequest) (*Chat, error)
 	GetChatMessages(context.Context, *GetChatMessagesRequest) (*MessagesStruct, error)
 	mustEmbedUnimplementedChatServiceServer()
@@ -102,6 +113,9 @@ func (UnimplementedChatServiceServer) CreateChat(context.Context, *CreateChatReq
 }
 func (UnimplementedChatServiceServer) GetContacts(context.Context, *GetContactsRequest) (*ContactsStruct, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetContacts not implemented")
+}
+func (UnimplementedChatServiceServer) CreateContact(context.Context, *CreateContactRequest) (*CreateContactResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateContact not implemented")
 }
 func (UnimplementedChatServiceServer) GetChat(context.Context, *GetChatRequest) (*Chat, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetChat not implemented")
@@ -176,6 +190,24 @@ func _ChatService_GetContacts_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_CreateContact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateContactRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).CreateContact(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto_auth.ChatService/CreateContact",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).CreateContact(ctx, req.(*CreateContactRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ChatService_GetChat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetChatRequest)
 	if err := dec(in); err != nil {
@@ -230,6 +262,10 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetContacts",
 			Handler:    _ChatService_GetContacts_Handler,
+		},
+		{
+			MethodName: "CreateContact",
+			Handler:    _ChatService_CreateContact_Handler,
 		},
 		{
 			MethodName: "GetChat",

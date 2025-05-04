@@ -13,29 +13,34 @@ type SubscriptionRepository interface {
 	DeleteSubscription(ctx context.Context, targetUsername string, currentID int) error	
 }
 
+type ChatRepository interface {
+	CreateContact(ctx context.Context, username, targetUsername string) error
+}
+
 type SubscriptionService struct {
-	repo SubscriptionRepository
+	subRepo SubscriptionRepository
+	chatRepo ChatRepository
 }
 
 func NewSubscriptionUsecase(repo SubscriptionRepository) *SubscriptionService {
 	return &SubscriptionService{
-		repo: repo,
+		subRepo: repo,
 	}
 }
 
 func (service *SubscriptionService) GetUserFollowers(ctx context.Context, id, page, size int) ([]domain.PublicUser, error) {
-	return service.repo.GetUserFollowers(ctx, id, page, size)
+	return service.subRepo.GetUserFollowers(ctx, id, page, size)
 }
 
 func (service *SubscriptionService) GetUserFollowing(ctx context.Context, id, page, size int) ([]domain.PublicUser, error) {
-	return service.repo.GetUserFollowing(ctx, id, page, size)
+	return service.subRepo.GetUserFollowing(ctx, id, page, size)
 }
 
 func (service *SubscriptionService) CreateSubscription(ctx context.Context, targetUsername string, currentID int) error {
-	return service.repo.CreateSubscription(ctx, targetUsername, currentID)
+	return service.subRepo.CreateSubscription(ctx, targetUsername, currentID)
 }
 
 func (service *SubscriptionService) DeleteSubscription(ctx context.Context, targetUsername string, currentID int) error {
-	return service.repo.DeleteSubscription(ctx, targetUsername, currentID)
+	return service.subRepo.DeleteSubscription(ctx, targetUsername, currentID)
 }
 

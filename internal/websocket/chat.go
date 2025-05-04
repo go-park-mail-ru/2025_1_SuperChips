@@ -17,8 +17,9 @@ var (
 )
 
 type ChatRepository interface {
-	GetNewMessages(ctx context.Context, username string, offset time.Time) ([]string, error)
-	AddMessage(ctx context.Context, message domain.Message, targetUsername string) error
+	GetNewMessages(ctx context.Context, username string, offset time.Time) ([]domain.Message, error)
+	AddMessage(ctx context.Context, message domain.Message) error
+	MarkRead(ctx context.Context, messageID, chatID int) error
 }
 
 type Hub struct {
@@ -57,6 +58,52 @@ func (h *Hub) AddClient(username string, client *websocket.Conn) {
 	})
 }
 
+func (h *Hub) MarkRead(ctx context.Context, messageID, chatID int, targetUsername, senderUsername string) error {
+	if err := h.repo.MarkRead(ctx, messageID, chatID); err != nil {
+		return fmt.Errorf("couldn't mark messages as read: %v", err)
+	}
+
+	found := false
+	var targetConn *websocket.Conn
+
+	h.connect.Range(func(key, value any) bool {
+		conn := key.(*websocket.Conn)
+		username := value.(string)
+		if username == targetUsername {
+			found = true
+			targetConn = conn
+			return false
+		}
+
+		return true
+	})
+
+	// user is offline, so end here
+	if !found {
+		return nil
+	}
+
+	type MessageRead struct {
+		Description string `json:"description"`
+		MessageID   int    `json:"message_id"`
+		IsRead      bool   `json:"is_read"`
+		Sender      string `json:"sender"`
+		ChatID      int    `json:"chat_id"`
+	}
+
+	message := MessageRead{
+		Description: "mark_read",
+		MessageID:   messageID,
+		IsRead:      true,
+		Sender:      senderUsername,
+		ChatID:      chatID,
+	}
+
+	targetConn.WriteJSON(message)
+
+	return nil
+}
+
 func (h *Hub) Send(ctx context.Context, message domain.Message, targetUsername string) error {
 	found := false
 	var targetConn *websocket.Conn
@@ -74,8 +121,10 @@ func (h *Hub) Send(ctx context.Context, message domain.Message, targetUsername s
 
 		return true
 	})
-	
-	if err := h.repo.AddMessage(ctx, message, targetUsername); err != nil {
+
+	message.Recipient = targetUsername
+
+	if err := h.repo.AddMessage(ctx, message); err != nil {
 		return fmt.Errorf("error while adding message to db: %v", err)
 	}
 

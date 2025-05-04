@@ -8,7 +8,7 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build ./app/chat/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build ./app/websocket_chat/main.go
 
 FROM alpine:latest
 
@@ -16,6 +16,6 @@ WORKDIR /root
 
 COPY --from=builder /app .
 
-EXPOSE 8012
+EXPOSE 8013
 
 CMD ["./main"]

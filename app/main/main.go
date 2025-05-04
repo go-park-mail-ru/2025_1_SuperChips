@@ -11,8 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	genAuth "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/auth"
-	genFeed "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/feed"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/board"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	_ "github.com/go-park-mail-ru/2025_1_SuperChips/docs"
@@ -26,9 +24,13 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/like"
 	pincrudService "github.com/go-park-mail-ru/2025_1_SuperChips/pincrud"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/profile"
+	genAuth "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/auth"
+	genChat "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/chat"
+	genFeed "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/feed"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/search"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/subscription"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	"github.com/gorilla/websocket"
 	"github.com/swaggo/http-swagger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -43,6 +45,55 @@ var (
 	allowedOptions        = []string{http.MethodOptions}
 	allowedGetOptionsHead = []string{http.MethodGet, http.MethodOptions, http.MethodHead}
 )
+
+var upgrader = websocket.Upgrader{
+    CheckOrigin: func(r *http.Request) bool {
+        return true
+    },
+}
+
+func handleWebSocketProxy(w http.ResponseWriter, r *http.Request) {
+    clientConn, err := upgrader.Upgrade(w, r, nil)
+    if err != nil {
+        log.Println("Failed to upgrade client connection:", err)
+        return
+    }
+    defer clientConn.Close()
+
+    microserviceURL := "ws://websocket_chat:8013/ws"
+    microserviceConn, _, err := websocket.DefaultDialer.Dial(microserviceURL, nil)
+    if err != nil {
+        log.Println("Failed to connect to microservice:", err)
+        return
+    }
+    defer microserviceConn.Close()
+
+    go func() {
+        for {
+            messageType, message, err := clientConn.ReadMessage()
+            if err != nil {
+                log.Println("Error reading from client:", err)
+                break
+            }
+            if err := microserviceConn.WriteMessage(messageType, message); err != nil {
+                log.Println("Error writing to microservice:", err)
+                break
+            }
+        }
+    }()
+
+    for {
+        messageType, message, err := microserviceConn.ReadMessage()
+        if err != nil {
+            log.Println("Error reading from microservice:", err)
+            break
+        }
+        if err := clientConn.WriteMessage(messageType, message); err != nil {
+            log.Println("Error writing to client:", err)
+            break
+        }
+    }
+}
 
 // @title flow API
 // @version 1.0
@@ -123,8 +174,18 @@ func main() {
 	}
 	defer grpcConnFeed.Close()
 
+	grpcConnChat, err := grpc.NewClient(
+		"chat:8012",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer grpcConnChat.Close()
+
 	authClient := genAuth.NewAuthClient(grpcConnAuth)
 	feedClient := genFeed.NewFeedClient(grpcConnFeed)
+	chatClient := genChat.NewChatServiceClient(grpcConnChat)
 
 	authHandler := rest.AuthHandler{
 		Config:      config,
@@ -136,6 +197,11 @@ func main() {
 	subscriptionHandler := rest.SubscriptionHandler{
 		ContextExpiration: config.ContextExpiration,
 		SubscriptionService: subscriptionService,
+	}
+
+	chatHandler := rest.ChatHandler{
+		ContextExpiration: config.ContextExpiration,
+		ChatService: chatClient,
 	}
 
 	pinsHandler := rest.PinsHandler{
@@ -381,7 +447,7 @@ func main() {
 		middleware.Log(),
 		middleware.Recovery()))
 
-	// server
+	// external id
 	mux.HandleFunc("/api/v1/auth/vkid/login",
 		middleware.ChainMiddleware(authHandler.ExternalLogin,
 			middleware.CorsMiddleware(config, allowedPostOptions),
@@ -392,6 +458,8 @@ func main() {
 			middleware.CorsMiddleware(config, allowedPostOptions),
 			middleware.Log()))
 
+
+	// subscription
 	mux.HandleFunc("GET /api/v1/profile/followers",
 		middleware.ChainMiddleware(subscriptionHandler.GetUserFollowers,
 			middleware.AuthMiddleware(jwtManager, true),
@@ -423,6 +491,44 @@ func main() {
 		w.WriteHeader(http.StatusNoContent)
 	}, middleware.CorsMiddleware(config, allowedOptions),
 	middleware.Log()))
+
+	// chat
+	mux.HandleFunc("GET /api/v1/chats", middleware.ChainMiddleware(chatHandler.GetChats,
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CorsMiddleware(config, allowedGetOptions),
+		middleware.Log()))
+
+	mux.HandleFunc("POST /api/v1/chats", middleware.ChainMiddleware(chatHandler.NewChat,
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CSRFMiddleware(),
+		middleware.CorsMiddleware(config, allowedPostOptions),
+		middleware.Log()))
+
+	mux.HandleFunc("OPTIONS /api/v1/chats", middleware.ChainMiddleware(chatHandler.GetChats,
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CorsMiddleware(config, allowedGetOptions),
+		middleware.Log()))
+
+	// contacts
+	mux.HandleFunc("GET /api/v1/contacts", middleware.ChainMiddleware(chatHandler.GetContacts, 
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CorsMiddleware(config, allowedGetOptions),
+		middleware.Log()))
+
+	mux.HandleFunc("OPTIONS /api/v1/contacts", middleware.ChainMiddleware(chatHandler.GetContacts, 
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CorsMiddleware(config, allowedGetOptions),
+		middleware.Log()))
+	
+	mux.HandleFunc("POST /api/v1/contacts", middleware.ChainMiddleware(chatHandler.CreateContact,
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CSRFMiddleware(),
+		middleware.CorsMiddleware(config, allowedPostOptions),
+		middleware.Log()))
+
+	// ws
+	mux.HandleFunc("/api/v1/ws", middleware.ChainMiddleware(handleWebSocketProxy,
+		middleware.AuthMiddleware(jwtManager, true)))
 
 	server := http.Server{
 		Addr:    config.Port,
