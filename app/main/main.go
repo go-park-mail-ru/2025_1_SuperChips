@@ -66,7 +66,6 @@ func handleWebSocketProxy(w http.ResponseWriter, r *http.Request) {
         headers.Add("Cookie", cookies)
     }
 
-
     microserviceURL := "ws://websocket_chat:8013/ws"
     microserviceConn, resp, err := websocket.DefaultDialer.Dial(microserviceURL, headers)
     if err != nil {

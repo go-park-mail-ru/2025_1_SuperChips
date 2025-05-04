@@ -219,7 +219,6 @@ func (h *ChatHandler) GetChat(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ChatWebsocketHandler) WebSocketUpgrader(w http.ResponseWriter, r *http.Request) {
-	println("we are here")
 	upgrader := websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool { return true },
 	}
@@ -277,9 +276,11 @@ func (h *ChatWebsocketHandler) WebSocketUpgrader(w http.ResponseWriter, r *http.
 			}
 
 			h.Hub.MarkRead(ctx, messageID, chatID, msg["target_username"], claims.Username)
+		} else if description == "" {
+			continue
 		} else {
 			log.Println("bad request")
-			return
+			break
 		}
 	}
 
