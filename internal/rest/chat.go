@@ -237,7 +237,7 @@ func (h *ChatWebsocketHandler) WebSocketUpgrader(w http.ResponseWriter, r *http.
 	h.Hub.AddClient(claims.Username, conn)
 	
 	for {
-		var msg map[string]string
+		var msg map[string]any
 		err := conn.ReadJSON(&msg)
 		if err != nil {
 			log.Println("Error reading message:", err)
@@ -247,35 +247,49 @@ func (h *ChatWebsocketHandler) WebSocketUpgrader(w http.ResponseWriter, r *http.
 		description := msg["description"]
 		if description == "message" {
 			var message domain.Message
-			message.Content = msg["message"]
-			chatIDStr := msg["chat_id"]
-			chatID, err := strconv.Atoi(chatIDStr)
-			if err != nil {
-				log.Println("chat id not correct")
-				break
+			content, ok := msg["message"].(string)
+			if !ok {
+				conn.WriteJSON("message error")
+				continue
+			}
+			message.Content = content
+
+			chatID, ok := msg["chat_id"].(int)
+			if !ok {
+				conn.WriteJSON("message chat id error")
+				continue
 			}
 
 			message.ChatID = uint64(chatID)
 			message.Sender = claims.Username
 			
-			target := msg["username"]
+			target, ok := msg["username"].(string)
+			if !ok {
+				conn.WriteJSON("message username error")
+				continue
+			}
 
 			h.Hub.Send(ctx, message, target)
 		} else if description == "mark_read" {
-			messageIDStr := msg["message_id"]
-			messageID, err := strconv.Atoi(messageIDStr)
-			if err != nil {
-				log.Println("message id not correct")
-				break
-			}
-			chatIDStr := msg["chat_id"]
-			chatID, err := strconv.Atoi(chatIDStr)
-			if err != nil {
-				log.Println("chat id not correct")
-				break
+			messageID, ok := msg["message_id"].(int)
+			if !ok {
+				conn.WriteJSON("message id error")
+				continue
 			}
 
-			h.Hub.MarkRead(ctx, messageID, chatID, msg["target_username"], claims.Username)
+			chatID, ok := msg["chat_id"].(int)
+			if !ok {
+				conn.WriteJSON("chat id error")
+				continue
+			}
+
+			target, ok := msg["target_username"].(string)
+			if !ok {
+				conn.WriteJSON("message target username error")
+				continue
+			}
+
+			h.Hub.MarkRead(ctx, messageID, chatID, target, claims.Username)
 		} else if description == "" {
 			continue
 		} else {
