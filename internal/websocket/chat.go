@@ -140,6 +140,7 @@ func (h *Hub) Send(ctx context.Context, message domain.Message, targetUsername s
 
 	err := targetConn.WriteJSON(message)
 	if err != nil {
+		log.Printf("delivery failure: %v", err)
 		targetConn.Close()
 		h.connect.Delete(targetConn)
 		return ErrDeliveryFailure
