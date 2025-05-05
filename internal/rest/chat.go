@@ -245,6 +245,7 @@ func (h *ChatWebsocketHandler) WebSocketUpgrader(w http.ResponseWriter, r *http.
 	var msg CommonWebsocket
 
     upgrader := websocket.Upgrader{
+		HandshakeTimeout: time.Minute,
         CheckOrigin: func(r *http.Request) bool { return true },
     }
     conn, err := upgrader.Upgrade(w, r, nil)
@@ -264,12 +265,8 @@ func (h *ChatWebsocketHandler) WebSocketUpgrader(w http.ResponseWriter, r *http.
 
     h.Hub.AddClient(claims.Username, conn)
 
-	chatConn := chatWebsocket.ChatConn{
-		Conn: conn,
-	}
-
     for {
-        err := chatConn.ReadJSON(&msg)
+        err := conn.ReadJSON(&msg)
         if err != nil {
             log.Println("Error reading message:", err)
             break
