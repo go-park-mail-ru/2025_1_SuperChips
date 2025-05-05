@@ -186,19 +186,19 @@ func (repo *ChatRepository) GetChats(ctx context.Context, username string) ([]do
 				Avatar:           otherUserAvatar,
 				IsExternalAvatar: isExternalAvatar.Bool,
 				MessageCount:     uint(unreadCount.Int64),
-				LastMessage:      &domain.Message{},
+				Messages: []domain.Message{},
 			}
 		}
 
 		if messageID.Valid {
-			chatsMap[chatID].LastMessage = &domain.Message{
+			chatsMap[chatID].Messages = append(chatsMap[chatID].Messages, domain.Message{
 				MessageID: uint(messageID.Int64),
 				Content:   messageContent.String,
 				Sender:    messageSender.String,
 				Recipient: messageRecipient.String,
 				Timestamp: messageTimestamp.Time,
 				IsRead:    messageIsRead.Bool,
-			}
+			})
 		}
 	}
 

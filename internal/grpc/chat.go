@@ -111,7 +111,6 @@ func chatsToGrpc(chats []domain.Chat) []*gen.Chat {
 			Messages: &gen.MessagesStruct{
 				Messages: messagesToGrpc(chat.Messages),
 			},
-			LastMessage: messagesToGrpc([]domain.Message{*chat.LastMessage})[0],
 		})
 	}
 
