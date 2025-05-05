@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
@@ -214,7 +215,7 @@ func (repo *ChatRepository) GetChats(ctx context.Context, username string) ([]do
 	return chats, nil
 }
 
-func (repo *ChatRepository) CreateChat(ctx context.Context, targetUsername, username string) (domain.Chat, error) {
+func (repo *ChatRepository) CreateChat(ctx context.Context, username, targetUsername string) (domain.Chat, error) {
 	var chat domain.Chat
 
 	var isExternalAvatar sql.NullBool
@@ -229,6 +230,9 @@ func (repo *ChatRepository) CreateChat(ctx context.Context, targetUsername, user
 	FROM inserted_chat ic
 	JOIN flow_user u ON u.username = $1;
 	`, targetUsername, username).Scan(&chat.ChatID, &chat.Avatar, &chat.PublicName, &isExternalAvatar)
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.Chat{}, domain.ErrConflict
+	}
 	if err != nil {
 		return domain.Chat{}, err
 	}
