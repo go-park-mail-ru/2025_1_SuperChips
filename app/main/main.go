@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"log/slog"
 	"net/http"
@@ -54,57 +53,110 @@ var upgrader = websocket.Upgrader{
 }
 
 func handleWebSocketProxy(w http.ResponseWriter, r *http.Request) {
+    // 1. Upgrade client connection with proper error handling
     clientConn, err := upgrader.Upgrade(w, r, nil)
     if err != nil {
-        log.Println("Failed to upgrade client connection:", err)
+        slog.Error("Failed to upgrade client connection", "error", err)
         return
     }
     defer clientConn.Close()
 
+    // 2. Forward ALL headers (not just cookies)
     headers := http.Header{}
-    if cookies := r.Header.Get("Cookie"); cookies != "" {
-        headers.Add("Cookie", cookies)
+    for k, v := range r.Header {
+        headers[k] = v
     }
 
+    // 3. Dial microservice with timeout
+    dialCtx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+    defer cancel()
+    
     microserviceURL := "ws://websocket_chat:8013/ws"
-    microserviceConn, resp, err := websocket.DefaultDialer.Dial(microserviceURL, headers)
+    dialer := websocket.Dialer{
+        HandshakeTimeout: 5 * time.Second,
+    }
+    microserviceConn, _, err := dialer.DialContext(dialCtx, microserviceURL, headers)
     if err != nil {
-		if resp != nil {
-			bodyBytes, readErr := io.ReadAll(resp.Body)
-			if readErr != nil {
-				log.Printf("Failed to read response body: %v", readErr)
-			} else {
-				log.Printf("Response body from microservice: %s", string(bodyBytes))
-			}
-		}
-        log.Println("Failed to connect to microservice:", err)
+        slog.Error("Failed to connect to microservice", "error", err)
         return
     }
     defer microserviceConn.Close()
 
+    // 4. Configure ping/pong for BOTH connections
+    configureKeepalive(clientConn, 30*time.Second)
+    configureKeepalive(microserviceConn, 30*time.Second)
+
+    // 5. Proper bidirectional proxy with error handling
+    errChan := make(chan error, 2)
+    
+    go proxyMessages(clientConn, microserviceConn, errChan, "client->microservice")
+    go proxyMessages(microserviceConn, clientConn, errChan, "microservice->client")
+
+    // Wait for first error
+    select {
+    case err := <-errChan:
+        slog.Info("WebSocket proxy terminating", "error", err)
+    case <-r.Context().Done():
+        slog.Info("WebSocket proxy terminating", "reason", "request context done")
+    }
+}
+
+func configureKeepalive(conn *websocket.Conn, interval time.Duration) {
+    conn.SetReadDeadline(time.Now().Add(interval * 2))
+    
+    // Create a channel to signal when the connection closes
+    done := make(chan struct{})
+    
+    // Handle incoming pings
+    conn.SetPingHandler(func(appData string) error {
+        conn.SetReadDeadline(time.Now().Add(interval * 2))
+        err := conn.WriteControl(websocket.PongMessage, []byte(appData), time.Now().Add(5*time.Second))
+        if err != nil {
+            slog.Error("Failed to send pong", "error", err)
+        }
+        return err
+    })
+
+    // Set up close handler to signal the done channel
+    originalCloseHandler := conn.CloseHandler()
+    conn.SetCloseHandler(func(code int, text string) error {
+        close(done)
+        if originalCloseHandler != nil {
+            return originalCloseHandler(code, text)
+        }
+        return nil
+    })
+
+    // Send periodic pings
     go func() {
+        ticker := time.NewTicker(interval)
+        defer ticker.Stop()
+        
         for {
-            messageType, message, err := clientConn.ReadMessage()
-            if err != nil {
-                log.Println("Error reading from client:", err)
-                break
-            }
-            if err := microserviceConn.WriteMessage(messageType, message); err != nil {
-                log.Println("Error writing to microservice:", err)
-                break
+            select {
+            case <-ticker.C:
+                if err := conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(5*time.Second)); err != nil {
+                    slog.Error("Failed to send ping", "error", err)
+                    return
+                }
+            case <-done:
+                return
             }
         }
     }()
+}
 
+func proxyMessages(src, dst *websocket.Conn, errChan chan<- error, direction string) {
     for {
-        messageType, message, err := microserviceConn.ReadMessage()
+        msgType, msg, err := src.ReadMessage()
         if err != nil {
-            log.Println("Error reading from microservice:", err)
-            break
+            errChan <- fmt.Errorf("%s: %w", direction, err)
+            return
         }
-        if err := clientConn.WriteMessage(messageType, message); err != nil {
-            log.Println("Error writing to client:", err)
-            break
+        
+        if err := dst.WriteMessage(msgType, msg); err != nil {
+            errChan <- fmt.Errorf("%s: %w", direction, err)
+            return
         }
     }
 }

@@ -19,6 +19,7 @@ type Chat struct {
 	PublicName       string    `json:"public_name"`
 	IsExternalAvatar bool      `json:"-"`
 	MessageCount     uint      `json:"message_count,omitempty"`
+	LastMessage      *Message  `json:"last_message,omitempty"`
 	Messages         []Message `json:"messages,omitempty"` // only last 200 messages
 }
 
