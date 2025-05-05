@@ -309,8 +309,8 @@ func (repo *ChatRepository) AddToContacts(ctx context.Context, username, targetU
 	(user_username, contact_username)
 	VALUES
 	($1, $2)
+	ON CONFLICT (user_username, contact_username) DO NOTHING
 	RETURNING id
-	ON CONFLICT DO NOTHING
 	`, username, targetUsername).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.ErrConflict
