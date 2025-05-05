@@ -134,33 +134,33 @@ func (h *Hub) Send(ctx context.Context, message domain.Message, targetUsername s
 	return nil
 }
 
-func (h *Hub) Run(ctx context.Context) {
-	t := time.NewTicker(5 * time.Second)
-	defer t.Stop()
+// func (h *Hub) Run(ctx context.Context) {
+// 	t := time.NewTicker(5 * time.Second)
+// 	defer t.Stop()
 
-	for {
-		select {
-		case <-t.C:
-			h.connect.Range(func(key, value any) bool {
-				connect := key.(*websocket.Conn)
-				username := value.(string)
-				//для каждлого клиента читаем новые изменения
-				//тут может быть что угодно - сообщения, тексты, тд
-				messages, err := h.repo.GetNewMessages(ctx, username, h.currentOffset)
-				if err != nil {
-					log.Printf("error getting new messages: %v", err)
-				}
-				for _, message := range messages {
-					err := connect.WriteJSON(message)
-					if err != nil {
-						continue
-					}
-				}
-				return true
-			})
-			h.currentOffset = h.currentOffset.Add(5 * time.Second)
-		case <-ctx.Done():
-			return
-		}
-	}
-}
+// 	for {
+// 		select {
+// 		case <-t.C:
+// 			h.connect.Range(func(key, value any) bool {
+// 				connect := key.(*websocket.Conn)
+// 				username := value.(string)
+// 				//для каждлого клиента читаем новые изменения
+// 				//тут может быть что угодно - сообщения, тексты, тд
+// 				messages, err := h.repo.GetNewMessages(ctx, username, h.currentOffset)
+// 				if err != nil {
+// 					log.Printf("error getting new messages: %v", err)
+// 				}
+// 				for _, message := range messages {
+// 					err := connect.WriteJSON(message)
+// 					if err != nil {
+// 						continue
+// 					}
+// 				}
+// 				return true
+// 			})
+// 			h.currentOffset = h.currentOffset.Add(5 * time.Second)
+// 		case <-ctx.Done():
+// 			return
+// 		}
+// 	}
+// }
