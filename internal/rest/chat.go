@@ -244,7 +244,12 @@ func (h *ChatWebsocketHandler) WebSocketUpgrader(w http.ResponseWriter, r *http.
 			break
 		}
 
-		description := msg["description"]
+		description, ok := msg["description"].(string)
+		if !ok {
+			conn.WriteJSON("bad request")
+			continue
+		}
+		
 		if description == "message" {
 			var message domain.Message
 			content, ok := msg["message"].(string)
