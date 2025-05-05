@@ -1,9 +1,12 @@
 package websocket
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"sync"
 	"time"
@@ -132,6 +135,31 @@ func (h *Hub) Send(ctx context.Context, message domain.Message, targetUsername s
 	}
 
 	return nil
+}
+
+type ChatConn struct {
+	*websocket.Conn
+}
+
+func (c *ChatConn) ReadJSON(v interface{}) error {
+	_, r, err := c.NextReader()
+	if err != nil {
+		return err
+	}
+
+	buf := new(bytes.Buffer)
+    _, err = buf.ReadFrom(r)
+    if err != nil {
+        return err
+    }
+
+	err = json.NewDecoder(r).Decode(v)
+	if err == io.EOF {
+		fmt.Printf("resp body: %s", buf.String())
+		// One value is expected in the message.
+		err = io.ErrUnexpectedEOF
+	}
+	return err
 }
 
 // func (h *Hub) Run(ctx context.Context) {
