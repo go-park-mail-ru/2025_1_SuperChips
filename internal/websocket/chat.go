@@ -160,27 +160,3 @@ func (h *Hub) Send(ctx context.Context, message domain.Message, targetUsername s
 	return nil
 }
 
-type ChatConn struct {
-	*websocket.Conn
-}
-
-func (c *ChatConn) ReadJSON(v interface{}) error {
-    _, r, err := c.NextReader()
-	buf := new(bytes.Buffer)
-    if _, err := buf.ReadFrom(r); err != nil {
-        fmt.Printf("resp body: %s\n", buf.String())
-		return err
-    }
-    if err != nil {
-        fmt.Printf("resp body: %s\n", buf.String())
-        return err
-    }
-
-    if err := json.Unmarshal(buf.Bytes(), v); err != nil {
-        fmt.Printf("resp body: %s\n", buf.String())
-        return err
-    }
-
-    return nil
-}
-
