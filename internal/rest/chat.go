@@ -301,6 +301,7 @@ func handleMessage(ctx context.Context, conn *websocket.Conn, msg CommonWebsocke
         Content: msg.Message,
         ChatID:  uint64(msg.ChatID),
         Sender:  claims.Username,
+		Timestamp: time.Now(),
     }
 
 	log.Printf("sending a message to chat: %d", msg.ChatID)

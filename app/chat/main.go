@@ -61,8 +61,8 @@ func main() {
 	chatRepo := repository.NewChatRepository(db)
 	chatService := chat.NewChatService(chatRepo, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
 
-	hubCtx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	// hubCtx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
 
 	hub := chatWebsocket.CreateHub(chatRepo)
 	
@@ -71,7 +71,7 @@ func main() {
 		ContextExpiration: time.Second * 5,
 	}
 
-	go hub.Run(hubCtx)
+	// go hub.Run(hubCtx)
 
 	http.HandleFunc("/ws", middleware.ChainMiddleware(chatWebsocketHandler.WebSocketUpgrader, 
 		middleware.Log()))
