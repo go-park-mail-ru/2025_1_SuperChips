@@ -151,9 +151,7 @@ func (c *ChatConn) ReadJSON(v interface{}) error {
         return err
     }
 
-    // Декодируем из буфера
     if err := json.Unmarshal(buf.Bytes(), v); err != nil {
-        // Если нужно — логируем «сырое» тело
         fmt.Printf("resp body: %s\n", buf.String())
         return err
     }
