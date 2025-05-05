@@ -300,6 +300,7 @@ func (repo *ChatRepository) GetChat(ctx context.Context, id uint64, username str
             m.chat_id,
             m.content,
             m.sender,
+			m.recipient,
             m.timestamp,
             m.is_read,
             ROW_NUMBER() OVER (ORDER BY m.timestamp DESC) AS row_num
