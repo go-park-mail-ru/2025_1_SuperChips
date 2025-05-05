@@ -180,7 +180,7 @@ func (repo *SubscriptionStorage) CreateSubscription(ctx context.Context, targetU
 	UPDATE flow_user
 	SET subscriber_count = subscriber_count + 1
 	WHERE id = $1
-	`, currentID)
+	`, targetID)
 	if err != nil {
 		return err
 	}
