@@ -245,7 +245,10 @@ func (h *ChatWebsocketHandler) WebSocketUpgrader(w http.ResponseWriter, r *http.
         HttpErrorToJson(w, fmt.Errorf("failed to upgrade to websockets: %v", err).Error(), http.StatusInternalServerError)
         return
     }
-    defer conn.Close()
+    defer func() {
+		log.Println("defer closed!")
+		conn.Close()
+	}()
 
     claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
 
@@ -297,6 +300,9 @@ func handleMessage(ctx context.Context, conn *websocket.Conn, msg CommonWebsocke
 	log.Printf("sending a message to chat: %d", msg.ChatID)
 
     hub.Send(ctx, message, msg.Username)
+
+	log.Printf("message successfully sent.")
+
     return nil
 }
 
