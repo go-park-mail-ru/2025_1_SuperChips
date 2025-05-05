@@ -277,6 +277,7 @@ func (h *ChatWebsocketHandler) WebSocketUpgrader(w http.ResponseWriter, r *http.
             continue
         }
 
+		log.Println("about to process socket")
         if err := handler(ctx, conn, msg, claims, h.Hub); err != nil {
             log.Printf("Error handling message type '%s': %v", description, err)
             if err := conn.WriteJSON(fmt.Sprintf("error processing %s", description)); err != nil {
