@@ -53,7 +53,6 @@ var upgrader = websocket.Upgrader{
 }
 
 func handleWebSocketProxy(w http.ResponseWriter, r *http.Request) {
-    // 1. Upgrade client connection with proper error handling
     clientConn, err := upgrader.Upgrade(w, r, nil)
     if err != nil {
         slog.Error("Failed to upgrade client connection", "error", err)
@@ -61,13 +60,11 @@ func handleWebSocketProxy(w http.ResponseWriter, r *http.Request) {
     }
     defer clientConn.Close()
 
-    // 2. Forward ALL headers (not just cookies)
     headers := http.Header{}
-    for k, v := range r.Header {
-        headers[k] = v
+    if cookies := r.Header.Get("Cookie"); cookies != "" {
+        headers.Add("Cookie", cookies)
     }
 
-    // 3. Dial microservice with timeout
     dialCtx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
     defer cancel()
     
