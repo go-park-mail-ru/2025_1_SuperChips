@@ -21,7 +21,7 @@ type ChatHandler struct {
 }
 
 type ChatWebsocketHandler struct {
-	Hub *chatWebsocket.Hub
+	Hub               *chatWebsocket.Hub
 	ContextExpiration time.Duration
 }
 
@@ -91,7 +91,7 @@ func (h *ChatHandler) NewChat(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	grpcResp, err := h.ChatService.CreateChat(ctx, &gen.CreateChatRequest{
-		Username: claims.Username,
+		Username:       claims.Username,
 		TargetUsername: target.Username,
 	})
 	if err != nil {
@@ -161,7 +161,7 @@ func (h *ChatHandler) CreateContact(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	grpcResp, err := h.ChatService.CreateContact(ctx, &gen.CreateContactRequest{
-		Username: claims.Username,
+		Username:       claims.Username,
 		TargetUsername: user.Username,
 	})
 	if err != nil {
@@ -227,75 +227,75 @@ func (h *ChatHandler) GetChat(w http.ResponseWriter, r *http.Request) {
 type MessageHandler func(ctx context.Context, conn *websocket.Conn, msg CommonWebsocket, claims *auth.Claims, hub *chatWebsocket.Hub) error
 
 var handlers = map[string]MessageHandler{
-    "message":  handleMessage,
-    "mark_read": handleMarkRead,
-	"connect": handleConnect,
+	"message":   handleMessage,
+	"mark_read": handleMarkRead,
+	"connect":   handleConnect,
 }
 
 type CommonWebsocket struct {
-	Description string `json:"description"`
-	Message string `json:"message"`
-	ChatID int `json:"chat_id"`
-	MessageID int `json:"message_id"`
-	Username string `json:"username"`
+	Description    string `json:"description"`
+	Message        string `json:"message"`
+	ChatID         int    `json:"chat_id"`
+	MessageID      int    `json:"message_id"`
+	Username       string `json:"username"`
 	TargetUsername string `json:"target_username"`
 }
 
 func (h *ChatWebsocketHandler) WebSocketUpgrader(w http.ResponseWriter, r *http.Request) {
 	var msg CommonWebsocket
 
-    upgrader := websocket.Upgrader{
+	upgrader := websocket.Upgrader{
 		HandshakeTimeout: time.Minute,
-        CheckOrigin: func(r *http.Request) bool { return true },
-    }
-    conn, err := upgrader.Upgrade(w, r, nil)
-    if err != nil {
-        HttpErrorToJson(w, fmt.Errorf("failed to upgrade to websockets: %v", err).Error(), http.StatusInternalServerError)
-        return
-    }
-    defer func() {
+		CheckOrigin:      func(r *http.Request) bool { return true },
+	}
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		HttpErrorToJson(w, fmt.Errorf("failed to upgrade to websockets: %v", err).Error(), http.StatusInternalServerError)
+		return
+	}
+	defer func() {
 		log.Println("defer closed!")
 		conn.Close()
 	}()
 
-    claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
+	claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
 
-    ctx, cancel := context.WithCancel(context.Background())
-    defer cancel()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-    h.Hub.AddClient(claims.Username, conn)
+	h.Hub.AddClient(claims.Username, conn)
 
-    for {
-        err := conn.ReadJSON(&msg)
-        if err != nil {
-            log.Println("Error reading message:", err)
-            break
-        }
+	for {
+		err := conn.ReadJSON(&msg)
+		if err != nil {
+			log.Println("Error reading message:", err)
+			break
+		}
 
-        description := msg.Description
-        if description == "" {
-            if err := conn.WriteJSON("bad request"); err != nil {
-                log.Println("Failed to write error response:", err)
-            }
-            continue
-        }
+		description := msg.Description
+		if description == "" {
+			if err := conn.WriteJSON("bad request"); err != nil {
+				log.Println("Failed to write error response:", err)
+			}
+			continue
+		}
 
-        handler, exists := handlers[description]
-        if !exists {
-            if err := conn.WriteJSON("unknown message type"); err != nil {
-                log.Println("Failed to write error response:", err)
-            }
-            continue
-        }
+		handler, exists := handlers[description]
+		if !exists {
+			if err := conn.WriteJSON("unknown message type"); err != nil {
+				log.Println("Failed to write error response:", err)
+			}
+			continue
+		}
 
 		log.Println("about to process socket")
-        if err := handler(ctx, conn, msg, claims, h.Hub); err != nil {
-            log.Printf("Error handling message type '%s': %v", description, err)
-            if err := conn.WriteJSON(fmt.Sprintf("error processing %s", description)); err != nil {
-                log.Println("Failed to write error response:", err)
-            }
-        }
-    }
+		if err := handler(ctx, conn, msg, claims, h.Hub); err != nil {
+			log.Printf("Error handling message type '%s': %v", description, err)
+			if err := conn.WriteJSON(fmt.Sprintf("error processing %s", description)); err != nil {
+				log.Println("Failed to write error response:", err)
+			}
+		}
+	}
 }
 
 func handleConnect(ctx context.Context, conn *websocket.Conn, msg CommonWebsocket, claims *auth.Claims, hub *chatWebsocket.Hub) error {
@@ -303,27 +303,28 @@ func handleConnect(ctx context.Context, conn *websocket.Conn, msg CommonWebsocke
 }
 
 func handleMessage(ctx context.Context, conn *websocket.Conn, msg CommonWebsocket, claims *auth.Claims, hub *chatWebsocket.Hub) error {
-    message := domain.Message{
-        Content: msg.Message,
-        ChatID:  uint64(msg.ChatID),
-        Sender:  claims.Username,
+	message := domain.Message{
+		Content:   msg.Message,
+		ChatID:    uint64(msg.ChatID),
+		Sender:    claims.Username,
 		Timestamp: time.Now(),
-    }
+		Sent:      true,
+	}
 
 	log.Printf("sending a message to chat: %d", msg.ChatID)
 
-    if err := hub.Send(ctx, message, msg.Username); err != nil {
+	if err := hub.Send(ctx, message, msg.Username); err != nil {
 		log.Printf("error sending message: %v", err)
 	} else {
 		log.Printf("message successfully sent.")
 	}
 
-    return nil
+	return nil
 }
 
 func handleMarkRead(ctx context.Context, conn *websocket.Conn, msg CommonWebsocket, claims *auth.Claims, hub *chatWebsocket.Hub) error {
-    hub.MarkRead(ctx, msg.MessageID, msg.ChatID, msg.TargetUsername, claims.Username)
-    return nil
+	hub.MarkRead(ctx, msg.MessageID, msg.ChatID, msg.TargetUsername, claims.Username)
+	return nil
 }
 
 func contactsToNormal(grpcContacts []*gen.Contact) []domain.Contact {

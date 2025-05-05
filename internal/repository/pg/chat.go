@@ -34,6 +34,7 @@ func (repo *ChatRepository) GetNewMessages(ctx context.Context, username string,
 	FROM message
 	WHERE timestamp > $1
 	AND recipient = $2
+	AND sent = false;
 	`, offset, username)
 	if err != nil {
 		return nil, err
@@ -66,9 +67,9 @@ func (repo *ChatRepository) GetNewMessages(ctx context.Context, username string,
 
 func (repo *ChatRepository) AddMessage(ctx context.Context, message domain.Message) error {
 	_, err := repo.db.ExecContext(ctx, `
-	INSERT INTO message (content, sender, recipient, chat_id)
-	VALUES ($1, $2, $3, $4)
-	`, message.Content, message.Sender, message.Recipient, message.ChatID)
+	INSERT INTO message (content, sender, recipient, chat_id, sent)
+	VALUES ($1, $2, $3, $4, $5)
+	`, message.Content, message.Sender, message.Recipient, message.ChatID, message.Sent)
 	if err != nil {
 		return err
 	}

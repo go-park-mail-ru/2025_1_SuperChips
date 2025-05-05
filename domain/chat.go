@@ -10,6 +10,7 @@ type Message struct {
 	Sender    string    `json:"sender"`
 	Recipient string    `json:"recipient"`
 	ChatID    uint64    `json:"chat_id"`
+	Sent      bool      `json:"-"`
 }
 
 type Chat struct {
