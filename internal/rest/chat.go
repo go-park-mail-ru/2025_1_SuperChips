@@ -218,14 +218,26 @@ func (h *ChatHandler) GetChat(w http.ResponseWriter, r *http.Request) {
 	ServerGenerateJSONResponse(w, resp, http.StatusOK)
 }
 
-type MessageHandler func(ctx context.Context, conn *websocket.Conn, msg map[string]any, claims *auth.Claims, hub *chatWebsocket.Hub) error
+type MessageHandler func(ctx context.Context, conn *websocket.Conn, msg CommonWebsocket, claims *auth.Claims, hub *chatWebsocket.Hub) error
 
 var handlers = map[string]MessageHandler{
     "message":  handleMessage,
     "mark_read": handleMarkRead,
 }
 
+type CommonWebsocket struct {
+	Description string `json:"description"`
+	Message string `json:"message"`
+	ChatID int `json:"chat_id"`
+	MessageID int `json:"message_id"`
+	Username string `json:"username"`
+	TargetUsername string `json:"target_username"`
+}
+
 func (h *ChatWebsocketHandler) WebSocketUpgrader(w http.ResponseWriter, r *http.Request) {
+
+	var msg CommonWebsocket
+
     upgrader := websocket.Upgrader{
         CheckOrigin: func(r *http.Request) bool { return true },
     }
@@ -244,15 +256,14 @@ func (h *ChatWebsocketHandler) WebSocketUpgrader(w http.ResponseWriter, r *http.
     h.Hub.AddClient(claims.Username, conn)
 
     for {
-        var msg map[string]any
         err := conn.ReadJSON(&msg)
         if err != nil {
             log.Println("Error reading message:", err)
             break
         }
 
-        description, ok := msg["description"].(string)
-        if !ok || description == "" {
+        description := msg.Description
+        if description == "" {
             if err := conn.WriteJSON("bad request"); err != nil {
                 log.Println("Failed to write error response:", err)
             }
@@ -276,61 +287,19 @@ func (h *ChatWebsocketHandler) WebSocketUpgrader(w http.ResponseWriter, r *http.
     }
 }
 
-func handleMessage(ctx context.Context, conn *websocket.Conn, msg map[string]any, claims *auth.Claims, hub *chatWebsocket.Hub) error {
-    content, ok := msg["message"].(string)
-    if !ok {
-        return fmt.Errorf("missing or invalid 'message' field")
-    }
-
-    chatID, ok := msg["chat_id"].(string)
-    if !ok {
-        return fmt.Errorf("missing or invalid 'chat_id' field")
-    }
-	chatIDInt, err := strconv.Atoi(chatID)
-	if err != nil {
-		return fmt.Errorf("invalid 'chat_id' field")
-	}
-
-    target, ok := msg["username"].(string)
-    if !ok {
-        return fmt.Errorf("missing or invalid 'username' field")
-    }
-
+func handleMessage(ctx context.Context, conn *websocket.Conn, msg CommonWebsocket, claims *auth.Claims, hub *chatWebsocket.Hub) error {
     message := domain.Message{
-        Content: content,
-        ChatID:  uint64(chatIDInt),
+        Content: msg.Message,
+        ChatID:  uint64(msg.ChatID),
         Sender:  claims.Username,
     }
 
-    hub.Send(ctx, message, target)
+    hub.Send(ctx, message, msg.Username)
     return nil
 }
 
-func handleMarkRead(ctx context.Context, conn *websocket.Conn, msg map[string]any, claims *auth.Claims, hub *chatWebsocket.Hub) error {
-    messageIDStr, ok := msg["message_id"].(string)
-    if !ok {
-        return fmt.Errorf("missing or invalid 'message_id' field")
-    }
-	messageID, err := strconv.Atoi(messageIDStr)
-	if err != nil {
-        return fmt.Errorf("invalid 'message_id' field")
-	}
-
-    chatIDStr, ok := msg["chat_id"].(string)
-    if !ok {
-        return fmt.Errorf("missing or invalid 'chat_id' field")
-    }
-	chatID, err := strconv.Atoi(chatIDStr)
-	if err != nil {
-		return fmt.Errorf("invalid 'chat_id' field")
-	}
-
-    target, ok := msg["target_username"].(string)
-    if !ok {
-        return fmt.Errorf("missing or invalid 'target_username' field")
-    }
-
-    hub.MarkRead(ctx, messageID, chatID, target, claims.Username)
+func handleMarkRead(ctx context.Context, conn *websocket.Conn, msg CommonWebsocket, claims *auth.Claims, hub *chatWebsocket.Hub) error {
+    hub.MarkRead(ctx, msg.MessageID, msg.ChatID, msg.TargetUsername, claims.Username)
     return nil
 }
 
