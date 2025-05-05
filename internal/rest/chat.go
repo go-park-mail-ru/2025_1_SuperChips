@@ -250,7 +250,7 @@ func (h *ChatWebsocketHandler) WebSocketUpgrader(w http.ResponseWriter, r *http.
 
     claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
 
-    ctx, cancel := context.WithTimeout(context.Background(), h.ContextExpiration)
+    ctx, cancel := context.WithCancel(context.Background())
     defer cancel()
 
     h.Hub.AddClient(claims.Username, conn)
