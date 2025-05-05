@@ -142,24 +142,24 @@ type ChatConn struct {
 }
 
 func (c *ChatConn) ReadJSON(v interface{}) error {
-	_, r, err := c.NextReader()
-	if err != nil {
-		return err
-	}
-
-	buf := new(bytes.Buffer)
-    _, err = buf.ReadFrom(r)
+    _, r, err := c.NextReader()
     if err != nil {
         return err
     }
 
-	err = json.NewDecoder(r).Decode(v)
-	if err == io.EOF {
-		fmt.Printf("resp body: %s", buf.String())
-		// One value is expected in the message.
-		err = io.ErrUnexpectedEOF
-	}
-	return err
+    buf := new(bytes.Buffer)
+    if _, err := buf.ReadFrom(r); err != nil {
+        return err
+    }
+
+    // Декодируем из буфера
+    if err := json.Unmarshal(buf.Bytes(), v); err != nil {
+        // Если нужно — логируем «сырое» тело
+        fmt.Printf("resp body: %s\n", buf.String())
+        return err
+    }
+
+    return nil
 }
 
 // func (h *Hub) Run(ctx context.Context) {
