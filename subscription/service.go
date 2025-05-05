@@ -2,6 +2,7 @@ package subscription
 
 import (
 	"context"
+	"path/filepath"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
@@ -19,21 +20,48 @@ type ChatRepository interface {
 
 type SubscriptionService struct {
 	subRepo SubscriptionRepository
-	chatRepo ChatRepository
+	baseURL  string
+	staticDir string
+	avatarDir string
 }
 
-func NewSubscriptionUsecase(repo SubscriptionRepository) *SubscriptionService {
+func NewSubscriptionUsecase(repo SubscriptionRepository, baseURL, staticDir, avatarDir string) *SubscriptionService {
 	return &SubscriptionService{
 		subRepo: repo,
+		baseURL: baseURL,
+		staticDir: staticDir,
+		avatarDir: avatarDir,
 	}
 }
 
 func (service *SubscriptionService) GetUserFollowers(ctx context.Context, id, page, size int) ([]domain.PublicUser, error) {
-	return service.subRepo.GetUserFollowers(ctx, id, page, size)
+	followers, err := service.subRepo.GetUserFollowers(ctx, id, page, size)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range followers {
+		if !followers[i].IsExternalAvatar {
+			followers[i].Avatar = service.generateAvatarURL(followers[i].Avatar)
+		}
+	}
+
+	return followers, nil
 }
 
 func (service *SubscriptionService) GetUserFollowing(ctx context.Context, id, page, size int) ([]domain.PublicUser, error) {
-	return service.subRepo.GetUserFollowing(ctx, id, page, size)
+	following, err := service.subRepo.GetUserFollowing(ctx, id, page, size)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range following {
+		if !following[i].IsExternalAvatar {
+			following[i].Avatar = service.generateAvatarURL(following[i].Avatar)
+		}
+	}
+
+	return following, nil
 }
 
 func (service *SubscriptionService) CreateSubscription(ctx context.Context, targetUsername string, currentID int) error {
@@ -42,5 +70,13 @@ func (service *SubscriptionService) CreateSubscription(ctx context.Context, targ
 
 func (service *SubscriptionService) DeleteSubscription(ctx context.Context, targetUsername string, currentID int) error {
 	return service.subRepo.DeleteSubscription(ctx, targetUsername, currentID)
+}
+
+func (s *SubscriptionService) generateAvatarURL(filename string) string {
+	if filename == "" {
+		return ""
+	}
+
+	return s.baseURL + filepath.Join(s.staticDir, s.avatarDir, filename)
 }
 
