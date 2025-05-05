@@ -346,7 +346,7 @@ func (repo *ChatRepository) GetChat(ctx context.Context, id uint64, username str
 			messageID           sql.NullInt64
 			messageContent      sql.NullString
 			messageSender       sql.NullString
-			messageRecipient    string
+			messageRecipient    sql.NullString
 			messageTimestamp    sql.NullTime
 			messageIsRead       sql.NullBool
 		)
@@ -384,7 +384,7 @@ func (repo *ChatRepository) GetChat(ctx context.Context, id uint64, username str
 				Sender:    messageSender.String,
 				Timestamp: messageTimestamp.Time,
 				IsRead:    messageIsRead.Bool,
-				Recipient: messageRecipient,
+				Recipient: messageRecipient.String,
 			})
 		}
 	}

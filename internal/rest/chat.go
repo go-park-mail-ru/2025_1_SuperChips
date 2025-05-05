@@ -51,7 +51,9 @@ func (h *ChatHandler) GetChats(w http.ResponseWriter, r *http.Request) {
 
 	chats := chatsToNormal(grpcResp.Chats)
 	for i := range chats {
-		chats[i].LastMessage = &chats[i].Messages[0]
+		if len(chats[i].Messages) > 0 {
+			chats[i].LastMessage = &chats[i].Messages[0]
+		}
 		chats[i].Messages = nil
 	}
 
