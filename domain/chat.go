@@ -4,7 +4,7 @@ import "time"
 
 type Message struct {
 	MessageID uint      `json:"message_id"`
-	Content   string    `json:"content"`
+	Content   string    `json:"message"`
 	Timestamp time.Time `json:"timestamp"`
 	IsRead    bool      `json:"is_read"`
 	Sender    string    `json:"sender"`
