@@ -221,14 +221,24 @@ func (repo *ChatRepository) CreateChat(ctx context.Context, username, targetUser
 	var isExternalAvatar sql.NullBool
 
 	err := repo.db.QueryRowContext(ctx, `
-	WITH inserted_chat AS (
-		INSERT INTO chat (user1, user2)
-		VALUES ($1, $2)
-		RETURNING id
-	)
-	SELECT ic.id, u.avatar, u.public_name, u.is_external_avatar
-	FROM inserted_chat ic
-	JOIN flow_user u ON u.username = $1;
+    WITH normalized_users AS (
+        SELECT 
+            LEAST($1, $2) AS user1,
+            GREATEST($1, $2) AS user2
+    ),
+    inserted_chat AS (
+        INSERT INTO chat (user1, user2)
+        SELECT user1, user2 FROM normalized_users
+        ON CONFLICT (user1, user2) DO NOTHING
+        RETURNING id
+    )
+    SELECT 
+        ic.id,
+        u.avatar,
+        u.public_name,
+        u.is_external_avatar
+    FROM inserted_chat ic
+    JOIN flow_user u ON u.username = $2;
 	`, targetUsername, username).Scan(&chat.ChatID, &chat.Avatar, &chat.PublicName, &isExternalAvatar)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Chat{}, domain.ErrConflict
@@ -282,18 +292,34 @@ func (repo *ChatRepository) GetContacts(ctx context.Context, username string) ([
 }
 
 func (repo *ChatRepository) CreateContact(ctx context.Context, username, targetUsername string) (domain.Chat, error) {
-	_, err := repo.db.ExecContext(ctx, `
-	INSERT INTO contact
-	(user_username, contact_username)
-	VALUES
-	($1, $2)
-	ON CONFLICT DO NOTHING
-	`, username, targetUsername)
+	
+	err := repo.AddToContacts(ctx, username, targetUsername)
 	if err != nil {
 		return domain.Chat{}, err
 	}
 
 	return repo.CreateChat(ctx, targetUsername, username)
+}
+
+func (repo *ChatRepository) AddToContacts(ctx context.Context, username, targetUsername string) error {
+	var id sql.NullInt64
+	
+	err := repo.db.QueryRowContext(ctx, `
+	INSERT INTO contact
+	(user_username, contact_username)
+	VALUES
+	($1, $2)
+	RETURNING id
+	ON CONFLICT DO NOTHING
+	`, username, targetUsername).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.ErrConflict
+	}
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (repo *ChatRepository) GetChat(ctx context.Context, id uint64, username string) (domain.Chat, error) {

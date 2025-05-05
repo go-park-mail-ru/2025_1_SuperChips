@@ -15,7 +15,7 @@ import (
 type SubscriptionService interface {
 	GetUserFollowers(ctx context.Context, id, page, size int) ([]domain.PublicUser, error)
 	GetUserFollowing(ctx context.Context, id, page, size int) ([]domain.PublicUser, error)
-	CreateSubscription(ctx context.Context, targetUsername string, currentID int) error
+	CreateSubscription(ctx context.Context, username, targetUsername string, currentID int) error
 	DeleteSubscription(ctx context.Context, targetUsername string, currentID int) error
 }
 
@@ -121,7 +121,7 @@ func (h *SubscriptionHandler) CreateSubscription(w http.ResponseWriter, r *http.
 	ctx, cancel := context.WithTimeout(context.Background(), h.ContextExpiration)
 	defer cancel()
 
-	if err := h.SubscriptionService.CreateSubscription(ctx, subData.TargetUsername, claims.UserID); err != nil {
+	if err := h.SubscriptionService.CreateSubscription(ctx, claims.Username, subData.TargetUsername, claims.UserID); err != nil {
 		handleSubscriptionError(w, err)
 		return
 	}

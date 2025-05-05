@@ -160,10 +160,11 @@ func main() {
 	likeStorage := pgStorage.NewPgLikeStorage(db)
 	boardStorage := pgStorage.NewBoardStorage(db)
 	searchStorage := pgStorage.NewSearchRepository(db)
+	chatStorage := pgStorage.NewChatRepository(db)
 
 	jwtManager := auth.NewJWTManager(config)
 
-	subscriptionService := subscription.NewSubscriptionUsecase(subscriptionStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
+	subscriptionService := subscription.NewSubscriptionUsecase(subscriptionStorage, chatStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
 	pinCRUDService := pincrudService.NewPinCRUDService(pinStorage, boardStorage, imageStorage)
 	profileService := profile.NewProfileService(profileStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
 	boardService := board.NewBoardService(boardStorage, config.BaseUrl, config.ImageBaseDir)

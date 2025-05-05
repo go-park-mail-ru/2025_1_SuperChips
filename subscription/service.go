@@ -2,6 +2,7 @@ package subscription
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
@@ -14,20 +15,22 @@ type SubscriptionRepository interface {
 	DeleteSubscription(ctx context.Context, targetUsername string, currentID int) error	
 }
 
-type ChatRepository interface {
-	CreateContact(ctx context.Context, username, targetUsername string) error
+type ContactRepository interface {
+	AddToContacts(ctx context.Context, username, targetUsername string) error
 }
 
 type SubscriptionService struct {
 	subRepo SubscriptionRepository
+	contactRepo ContactRepository
 	baseURL  string
 	staticDir string
 	avatarDir string
 }
 
-func NewSubscriptionUsecase(repo SubscriptionRepository, baseURL, staticDir, avatarDir string) *SubscriptionService {
+func NewSubscriptionUsecase(repo SubscriptionRepository, contactRepo ContactRepository, baseURL, staticDir, avatarDir string) *SubscriptionService {
 	return &SubscriptionService{
 		subRepo: repo,
+		contactRepo: contactRepo,
 		baseURL: baseURL,
 		staticDir: staticDir,
 		avatarDir: avatarDir,
@@ -64,7 +67,12 @@ func (service *SubscriptionService) GetUserFollowing(ctx context.Context, id, pa
 	return following, nil
 }
 
-func (service *SubscriptionService) CreateSubscription(ctx context.Context, targetUsername string, currentID int) error {
+func (service *SubscriptionService) CreateSubscription(ctx context.Context, username, targetUsername string, currentID int) error {
+	err := service.contactRepo.AddToContacts(ctx, username, targetUsername)
+	if err != nil && !errors.Is(err, domain.ErrConflict) {
+		return err
+	}
+
 	return service.subRepo.CreateSubscription(ctx, targetUsername, currentID)
 }
 
