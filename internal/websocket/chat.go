@@ -25,6 +25,11 @@ type ChatRepository interface {
 	MarkRead(ctx context.Context, messageID, chatID int) error
 }
 
+const (
+    pongWait   = 60 * time.Second
+    pingPeriod = (pongWait * 9) / 10
+)
+
 type Hub struct {
 	connect       sync.Map
 	currentOffset time.Time
@@ -40,13 +45,31 @@ func CreateHub(repo ChatRepository) *Hub {
 }
 
 func (h *Hub) AddClient(username string, client *websocket.Conn) {
-	h.connect.Store(client, username)
+    h.connect.Store(client, username)
 
-	client.SetCloseHandler(func(code int, text string) error {
-		log.Println("deleted user")
-		h.connect.Delete(client)
-		return nil
-	})
+    client.SetReadDeadline(time.Now().Add(pongWait))
+    client.SetPongHandler(func(string) error {
+        client.SetReadDeadline(time.Now().Add(pongWait))
+        return nil
+    })
+
+    go func() {
+        ticker := time.NewTicker(pingPeriod)
+        defer ticker.Stop()
+        for {
+            if err := client.WriteMessage(websocket.PingMessage, nil); err != nil {
+                client.Close()
+                h.connect.Delete(client)
+                return
+            }
+            time.Sleep(pingPeriod)
+        }
+    }()
+
+    client.SetCloseHandler(func(code int, text string) error {
+        h.connect.Delete(client)
+        return nil
+    })
 }
 
 func (h *Hub) MarkRead(ctx context.Context, messageID, chatID int, targetUsername, senderUsername string) error {
