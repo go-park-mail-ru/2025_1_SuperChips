@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"log/slog"
 	"net/http"
@@ -55,7 +56,7 @@ var upgrader = websocket.Upgrader{
 func handleWebSocketProxy(w http.ResponseWriter, r *http.Request) {
     clientConn, err := upgrader.Upgrade(w, r, nil)
     if err != nil {
-        slog.Error("Failed to upgrade client connection", "error", err)
+        log.Println("Failed to upgrade client connection:", err)
         return
     }
     defer clientConn.Close()
@@ -65,88 +66,45 @@ func handleWebSocketProxy(w http.ResponseWriter, r *http.Request) {
         headers.Add("Cookie", cookies)
     }
 
-    dialCtx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-    defer cancel()
-    
     microserviceURL := "ws://websocket_chat:8013/ws"
-    dialer := websocket.Dialer{
-        HandshakeTimeout: 5 * time.Second,
-    }
-    microserviceConn, _, err := dialer.DialContext(dialCtx, microserviceURL, headers)
+    microserviceConn, resp, err := websocket.DefaultDialer.Dial(microserviceURL, headers)
     if err != nil {
-        slog.Error("Failed to connect to microservice", "error", err)
+		if resp != nil {
+			bodyBytes, readErr := io.ReadAll(resp.Body)
+			if readErr != nil {
+				log.Printf("Failed to read response body: %v", readErr)
+			} else {
+				log.Printf("Response body from microservice: %s", string(bodyBytes))
+			}
+		}
+        log.Println("Failed to connect to microservice:", err)
         return
     }
     defer microserviceConn.Close()
 
-    configureKeepalive(clientConn, 30*time.Second)
-    configureKeepalive(microserviceConn, 30*time.Second)
-
-    errChan := make(chan error, 2)
-    
-    go proxyMessages(clientConn, microserviceConn, errChan, "client->microservice")
-    go proxyMessages(microserviceConn, clientConn, errChan, "microservice->client")
-
-    select {
-    case err := <-errChan:
-        slog.Info("WebSocket proxy terminating", "error", err)
-    case <-r.Context().Done():
-        slog.Info("WebSocket proxy terminating", "reason", "request context done")
-    }
-}
-
-func configureKeepalive(conn *websocket.Conn, interval time.Duration) {
-    conn.SetReadDeadline(time.Now().Add(interval * 2))
-    
-    done := make(chan struct{})
-    
-    conn.SetPingHandler(func(appData string) error {
-        conn.SetReadDeadline(time.Now().Add(interval * 2))
-        err := conn.WriteControl(websocket.PongMessage, []byte(appData), time.Now().Add(5*time.Second))
-        if err != nil {
-            slog.Error("Failed to send pong", "error", err)
-        }
-        return err
-    })
-
-    originalCloseHandler := conn.CloseHandler()
-    conn.SetCloseHandler(func(code int, text string) error {
-        close(done)
-        if originalCloseHandler != nil {
-            return originalCloseHandler(code, text)
-        }
-        return nil
-    })
-
     go func() {
-        ticker := time.NewTicker(interval)
-        defer ticker.Stop()
-        
         for {
-            select {
-            case <-ticker.C:
-                if err := conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(5*time.Second)); err != nil {
-                    slog.Error("Failed to send ping", "error", err)
-                    return
-                }
-            case <-done:
-                return
+            messageType, message, err := clientConn.ReadMessage()
+            if err != nil {
+                log.Println("Error reading from client:", err)
+                break
+            }
+            if err := microserviceConn.WriteMessage(messageType, message); err != nil {
+                log.Println("Error writing to microservice:", err)
+                break
             }
         }
     }()
-}
 
-func proxyMessages(src, dst *websocket.Conn, errChan chan<- error, direction string) {
     for {
-        msgType, msg, err := src.ReadMessage()
+        messageType, message, err := microserviceConn.ReadMessage()
         if err != nil {
-            errChan <- fmt.Errorf("%s: %w", direction, err)
-            return
+            log.Println("Error reading from microservice:", err)
+            break
         }
-        
-        if err := dst.WriteMessage(msgType, msg); err != nil {
-            errChan <- fmt.Errorf("%s: %w", direction, err)
-            return
+        if err := clientConn.WriteMessage(messageType, message); err != nil {
+            log.Println("Error writing to client:", err)
+            break
         }
     }
 }

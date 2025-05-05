@@ -27,6 +27,7 @@ message Chat {
     string PublicName = 4;
     uint64 MessageCount = 5;
     MessagesStruct Messages = 6;
+    Message LastMessage = 7;
 }
 
 message ChatsStruct {

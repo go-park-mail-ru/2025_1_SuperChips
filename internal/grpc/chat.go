@@ -75,12 +75,11 @@ func (h *GrpcChatHandler) CreateContact(ctx context.Context, in *gen.CreateConta
 	}
 
 	return &gen.CreateContactResponse{
-		ChatID: uint64(resp.ChatID),
-		Avatar: resp.Avatar,
+		ChatID:     uint64(resp.ChatID),
+		Avatar:     resp.Avatar,
 		PublicName: resp.PublicName,
 	}, nil
 }
-
 
 func (h *GrpcChatHandler) GetChat(ctx context.Context, in *gen.GetChatRequest) (*gen.Chat, error) {
 	chat, err := h.usecase.GetChat(ctx, in.ChatID, in.Username)
@@ -98,21 +97,21 @@ func (h *GrpcChatHandler) GetChatMessages(ctx context.Context, in *gen.GetChatMe
 	return nil, nil
 }
 
-
 func chatsToGrpc(chats []domain.Chat) []*gen.Chat {
 	var grpc []*gen.Chat
 
 	for i := range chats {
 		chat := chats[i]
 		grpc = append(grpc, &gen.Chat{
-			ChatID: uint64(chat.ChatID),
-			Username: chat.Username,
-			Avatar: chat.Avatar,
-			PublicName: chat.PublicName,
+			ChatID:       uint64(chat.ChatID),
+			Username:     chat.Username,
+			Avatar:       chat.Avatar,
+			PublicName:   chat.PublicName,
 			MessageCount: uint64(chat.MessageCount),
 			Messages: &gen.MessagesStruct{
 				Messages: messagesToGrpc(chat.Messages),
 			},
+			LastMessage: messagesToGrpc([]domain.Message{*chat.LastMessage})[0],
 		})
 	}
 
@@ -126,12 +125,12 @@ func messagesToGrpc(messages []domain.Message) []*gen.Message {
 		message := messages[i]
 		grpc = append(grpc, &gen.Message{
 			MessageID: uint64(message.MessageID),
-			Content: message.Content,
-			Sender: message.Sender,
+			Content:   message.Content,
+			Sender:    message.Sender,
 			Timestamp: timestamppb.New(message.Timestamp),
-			IsRead: message.IsRead,
+			IsRead:    message.IsRead,
 			Recipient: message.Recipient,
-			ChatID: message.ChatID,
+			ChatID:    message.ChatID,
 		})
 	}
 
@@ -144,9 +143,9 @@ func contactsToGrpc(contacts []domain.Contact) []*gen.Contact {
 	for i := range contacts {
 		contact := contacts[i]
 		grpc = append(grpc, &gen.Contact{
-			Username: contact.Username,
+			Username:       contact.Username,
 			PublicUsername: contact.Username,
-			Avatar: contact.Avatar,
+			Avatar:         contact.Avatar,
 		})
 	}
 
