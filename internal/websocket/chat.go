@@ -43,6 +43,7 @@ func (h *Hub) AddClient(username string, client *websocket.Conn) {
 	h.connect.Store(client, username)
 
 	client.SetCloseHandler(func(code int, text string) error {
+		log.Println("deleted user")
 		h.connect.Delete(client)
 		return nil
 	})

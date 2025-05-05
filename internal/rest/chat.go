@@ -229,6 +229,7 @@ type MessageHandler func(ctx context.Context, conn *websocket.Conn, msg CommonWe
 var handlers = map[string]MessageHandler{
     "message":  handleMessage,
     "mark_read": handleMarkRead,
+	"connect": handleConnect,
 }
 
 type CommonWebsocket struct {
@@ -298,6 +299,10 @@ func (h *ChatWebsocketHandler) WebSocketUpgrader(w http.ResponseWriter, r *http.
             }
         }
     }
+}
+
+func handleConnect(ctx context.Context, conn *websocket.Conn, msg CommonWebsocket, claims *auth.Claims, hub *chatWebsocket.Hub) error {
+	return nil
 }
 
 func handleMessage(ctx context.Context, conn *websocket.Conn, msg CommonWebsocket, claims *auth.Claims, hub *chatWebsocket.Hub) error {
