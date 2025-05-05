@@ -235,7 +235,6 @@ type CommonWebsocket struct {
 }
 
 func (h *ChatWebsocketHandler) WebSocketUpgrader(w http.ResponseWriter, r *http.Request) {
-
 	var msg CommonWebsocket
 
     upgrader := websocket.Upgrader{
@@ -293,6 +292,8 @@ func handleMessage(ctx context.Context, conn *websocket.Conn, msg CommonWebsocke
         ChatID:  uint64(msg.ChatID),
         Sender:  claims.Username,
     }
+
+	log.Printf("sending a message to chat: %d", msg.ChatID)
 
     hub.Send(ctx, message, msg.Username)
     return nil
