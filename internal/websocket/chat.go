@@ -166,12 +166,13 @@ type ChatConn struct {
 
 func (c *ChatConn) ReadJSON(v interface{}) error {
     _, r, err := c.NextReader()
-    if err != nil {
-        return err
-    }
-
-    buf := new(bytes.Buffer)
+	buf := new(bytes.Buffer)
     if _, err := buf.ReadFrom(r); err != nil {
+        fmt.Printf("resp body: %s\n", buf.String())
+		return err
+    }
+    if err != nil {
+        fmt.Printf("resp body: %s\n", buf.String())
         return err
     }
 
