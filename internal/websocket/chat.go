@@ -40,21 +40,6 @@ func CreateHub(repo ChatRepository) *Hub {
 func (h *Hub) AddClient(username string, client *websocket.Conn) {
 	h.connect.Store(client, username)
 
-	go func() {
-		for {
-			_, _, err := client.NextReader()
-			if err != nil {
-				log.Printf("next reader error: %v", err)
-				err = client.Close()
-				if err != nil {
-					log.Printf("error closing connection: %v", err)
-					return
-				}
-				return
-			}
-		}
-	}()
-
 	client.SetCloseHandler(func(code int, text string) error {
 		h.connect.Delete(client)
 		return nil

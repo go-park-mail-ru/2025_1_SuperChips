@@ -261,7 +261,7 @@ func (h *ChatWebsocketHandler) WebSocketUpgrader(w http.ResponseWriter, r *http.
         err := conn.ReadJSON(&msg)
         if err != nil {
             log.Println("Error reading message:", err)
-            continue
+            break
         }
 
         description := msg.Description
