@@ -2,10 +2,13 @@ package grpc
 
 import (
 	"context"
+	"errors"
 	"log"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	gen "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/chat"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -46,7 +49,7 @@ func (h *GrpcChatHandler) CreateChat(ctx context.Context, in *gen.CreateChatRequ
 	chat, err := h.usecase.CreateChat(ctx, in.Username, in.TargetUsername)
 	if err != nil {
 		log.Println(err)
-		return nil, err
+		return nil, mapErrToGrpc(err)
 	}
 
 	grpcChats := chatsToGrpc([]domain.Chat{chat})
@@ -71,7 +74,7 @@ func (h *GrpcChatHandler) CreateContact(ctx context.Context, in *gen.CreateConta
 	resp, err := h.usecase.CreateContact(ctx, in.Username, in.TargetUsername)
 	if err != nil {
 		log.Println(err)
-		return nil, err
+		return nil, mapErrToGrpc(err)
 	}
 
 	return &gen.CreateContactResponse{
@@ -149,4 +152,13 @@ func contactsToGrpc(contacts []domain.Contact) []*gen.Contact {
 	}
 
 	return grpc
+}
+
+func mapErrToGrpc(err error) error {
+	switch {
+	case errors.Is(err, domain.ErrConflict):
+		return status.Errorf(codes.AlreadyExists, "conflict")
+	}
+
+	return err
 }

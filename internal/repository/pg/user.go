@@ -21,7 +21,7 @@ type userDB struct {
 	Birthday         sql.NullTime   `db:"birthday"`
 	About            sql.NullString `db:"about"`
 	IsExternalAvatar sql.NullBool
-	SubscriberCount  uint64
+	SubscriberCount  sql.NullInt64
 }
 
 type pgUserStorage struct {
@@ -82,9 +82,9 @@ func (p *pgUserStorage) GetUserPublicInfo(ctx context.Context, email string) (do
 	var userDB userDB
 
 	err := p.db.QueryRowContext(ctx, `
-        SELECT username, email, avatar, birthday, about, public_name
+        SELECT username, email, avatar, birthday, about, public_name, subsciber_count
 		FROM flow_user WHERE email = $1
-    `, email).Scan(&userDB.Username, &userDB.Email, &userDB.Avatar, &userDB.Birthday)
+    `, email).Scan(&userDB.Username, &userDB.Email, &userDB.Avatar, &userDB.Birthday, &userDB.SubscriberCount)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return domain.PublicUser{}, domain.ErrInvalidCredentials
 	} else if err != nil {
@@ -96,6 +96,7 @@ func (p *pgUserStorage) GetUserPublicInfo(ctx context.Context, email string) (do
 		Email:    userDB.Email,
 		Avatar:   userDB.Avatar.String,
 		Birthday: userDB.Birthday.Time,
+		SubscriberCount: int(userDB.SubscriberCount.Int64),
 	}
 
 	return publicUser, nil

@@ -71,7 +71,7 @@ func (repo *SubscriptionStorage) GetUserFollowers(ctx context.Context, id, page,
 			Birthday: user.Birthday.Time,
 			About: user.About.String,
 			PublicName: user.PublicName,
-			SubscriberCount: int(user.SubscriberCount),
+			SubscriberCount: int(user.SubscriberCount.Int64),
 			IsExternalAvatar: user.IsExternalAvatar.Bool,
 		})
 	}
@@ -125,7 +125,7 @@ func (repo *SubscriptionStorage) GetUserFollowing(ctx context.Context, id, page,
 			Birthday: user.Birthday.Time,
 			About: user.About.String,
 			PublicName: user.PublicName,
-			SubscriberCount: int(user.SubscriberCount),
+			SubscriberCount: int(user.SubscriberCount.Int64),
 			IsExternalAvatar: user.IsExternalAvatar.Bool,
 		})
 	}
