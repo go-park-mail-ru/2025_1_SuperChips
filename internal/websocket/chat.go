@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -125,11 +126,13 @@ func (h *Hub) Send(ctx context.Context, message domain.Message, targetUsername s
 	message.Recipient = targetUsername
 
 	if err := h.repo.AddMessage(ctx, message); err != nil {
-		return fmt.Errorf("error while adding message to db: %v", err)
+		log.Printf("error while adding message to db: %v", err)
+		return err
 	}
 
 	// target user offline
 	if !found {
+		log.Println("user not online")
 		return ErrTargetNotFound
 	}
 
@@ -155,7 +158,10 @@ func (h *Hub) Run(ctx context.Context) {
 				username := value.(string)
 				//для каждлого клиента читаем новые изменения
 				//тут может быть что угодно - сообщения, тексты, тд
-				messages, _ := h.repo.GetNewMessages(ctx, username, h.currentOffset)
+				messages, err := h.repo.GetNewMessages(ctx, username, h.currentOffset)
+				if err != nil {
+					log.Printf("error getting new messages: %v", err)
+				}
 				for _, message := range messages {
 					err := connect.WriteJSON(message)
 					if err != nil {
