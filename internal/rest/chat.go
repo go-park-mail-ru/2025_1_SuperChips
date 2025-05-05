@@ -299,9 +299,11 @@ func handleMessage(ctx context.Context, conn *websocket.Conn, msg CommonWebsocke
 
 	log.Printf("sending a message to chat: %d", msg.ChatID)
 
-    hub.Send(ctx, message, msg.Username)
-
-	log.Printf("message successfully sent.")
+    if err := hub.Send(ctx, message, msg.Username); err != nil {
+		log.Printf("error sending message: %v", err)
+	} else {
+		log.Printf("message successfully sent.")
+	}
 
     return nil
 }
