@@ -218,91 +218,120 @@ func (h *ChatHandler) GetChat(w http.ResponseWriter, r *http.Request) {
 	ServerGenerateJSONResponse(w, resp, http.StatusOK)
 }
 
+type MessageHandler func(ctx context.Context, conn *websocket.Conn, msg map[string]any, claims *auth.Claims, hub *chatWebsocket.Hub) error
+
+var handlers = map[string]MessageHandler{
+    "message":  handleMessage,
+    "mark_read": handleMarkRead,
+}
+
 func (h *ChatWebsocketHandler) WebSocketUpgrader(w http.ResponseWriter, r *http.Request) {
-	upgrader := websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool { return true },
-	}
-	conn, err := upgrader.Upgrade(w, r, nil)
+    upgrader := websocket.Upgrader{
+        CheckOrigin: func(r *http.Request) bool { return true },
+    }
+    conn, err := upgrader.Upgrade(w, r, nil)
+    if err != nil {
+        HttpErrorToJson(w, fmt.Errorf("failed to upgrade to websockets: %v", err).Error(), http.StatusInternalServerError)
+        return
+    }
+    defer conn.Close()
+
+    claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
+
+    ctx, cancel := context.WithTimeout(context.Background(), h.ContextExpiration)
+    defer cancel()
+
+    h.Hub.AddClient(claims.Username, conn)
+
+    for {
+        var msg map[string]any
+        err := conn.ReadJSON(&msg)
+        if err != nil {
+            log.Println("Error reading message:", err)
+            break
+        }
+
+        description, ok := msg["description"].(string)
+        if !ok || description == "" {
+            if err := conn.WriteJSON("bad request"); err != nil {
+                log.Println("Failed to write error response:", err)
+            }
+            continue
+        }
+
+        handler, exists := handlers[description]
+        if !exists {
+            if err := conn.WriteJSON("unknown message type"); err != nil {
+                log.Println("Failed to write error response:", err)
+            }
+            continue
+        }
+
+        if err := handler(ctx, conn, msg, claims, h.Hub); err != nil {
+            log.Printf("Error handling message type '%s': %v", description, err)
+            if err := conn.WriteJSON(fmt.Sprintf("error processing %s", description)); err != nil {
+                log.Println("Failed to write error response:", err)
+            }
+        }
+    }
+}
+
+func handleMessage(ctx context.Context, conn *websocket.Conn, msg map[string]any, claims *auth.Claims, hub *chatWebsocket.Hub) error {
+    content, ok := msg["message"].(string)
+    if !ok {
+        return fmt.Errorf("missing or invalid 'message' field")
+    }
+
+    chatID, ok := msg["chat_id"].(string)
+    if !ok {
+        return fmt.Errorf("missing or invalid 'chat_id' field")
+    }
+	chatIDInt, err := strconv.Atoi(chatID)
 	if err != nil {
-		HttpErrorToJson(w, fmt.Errorf("failed to upgrade to websockets: %v", err).Error(), http.StatusInternalServerError)
-		return
-	}
-	defer conn.Close()
-
-	claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
-
-	ctx, cancel := context.WithTimeout(context.Background(), h.ContextExpiration)
-	defer cancel()
-
-	h.Hub.AddClient(claims.Username, conn)
-	
-	for {
-		var msg map[string]any
-		err := conn.ReadJSON(&msg)
-		if err != nil {
-			log.Println("Error reading message:", err)
-			break
-		}
-
-		description, ok := msg["description"].(string)
-		if !ok {
-			conn.WriteJSON("bad request")
-			continue
-		}
-		
-		if description == "message" {
-			var message domain.Message
-			content, ok := msg["message"].(string)
-			if !ok {
-				conn.WriteJSON("message error")
-				continue
-			}
-			message.Content = content
-
-			chatID, ok := msg["chat_id"].(int)
-			if !ok {
-				conn.WriteJSON("message chat id error")
-				continue
-			}
-
-			message.ChatID = uint64(chatID)
-			message.Sender = claims.Username
-			
-			target, ok := msg["username"].(string)
-			if !ok {
-				conn.WriteJSON("message username error")
-				continue
-			}
-
-			h.Hub.Send(ctx, message, target)
-		} else if description == "mark_read" {
-			messageID, ok := msg["message_id"].(int)
-			if !ok {
-				conn.WriteJSON("message id error")
-				continue
-			}
-
-			chatID, ok := msg["chat_id"].(int)
-			if !ok {
-				conn.WriteJSON("chat id error")
-				continue
-			}
-
-			target, ok := msg["target_username"].(string)
-			if !ok {
-				conn.WriteJSON("message target username error")
-				continue
-			}
-
-			h.Hub.MarkRead(ctx, messageID, chatID, target, claims.Username)
-		} else if description == "" {
-			continue
-		} else {
-			log.Println("bad request")
-			break
-		}
+		return fmt.Errorf("invalid 'chat_id' field")
 	}
 
+    target, ok := msg["username"].(string)
+    if !ok {
+        return fmt.Errorf("missing or invalid 'username' field")
+    }
+
+    message := domain.Message{
+        Content: content,
+        ChatID:  uint64(chatIDInt),
+        Sender:  claims.Username,
+    }
+
+    hub.Send(ctx, message, target)
+    return nil
+}
+
+func handleMarkRead(ctx context.Context, conn *websocket.Conn, msg map[string]any, claims *auth.Claims, hub *chatWebsocket.Hub) error {
+    messageIDStr, ok := msg["message_id"].(string)
+    if !ok {
+        return fmt.Errorf("missing or invalid 'message_id' field")
+    }
+	messageID, err := strconv.Atoi(messageIDStr)
+	if err != nil {
+        return fmt.Errorf("invalid 'message_id' field")
+	}
+
+    chatIDStr, ok := msg["chat_id"].(string)
+    if !ok {
+        return fmt.Errorf("missing or invalid 'chat_id' field")
+    }
+	chatID, err := strconv.Atoi(chatIDStr)
+	if err != nil {
+		return fmt.Errorf("invalid 'chat_id' field")
+	}
+
+    target, ok := msg["target_username"].(string)
+    if !ok {
+        return fmt.Errorf("missing or invalid 'target_username' field")
+    }
+
+    hub.MarkRead(ctx, messageID, chatID, target, claims.Username)
+    return nil
 }
 
 func contactsToNormal(grpcContacts []*gen.Contact) []domain.Contact {
