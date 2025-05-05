@@ -79,17 +79,14 @@ func handleWebSocketProxy(w http.ResponseWriter, r *http.Request) {
     }
     defer microserviceConn.Close()
 
-    // 4. Configure ping/pong for BOTH connections
     configureKeepalive(clientConn, 30*time.Second)
     configureKeepalive(microserviceConn, 30*time.Second)
 
-    // 5. Proper bidirectional proxy with error handling
     errChan := make(chan error, 2)
     
     go proxyMessages(clientConn, microserviceConn, errChan, "client->microservice")
     go proxyMessages(microserviceConn, clientConn, errChan, "microservice->client")
 
-    // Wait for first error
     select {
     case err := <-errChan:
         slog.Info("WebSocket proxy terminating", "error", err)
@@ -101,10 +98,8 @@ func handleWebSocketProxy(w http.ResponseWriter, r *http.Request) {
 func configureKeepalive(conn *websocket.Conn, interval time.Duration) {
     conn.SetReadDeadline(time.Now().Add(interval * 2))
     
-    // Create a channel to signal when the connection closes
     done := make(chan struct{})
     
-    // Handle incoming pings
     conn.SetPingHandler(func(appData string) error {
         conn.SetReadDeadline(time.Now().Add(interval * 2))
         err := conn.WriteControl(websocket.PongMessage, []byte(appData), time.Now().Add(5*time.Second))
@@ -114,7 +109,6 @@ func configureKeepalive(conn *websocket.Conn, interval time.Duration) {
         return err
     })
 
-    // Set up close handler to signal the done channel
     originalCloseHandler := conn.CloseHandler()
     conn.SetCloseHandler(func(code int, text string) error {
         close(done)
@@ -124,7 +118,6 @@ func configureKeepalive(conn *websocket.Conn, interval time.Duration) {
         return nil
     })
 
-    // Send periodic pings
     go func() {
         ticker := time.NewTicker(interval)
         defer ticker.Stop()
