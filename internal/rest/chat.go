@@ -196,11 +196,14 @@ func (h *ChatHandler) GetChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
+
 	ctx, cancel := context.WithTimeout(context.Background(), h.ContextExpiration)
 	defer cancel()
 
 	grpcResp, err := h.ChatService.GetChat(ctx, &gen.GetChatRequest{
 		ChatID: uint64(ID),
+		Username: claims.Username,
 	})
 	if err != nil {
 		handleChatGrpcError(w, err)
