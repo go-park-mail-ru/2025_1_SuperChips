@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log"
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
@@ -418,6 +419,7 @@ func (repo *ChatRepository) GetChat(ctx context.Context, id uint64, username str
 		}
 
 		if chat == nil {
+			log.Printf("username: %s, first: %s, second: %s", username, firstUserUsername, otherUserUsername)
 			if firstUserUsername != username && otherUserUsername != username {
 				return domain.Chat{}, domain.ErrForbidden
 			}
