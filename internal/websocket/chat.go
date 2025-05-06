@@ -43,7 +43,7 @@ func CreateHub(repo ChatRepository) *Hub {
 }
 
 func (h *Hub) AddClient(username string, client *websocket.Conn) {
-    h.connect.Store(client, username)
+    h.connect.Store(username, client)
 
     client.SetReadDeadline(time.Now().Add(pongWait))
     client.SetPongHandler(func(string) error {
@@ -51,21 +51,8 @@ func (h *Hub) AddClient(username string, client *websocket.Conn) {
         return nil
     })
 
-    go func() {
-        ticker := time.NewTicker(pingPeriod)
-        defer ticker.Stop()
-        for {
-            if err := client.WriteMessage(websocket.PingMessage, nil); err != nil {
-                client.Close()
-                h.connect.Delete(client)
-                return
-            }
-            time.Sleep(pingPeriod)
-        }
-    }()
-
     client.SetCloseHandler(func(code int, text string) error {
-        h.connect.Delete(client)
+        h.connect.Delete(username)
         return nil
     })
 }
@@ -79,8 +66,8 @@ func (h *Hub) MarkRead(ctx context.Context, messageID, chatID int, targetUsernam
 	var targetConn *websocket.Conn
 
 	h.connect.Range(func(key, value any) bool {
-		conn := key.(*websocket.Conn)
-		username := value.(string)
+		username := key.(string)
+		conn := value.(*websocket.Conn)
 		if username == targetUsername {
 			found = true
 			targetConn = conn
@@ -121,8 +108,8 @@ func (h *Hub) Send(ctx context.Context, message domain.Message, targetUsername s
 	var targetConn *websocket.Conn
 
 	h.connect.Range(func(key, value any) bool {
-		conn := key.(*websocket.Conn)
-		username := value.(string)
+		username := key.(string)
+		conn := value.(*websocket.Conn)
 		if targetUsername == username {
 			found = true
 			targetConn = conn
@@ -151,7 +138,7 @@ func (h *Hub) Send(ctx context.Context, message domain.Message, targetUsername s
 	if err != nil {
 		log.Printf("delivery failure: %v", err)
 		targetConn.Close()
-		h.connect.Delete(targetConn)
+		h.connect.Delete(targetUsername)
 		return ErrDeliveryFailure
 	}
 
@@ -166,14 +153,14 @@ func (h *Hub) Run(ctx context.Context) {
 		select {
 		case <-t.C:
 			h.connect.Range(func(key, value any) bool {
-				connect := key.(*websocket.Conn)
-				username := value.(string)
+				username := key.(string)
+				conn := value.(*websocket.Conn)
 				messages, err := h.repo.GetNewMessages(ctx, username, h.currentOffset)
 				if err != nil {
 					log.Printf("error getting new messages: %v", err)
 				}
 				for _, message := range messages {
-					err := connect.WriteJSON(message)
+					err := conn.WriteJSON(message)
 					if err != nil {
 						continue
 					}
@@ -186,3 +173,4 @@ func (h *Hub) Run(ctx context.Context) {
 		}
 	}
 }
+

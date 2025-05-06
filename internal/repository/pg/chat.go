@@ -66,9 +66,20 @@ func (repo *ChatRepository) GetNewMessages(ctx context.Context, username string,
 }
 
 func (repo *ChatRepository) AddMessage(ctx context.Context, message domain.Message) error {
+	// the EXISTS statement
+	// ensures that
+	// message can only be added to a chat
+	// where both participants are the
+	// ones mentioned in the message struct
+	// for safety purposes
 	_, err := repo.db.ExecContext(ctx, `
 	INSERT INTO message (content, sender, recipient, chat_id, sent)
-	VALUES ($1, $2, $3, $4, $5)
+	SELECT $1, $2, $3, $4, $5
+	WHERE EXISTS (
+		SELECT 1 FROM chat 
+		WHERE id = $4 AND 
+		(($2 = user1 AND $3 = user2) OR ($2 = user2 AND $3 = user1))
+	);
 	`, message.Content, message.Sender, message.Recipient, message.ChatID, message.Sent)
 	if err != nil {
 		return err
