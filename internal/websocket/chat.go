@@ -23,10 +23,6 @@ type ChatRepository interface {
 	MarkRead(ctx context.Context, messageID, chatID int) error
 }
 
-const (
-    pongWait   = 60 * time.Second
-    pingPeriod = (pongWait * 9) / 10
-)
 
 type Hub struct {
 	connect       sync.Map
