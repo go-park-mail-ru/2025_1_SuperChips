@@ -338,44 +338,44 @@ func (repo *ChatRepository) AddToContacts(ctx context.Context, username, targetU
 
 func (repo *ChatRepository) GetChat(ctx context.Context, id uint64, username string) (domain.Chat, error) {
 	query := `
-    WITH ranked_messages AS (
-        SELECT 
-            m.id AS message_id,
-            m.chat_id,
-            m.content,
-            m.sender,
+	WITH chat_messages AS (
+		SELECT
+			m.id AS message_id,
+			m.chat_id,
+			m.content,
+			m.sender,
 			m.recipient,
-            m.timestamp,
-            m.is_read,
-        FROM message m
-        WHERE m.chat_id = $1
-        ORDER BY m.timestamp DESC
-    )
-    SELECT 
-        c.id AS chat_id,
+			m.timestamp,
+			m.is_read
+		FROM message m
+		WHERE m.chat_id = $1
+		ORDER BY m.timestamp DESC
+	)
+	SELECT
+		c.id AS chat_id,
 		CASE
 			WHEN c.user1 = $2 THEN c.user1
 			ELSE c.user2
-		END AS first_user_username
-        CASE 
-            WHEN c.user1 = $2 THEN c.user2 
-            ELSE c.user1 
-        END AS other_user_username,
-        u.public_name AS other_user_name,
-        u.avatar AS other_user_avatar,
-        rm.message_id,
-        rm.content AS message_content,
-        rm.sender AS message_sender,
-		rm.recipient,
-        rm.timestamp AS message_timestamp,
-        rm.is_read AS message_is_read
-    FROM chat c
-    JOIN flow_user u ON u.username = CASE 
-                                      WHEN c.user1 = $2 THEN c.user2 
-                                      ELSE c.user1 
-                                   END
-    LEFT JOIN ranked_messages rm ON c.id = rm.chat_id AND rm.row_num <= 200
-    WHERE c.id = $1;
+		END AS first_user_username,
+		CASE
+			WHEN c.user1 = $2 THEN c.user2
+			ELSE c.user1
+		END AS other_user_username,
+		u.public_name AS other_user_name,
+		u.avatar AS other_user_avatar,
+		cm.message_id,
+		cm.content AS message_content,
+		cm.sender AS message_sender,
+		cm.recipient,
+		cm.timestamp AS message_timestamp,
+		cm.is_read AS message_is_read
+	FROM chat c
+	JOIN flow_user u ON u.username = CASE
+		WHEN c.user1 = $2 THEN c.user2
+		ELSE c.user1
+	END
+	LEFT JOIN chat_messages cm ON c.id = cm.chat_id
+	WHERE c.id = $1;
     `
 
 	rows, err := repo.db.QueryContext(ctx, query, id, username)
