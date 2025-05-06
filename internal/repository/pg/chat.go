@@ -347,12 +347,16 @@ func (repo *ChatRepository) GetChat(ctx context.Context, id uint64, username str
 			m.recipient,
             m.timestamp,
             m.is_read,
-            ROW_NUMBER() OVER (ORDER BY m.timestamp DESC) AS row_num
         FROM message m
         WHERE m.chat_id = $1
+        ORDER BY m.timestamp DESC
     )
     SELECT 
         c.id AS chat_id,
+		CASE
+			WHEN c.user1 = $2 THEN c.user1
+			ELSE c.user2
+		END AS first_user_username
         CASE 
             WHEN c.user1 = $2 THEN c.user2 
             ELSE c.user1 
@@ -384,6 +388,7 @@ func (repo *ChatRepository) GetChat(ctx context.Context, id uint64, username str
 
 	for rows.Next() {
 		var (
+			firstUserUsername   string
 			otherUserUsername   string
 			otherUserPublicName string
 			otherUserAvatar     string
@@ -397,6 +402,7 @@ func (repo *ChatRepository) GetChat(ctx context.Context, id uint64, username str
 
 		err := rows.Scan(
 			&id,
+			&firstUserUsername,
 			&otherUserUsername,
 			&otherUserPublicName,
 			&otherUserAvatar,
@@ -409,6 +415,10 @@ func (repo *ChatRepository) GetChat(ctx context.Context, id uint64, username str
 		)
 		if err != nil {
 			return domain.Chat{}, err
+		}
+
+		if firstUserUsername != username {
+			return domain.Chat{}, domain.ErrForbidden
 		}
 
 		if chat == nil {

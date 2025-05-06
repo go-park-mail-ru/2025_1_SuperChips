@@ -49,7 +49,7 @@ func (h *GrpcChatHandler) CreateChat(ctx context.Context, in *gen.CreateChatRequ
 	chat, err := h.usecase.CreateChat(ctx, in.Username, in.TargetUsername)
 	if err != nil {
 		log.Println(err)
-		return nil, mapErrToGrpc(err)
+		return nil, mapChatErrToGrpc(err)
 	}
 
 	grpcChats := chatsToGrpc([]domain.Chat{chat})
@@ -74,7 +74,7 @@ func (h *GrpcChatHandler) CreateContact(ctx context.Context, in *gen.CreateConta
 	resp, err := h.usecase.CreateContact(ctx, in.Username, in.TargetUsername)
 	if err != nil {
 		log.Println(err)
-		return nil, mapErrToGrpc(err)
+		return nil, mapChatErrToGrpc(err)
 	}
 
 	return &gen.CreateContactResponse{
@@ -88,7 +88,7 @@ func (h *GrpcChatHandler) GetChat(ctx context.Context, in *gen.GetChatRequest) (
 	chat, err := h.usecase.GetChat(ctx, in.ChatID, in.Username)
 	if err != nil {
 		log.Println(err)
-		return nil, err
+		return nil, mapChatErrToGrpc(err)
 	}
 
 	grpcChat := chatsToGrpc([]domain.Chat{chat})
@@ -154,10 +154,12 @@ func contactsToGrpc(contacts []domain.Contact) []*gen.Contact {
 	return grpc
 }
 
-func mapErrToGrpc(err error) error {
+func mapChatErrToGrpc(err error) error {
 	switch {
 	case errors.Is(err, domain.ErrConflict):
 		return status.Errorf(codes.AlreadyExists, "conflict")
+	case errors.Is(err, domain.ErrForbidden):
+		return status.Error(codes.PermissionDenied, "forbidden")
 	}
 
 	return err

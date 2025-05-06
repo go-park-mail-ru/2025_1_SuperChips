@@ -13,6 +13,8 @@ import (
 	chatWebsocket "github.com/go-park-mail-ru/2025_1_SuperChips/internal/websocket"
 	gen "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/chat"
 	"github.com/gorilla/websocket"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type ChatHandler struct {
@@ -380,4 +382,16 @@ func messagesToNormal(grpcNormal []*gen.Message) []domain.Message {
 	}
 
 	return normal
+}
+
+func handleGRPCChatError(w http.ResponseWriter, err error) {
+	st  := status.Convert(err)
+	switch st.Code() {
+	case codes.PermissionDenied:
+		HttpErrorToJson(w, st.Message(), http.StatusForbidden)
+	case codes.AlreadyExists:
+		HttpErrorToJson(w, st.Message(), http.StatusConflict)
+	default:
+		HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
 }
