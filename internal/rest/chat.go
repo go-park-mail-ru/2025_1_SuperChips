@@ -47,7 +47,7 @@ func (h *ChatHandler) GetChats(w http.ResponseWriter, r *http.Request) {
 		Username: claims.Username,
 	})
 	if err != nil {
-		handleChatGrpcError(w, err)
+		handleGRPCChatError(w, err)
 		return
 	}
 
@@ -65,14 +65,6 @@ func (h *ChatHandler) GetChats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ServerGenerateJSONResponse(w, resp, http.StatusOK)
-}
-
-func handleChatGrpcError(w http.ResponseWriter, err error) {
-	switch {
-	default:
-		HttpErrorToJson(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 }
 
 func (h *ChatHandler) NewChat(w http.ResponseWriter, r *http.Request) {
@@ -97,7 +89,7 @@ func (h *ChatHandler) NewChat(w http.ResponseWriter, r *http.Request) {
 		TargetUsername: target.Username,
 	})
 	if err != nil {
-		handleChatGrpcError(w, err)
+		handleGRPCChatError(w, err)
 		return
 	}
 
@@ -125,7 +117,7 @@ func (h *ChatHandler) GetContacts(w http.ResponseWriter, r *http.Request) {
 		Username: claims.Username,
 	})
 	if err != nil {
-		handleChatGrpcError(w, err)
+		handleGRPCChatError(w, err)
 		return
 	}
 
@@ -167,7 +159,7 @@ func (h *ChatHandler) CreateContact(w http.ResponseWriter, r *http.Request) {
 		TargetUsername: user.Username,
 	})
 	if err != nil {
-		handleChatGrpcError(w, err)
+		handleGRPCChatError(w, err)
 		return
 	}
 
@@ -208,7 +200,7 @@ func (h *ChatHandler) GetChat(w http.ResponseWriter, r *http.Request) {
 		Username: claims.Username,
 	})
 	if err != nil {
-		handleChatGrpcError(w, err)
+		handleGRPCChatError(w, err)
 		return
 	}
 
