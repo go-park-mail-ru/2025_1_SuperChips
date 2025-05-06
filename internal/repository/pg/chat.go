@@ -217,9 +217,9 @@ func (repo *ChatRepository) GetChats(ctx context.Context, username string) ([]do
 }
 
 func (repo *ChatRepository) CreateChat(ctx context.Context, username, targetUsername string) (domain.Chat, error) {
-	var chat domain.Chat
-
-	var isExternalAvatar sql.NullBool
+    var chat domain.Chat
+    var isExternalAvatar sql.NullBool
+	var isNewChat bool
 
 	err := repo.db.QueryRowContext(ctx, `
     WITH normalized_users AS (
@@ -232,26 +232,34 @@ func (repo *ChatRepository) CreateChat(ctx context.Context, username, targetUser
         SELECT user1, user2 FROM normalized_users
         ON CONFLICT (user1, user2) DO NOTHING
         RETURNING id
+    ),
+    existing_chat AS (
+        SELECT id
+        FROM chat
+        WHERE (user1, user2) = (SELECT user1, user2 FROM normalized_users)
     )
     SELECT 
-        ic.id,
+        COALESCE(ic.id, ec.id) AS chat_id,
         u.avatar,
         u.public_name,
-        u.is_external_avatar
+        u.is_external_avatar,
+        CASE WHEN ic.id IS NOT NULL THEN TRUE ELSE FALSE END AS is_new_chat
     FROM inserted_chat ic
+    FULL JOIN existing_chat ec ON TRUE
     JOIN flow_user u ON u.username = $2;
-	`, targetUsername, username).Scan(&chat.ChatID, &chat.Avatar, &chat.PublicName, &isExternalAvatar)
-	if errors.Is(err, sql.ErrNoRows) {
-		return domain.Chat{}, domain.ErrConflict
-	}
-	if err != nil {
-		return domain.Chat{}, err
+	`, targetUsername, username).Scan(&chat.ChatID, &chat.Avatar, &chat.PublicName, &isExternalAvatar, &isNewChat)
+    if err != nil {
+        return domain.Chat{}, err
+    }
+
+	if !isNewChat {
+		return repo.GetChat(ctx, uint64(chat.ChatID), username)
 	}
 
-	chat.Username = targetUsername
-	chat.IsExternalAvatar = isExternalAvatar.Bool
+    chat.Username = targetUsername
+    chat.IsExternalAvatar = isExternalAvatar.Bool
 
-	return chat, nil
+    return chat, nil
 }
 
 func (repo *ChatRepository) GetContacts(ctx context.Context, username string) ([]domain.Contact, error) {

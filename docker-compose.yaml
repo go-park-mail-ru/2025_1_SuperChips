@@ -89,7 +89,6 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - EXPIRATION_TIME=${EXPIRATION_TIME}
       - COOKIE_SECURE=${COOKIE_SECURE}
-    # таким образом, контейнер доступен только внутри сети
     ports:
       - "8013:8013"
     depends_on:
