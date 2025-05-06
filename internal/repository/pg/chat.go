@@ -219,7 +219,6 @@ func (repo *ChatRepository) GetChats(ctx context.Context, username string) ([]do
 func (repo *ChatRepository) CreateChat(ctx context.Context, username, targetUsername string) (domain.Chat, error) {
     var chat domain.Chat
     var isExternalAvatar sql.NullBool
-	var isNewChat bool
 
 	err := repo.db.QueryRowContext(ctx, `
     WITH normalized_users AS (
@@ -242,19 +241,14 @@ func (repo *ChatRepository) CreateChat(ctx context.Context, username, targetUser
         COALESCE(ic.id, ec.id) AS chat_id,
         u.avatar,
         u.public_name,
-        u.is_external_avatar,
-        CASE WHEN ic.id IS NOT NULL THEN TRUE ELSE FALSE END AS is_new_chat
+        u.is_external_avatar
     FROM inserted_chat ic
     FULL JOIN existing_chat ec ON TRUE
     JOIN flow_user u ON u.username = $2;
-	`, targetUsername, username).Scan(&chat.ChatID, &chat.Avatar, &chat.PublicName, &isExternalAvatar, &isNewChat)
+	`, targetUsername, username).Scan(&chat.ChatID, &chat.Avatar, &chat.PublicName, &isExternalAvatar)
     if err != nil {
         return domain.Chat{}, err
     }
-
-	if !isNewChat {
-		return repo.GetChat(ctx, uint64(chat.ChatID), username)
-	}
 
     chat.Username = targetUsername
     chat.IsExternalAvatar = isExternalAvatar.Bool
