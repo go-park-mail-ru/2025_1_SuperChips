@@ -37,19 +37,13 @@ type Hub struct {
 func CreateHub(repo ChatRepository) *Hub {
 	return &Hub{
 		connect:       sync.Map{},
-		currentOffset: time.Now(),
+		currentOffset: time.Now().UTC(),
 		repo:          repo,
 	}
 }
 
 func (h *Hub) AddClient(username string, client *websocket.Conn) {
     h.connect.Store(username, client)
-
-    client.SetReadDeadline(time.Now().Add(pongWait))
-    client.SetPongHandler(func(string) error {
-        client.SetReadDeadline(time.Now().Add(pongWait))
-        return nil
-    })
 
     client.SetCloseHandler(func(code int, text string) error {
         h.connect.Delete(username)
