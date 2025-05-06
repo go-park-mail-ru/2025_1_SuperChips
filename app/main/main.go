@@ -11,8 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	genAuth "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/auth"
-	genFeed "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/feed"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/board"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	_ "github.com/go-park-mail-ru/2025_1_SuperChips/docs"
@@ -24,12 +22,16 @@ import (
 	middleware "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/middleware"
 	pincrudDelivery "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/pincrud"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/like"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/metrics"
 	pincrudService "github.com/go-park-mail-ru/2025_1_SuperChips/pincrud"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/profile"
+	genAuth "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/auth"
+	genFeed "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/feed"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/search"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/subscription"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	"github.com/swaggo/http-swagger"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	httpSwagger "github.com/swaggo/http-swagger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -104,6 +106,9 @@ func main() {
 	boardService := board.NewBoardService(boardStorage, config.BaseUrl, config.ImageBaseDir)
 	likeService := like.NewLikeService(likeStorage)
 	searchService := search.NewSearchService(searchStorage, config.BaseUrl, config.ImageBaseDir, config.StaticBaseDir, config.AvatarDir)
+	
+	metricsService := metrics.NewMetricsService(config)
+	metricsService.RegisterMetrics()
 
 	grpcConnAuth, err := grpc.NewClient(
 		"auth:8010",
@@ -194,6 +199,7 @@ func main() {
 	// health
 	mux.HandleFunc("/health",
 		middleware.ChainMiddleware(rest.HealthCheckHandler, middleware.CorsMiddleware(config, allowedGetOptions),
+		middleware.MetricsMiddleware(metricsService),
 		middleware.Log()))
 
 	// feed
@@ -423,7 +429,10 @@ func main() {
 		w.WriteHeader(http.StatusNoContent)
 	}, middleware.CorsMiddleware(config, allowedOptions),
 	middleware.Log()))
-
+	
+	// prometheus
+	mux.Handle("api/v1/metrics", promhttp.Handler())
+		
 	server := http.Server{
 		Addr:    config.Port,
 		Handler: mux,
