@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"log/slog"
 	"net/http"
@@ -31,7 +30,6 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/search"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/subscription"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	"github.com/gorilla/websocket"
 	"github.com/swaggo/http-swagger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -46,68 +44,6 @@ var (
 	allowedOptions        = []string{http.MethodOptions}
 	allowedGetOptionsHead = []string{http.MethodGet, http.MethodOptions, http.MethodHead}
 )
-
-var upgrader = websocket.Upgrader{
-    CheckOrigin: func(r *http.Request) bool {
-        return true
-    },
-}
-
-func handleWebSocketProxy(w http.ResponseWriter, r *http.Request) {
-    clientConn, err := upgrader.Upgrade(w, r, nil)
-    if err != nil {
-        log.Println("Failed to upgrade client connection:", err)
-        return
-    }
-    defer clientConn.Close()
-
-    headers := http.Header{}
-    if cookies := r.Header.Get("Cookie"); cookies != "" {
-        headers.Add("Cookie", cookies)
-    }
-
-    microserviceURL := "ws://websocket_chat:8013/ws"
-    microserviceConn, resp, err := websocket.DefaultDialer.Dial(microserviceURL, headers)
-    if err != nil {
-		if resp != nil {
-			bodyBytes, readErr := io.ReadAll(resp.Body)
-			if readErr != nil {
-				log.Printf("Failed to read response body: %v", readErr)
-			} else {
-				log.Printf("Response body from microservice: %s", string(bodyBytes))
-			}
-		}
-        log.Println("Failed to connect to microservice:", err)
-        return
-    }
-    defer microserviceConn.Close()
-
-    go func() {
-        for {
-            messageType, message, err := clientConn.ReadMessage()
-            if err != nil {
-                log.Println("Error reading from client:", err)
-                break
-            }
-            if err := microserviceConn.WriteMessage(messageType, message); err != nil {
-                log.Println("Error writing to microservice:", err)
-                break
-            }
-        }
-    }()
-
-    for {
-        messageType, message, err := microserviceConn.ReadMessage()
-        if err != nil {
-            log.Println("Error reading from microservice:", err)
-            break
-        }
-        if err := clientConn.WriteMessage(messageType, message); err != nil {
-            log.Println("Error writing to client:", err)
-            break
-        }
-    }
-}
 
 // @title flow API
 // @version 1.0
@@ -540,10 +476,6 @@ func main() {
 		middleware.CSRFMiddleware(),
 		middleware.CorsMiddleware(config, allowedPostOptions),
 		middleware.Log()))
-
-	// ws
-	mux.HandleFunc("/api/v1/ws", middleware.ChainMiddleware(handleWebSocketProxy,
-		middleware.AuthMiddleware(jwtManager, true)))
 
 	server := http.Server{
 		Addr:    config.Port,

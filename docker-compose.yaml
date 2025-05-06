@@ -90,8 +90,8 @@ services:
       - EXPIRATION_TIME=${EXPIRATION_TIME}
       - COOKIE_SECURE=${COOKIE_SECURE}
     # таким образом, контейнер доступен только внутри сети
-    # ports:
-    #   - "8013:8013"
+    ports:
+      - "8013:8013"
     depends_on:
       - database
 
