@@ -417,7 +417,7 @@ func (repo *ChatRepository) GetChat(ctx context.Context, id uint64, username str
 			return domain.Chat{}, err
 		}
 
-		if firstUserUsername != username {
+		if firstUserUsername != username && otherUserUsername != username {
 			return domain.Chat{}, domain.ErrForbidden
 		}
 
