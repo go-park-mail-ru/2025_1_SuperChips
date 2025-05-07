@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
-	mock_user "github.com/go-park-mail-ru/2025_1_SuperChips/mocks/user/service"
+	mock_user "github.com/go-park-mail-ru/2025_1_SuperChips/mocks/auth/grpc"
 	tu "github.com/go-park-mail-ru/2025_1_SuperChips/test_utils"
 	"go.uber.org/mock/gomock"
 )
@@ -51,12 +51,13 @@ func TestLogoutHandler(t *testing.T) {
 
             cfg := tu.TestConfig
 
-            mockUserUsecase := mock_user.NewMockUserUsecaseInterface(ctrl)
+            mockUserUsecase := mock_user.NewMockAuthClient(ctrl)
 
             app := rest.AuthHandler{
                 Config:      cfg,
                 UserService: mockUserUsecase,
                 JWTManager:  *auth.NewJWTManager(cfg),
+                ContextDuration: time.Hour,
             }
 
             req := httptest.NewRequest(tt.method, tt.url, strings.NewReader(tt.body))

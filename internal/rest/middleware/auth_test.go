@@ -19,10 +19,10 @@ func TestAuthMiddleware(t *testing.T) {
     }
     jwtManager := auth.NewJWTManager(cfg)
 
-    validToken, err := jwtManager.CreateJWT("test@example.com", 123)
+    validToken, err := jwtManager.CreateJWT("test@example.com", "hi", 123)
     assert.NoError(t, err)
 
-    expiredToken, err := jwtManager.CreateJWT("test@example.com", 456)
+    expiredToken, err := jwtManager.CreateJWT("test@example.com", "username", 456)
     assert.NoError(t, err)
     token, _ := jwt.ParseWithClaims(expiredToken, &auth.Claims{}, func(t *jwt.Token) (interface{}, error) {
         return cfg.JWTSecret, nil

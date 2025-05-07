@@ -51,11 +51,49 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_HOST=${POSTGRES_HOST}
-    ports:
-      - "8010:8010"
+    # ports:
+    #   - "8010:8010"
     depends_on:
       - database
-    
+  
+  chat:
+    networks:
+      - flow_network
+    container_name: chat
+    build:
+      context: .
+      dockerfile: app/chat/Dockerfile
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+    # таким образом, контейнер доступен только внутри сети
+    # ports:
+    #   - "8012:8012"
+    depends_on:
+      - database
+
+  websocket_chat:
+    networks:
+      - flow_network
+    container_name: websocket_chat
+    build:
+      context: .
+      dockerfile: app/websocket_chat/Dockerfile
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - JWT_SECRET=${JWT_SECRET}
+      - EXPIRATION_TIME=${EXPIRATION_TIME}
+      - COOKIE_SECURE=${COOKIE_SECURE}
+    ports:
+      - "8013:8013"
+    depends_on:
+      - database
+
   feed:
     networks:
       - flow_network
@@ -68,8 +106,8 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_HOST=${POSTGRES_HOST}
-    ports:
-      - "8011:8011"
+    # ports:
+    #   - "8011:8011"
     depends_on:
       - database
 

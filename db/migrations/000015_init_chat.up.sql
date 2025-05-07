@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS chat (
+    id INT GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1) PRIMARY KEY,
+    user1 TEXT NOT NULL,
+    user2 TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (user1, user2),
+    CONSTRAINT fk_user1 FOREIGN KEY (user1) REFERENCES flow_user(username),
+    CONSTRAINT fk_user2 FOREIGN KEY (user2) REFERENCES flow_user(username)
+);

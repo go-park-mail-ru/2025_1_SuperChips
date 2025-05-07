@@ -24,9 +24,9 @@ func (p *pgProfileStorage) GetUserPublicInfoByEmail(email string) (domain.User, 
 	var externalID sql.NullString
 
 	err := p.db.QueryRow(`
-		SELECT id, username, email, avatar, birthday, about, public_name, external_id, is_external_avatar
+		SELECT id, username, email, avatar, birthday, about, public_name, external_id, is_external_avatar, subscriber_count
 		FROM flow_user WHERE email = $1
-	`, email).Scan(&userDB.ID, &userDB.Username, &userDB.Email, &userDB.Avatar, &userDB.Birthday, &userDB.About, &userDB.PublicName, &externalID, &userDB.IsExternalAvatar)
+	`, email).Scan(&userDB.ID, &userDB.Username, &userDB.Email, &userDB.Avatar, &userDB.Birthday, &userDB.About, &userDB.PublicName, &externalID, &userDB.IsExternalAvatar, &userDB.SubscriberCount)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return domain.User{}, domain.ErrUserNotFound
 	} else if err != nil {
@@ -43,6 +43,7 @@ func (p *pgProfileStorage) GetUserPublicInfoByEmail(email string) (domain.User, 
 		About:      userDB.About.String,
 		IsExternal: externalID.String != "",
 		IsExternalAvatar: userDB.IsExternalAvatar.Bool,
+		SubscriberCount: int(userDB.SubscriberCount.Int64),
 	}
 
 	return user, nil
@@ -52,9 +53,9 @@ func (p *pgProfileStorage) GetUserPublicInfoByUsername(username string) (domain.
 	var userDB userDB
 
 	err := p.db.QueryRow(`
-		SELECT id, username, email, avatar, birthday, about, public_name, is_external_avatar
+		SELECT id, username, email, avatar, birthday, about, public_name, is_external_avatar, subscriber_count
 		FROM flow_user WHERE username = $1
-	`, username).Scan(&userDB.ID, &userDB.Username, &userDB.Email, &userDB.Avatar, &userDB.Birthday, &userDB.About, &userDB.PublicName, &userDB.IsExternalAvatar)
+	`, username).Scan(&userDB.ID, &userDB.Username, &userDB.Email, &userDB.Avatar, &userDB.Birthday, &userDB.About, &userDB.PublicName, &userDB.IsExternalAvatar, &userDB.SubscriberCount)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return domain.User{}, domain.ErrUserNotFound
 	} else if err != nil {
@@ -70,6 +71,7 @@ func (p *pgProfileStorage) GetUserPublicInfoByUsername(username string) (domain.
 		PublicName:       userDB.PublicName,
 		About:            userDB.About.String,
 		IsExternalAvatar: userDB.IsExternalAvatar.Bool,
+		SubscriberCount:  int(userDB.SubscriberCount.Int64),
 	}
 
 	return user, nil

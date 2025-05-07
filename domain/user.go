@@ -21,6 +21,7 @@ type User struct {
 	JWTVersion       uint64    `json:"-"`
 	IsExternal       bool      `json:"is_external"`
 	IsExternalAvatar bool      `json:"-"`
+	SubscriberCount  int       `json:"subscriber_count"`
 }
 
 type PublicUser struct {

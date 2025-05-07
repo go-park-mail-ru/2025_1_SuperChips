@@ -209,7 +209,7 @@ func (h *ProfileHandler) ChangeUserPasswordHandler(w http.ResponseWriter, r *htt
 		CookieSecure:   h.CookieSecure,
 	}
 
-	if err := updateAuthToken(w, h.JwtManager, conf, claims.Email, id); err != nil {
+	if err := updateAuthToken(w, h.JwtManager, conf, claims.Email, claims.Username, id); err != nil {
 		handleProfileError(w, err)
 		return
 	}
@@ -270,7 +270,7 @@ func (h *ProfileHandler) PatchUserProfileHandler(w http.ResponseWriter, r *http.
 			ExpirationTime: h.ExpirationTime,
 			CookieSecure:   h.CookieSecure,
 		}
-		if err := updateAuthToken(w, h.JwtManager, conf, existingUser.Email, int(existingUser.ID)); err != nil {
+		if err := updateAuthToken(w, h.JwtManager, conf, existingUser.Email, claims.Username, int(existingUser.ID)); err != nil {
 			handleProfileError(w, err)
 			return
 		}
@@ -309,8 +309,8 @@ func handleProfileError(w http.ResponseWriter, err error) {
 
 }
 
-func updateAuthToken(w http.ResponseWriter, mngr auth.JWTManager, config configs.Config, email string, id int) error {
-	token, err := mngr.CreateJWT(email, id)
+func updateAuthToken(w http.ResponseWriter, mngr auth.JWTManager, config configs.Config, email, username string, id int) error {
+	token, err := mngr.CreateJWT(email, username, id)
 	if err != nil {
 		return err
 	}

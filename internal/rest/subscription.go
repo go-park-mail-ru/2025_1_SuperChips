@@ -15,7 +15,7 @@ import (
 type SubscriptionService interface {
 	GetUserFollowers(ctx context.Context, id, page, size int) ([]domain.PublicUser, error)
 	GetUserFollowing(ctx context.Context, id, page, size int) ([]domain.PublicUser, error)
-	CreateSubscription(ctx context.Context, targetUsername string, currentID int) error
+	CreateSubscription(ctx context.Context, username, targetUsername string, currentID int) error
 	DeleteSubscription(ctx context.Context, targetUsername string, currentID int) error
 }
 
@@ -118,10 +118,15 @@ func (h *SubscriptionHandler) CreateSubscription(w http.ResponseWriter, r *http.
 		return
 	}
 
+	if len(subData.TargetUsername) <= 2 {
+		HttpErrorToJson(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), h.ContextExpiration)
 	defer cancel()
 
-	if err := h.SubscriptionService.CreateSubscription(ctx, subData.TargetUsername, claims.UserID); err != nil {
+	if err := h.SubscriptionService.CreateSubscription(ctx, claims.Username, subData.TargetUsername, claims.UserID); err != nil {
 		handleSubscriptionError(w, err)
 		return
 	}
@@ -150,6 +155,11 @@ func (h *SubscriptionHandler) DeleteSubscription(w http.ResponseWriter, r *http.
 	var subData SubscriptionData
 	
 	if err := DecodeData(w, r.Body, &subData); err != nil {
+		return
+	}
+
+	if len(subData.TargetUsername) <= 2 {
+		HttpErrorToJson(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 

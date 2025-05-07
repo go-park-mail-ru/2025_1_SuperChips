@@ -165,7 +165,6 @@ func (p *pgPinStorage) CreatePin(ctx context.Context, data domain.PinDataCreate,
 	var pinID uint64
 	err := row.Scan(&pinID)
 	if err != nil {
-		println(err.Error())
 		return 0, pincrudService.ErrUntracked
 	}
 

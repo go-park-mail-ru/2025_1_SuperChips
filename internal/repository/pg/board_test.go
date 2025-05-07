@@ -286,45 +286,45 @@ func TestUpdateBoard_NotFound(t *testing.T) {
 }
 
 func TestGetBoardFlow_Success(t *testing.T) {
-	storage, mock, closeFn := setupMockDB(t)
-	defer closeFn()
+    storage, mock, closeFn := setupMockDB(t)
+    defer closeFn()
 
-	boardID := 50
-	userID := 1
-	page, pageSize := 1, 2
-	offset := 0
+    boardID := 50
+    userID := 1
+    page, pageSize := 1, 2
+    offset := 0
 
-	mock.ExpectQuery(regexp.QuoteMeta(`
-	SELECT id
-	FROM board
-	WHERE id = $1 AND (is_private = false
-	OR author_id = $2)`)).
-		WithArgs(boardID, userID).
-		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(boardID))
+    mock.ExpectQuery(regexp.QuoteMeta(`
+    SELECT id
+    FROM board
+    WHERE id = $1 AND (is_private = false OR author_id = $2)`)).
+        WithArgs(boardID, userID).
+        WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(boardID))
 
-	mock.ExpectQuery(regexp.QuoteMeta(`
-        SELECT f.id, f.title, f.description, f.author_id, f.created_at, 
-               f.updated_at, f.is_private, f.media_url, f.like_count
-        FROM flow f
-        JOIN board_post bp ON f.id = bp.flow_id
-        WHERE bp.board_id = $1
-          AND (f.is_private = false OR f.author_id = $2)
-        ORDER BY bp.saved_at DESC
-        LIMIT $3 OFFSET $4
-    `)).
-		WithArgs(boardID, userID, pageSize, offset).
-		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "title", "description", "author_id", "created_at", "updated_at",
-			"is_private", "media_url", "like_count",
-		}).
-			AddRow(1, "First Flow", "Description 1", 2, time.Now(), time.Now(), false, "url1", 10).
-			AddRow(2, "Second Flow", "Description 2", 3, time.Now(), time.Now(), false, "url2", 5))
+    expectedQuery := `
+    SELECT f.id, f.title, f.description, f.author_id, f.created_at, f.updated_at, f.is_private, f.media_url, f.like_count, f.width, f.height 
+    FROM flow f 
+    JOIN board_post bp 
+    ON f.id = bp.flow_id 
+    WHERE bp.board_id = $1 
+    AND (f.is_private = false OR f.author_id = $2) 
+    ORDER BY bp.saved_at DESC LIMIT $3 OFFSET $4
+    `
 
-	flows, err := storage.GetBoardFlow(context.Background(), boardID, userID, page, pageSize)
-	assert.NoError(t, err)
-	assert.Len(t, flows, 2)
+    mock.ExpectQuery(regexp.QuoteMeta(expectedQuery)).
+        WithArgs(boardID, userID, pageSize, offset).
+        WillReturnRows(sqlmock.NewRows([]string{
+            "id", "title", "description", "author_id", "created_at", "updated_at",
+            "is_private", "media_url", "like_count", "width", "height",
+        }).
+            AddRow(1, "First Flow", "Description 1", 2, time.Now(), time.Now(), false, "url1", 10, 100, 200).
+            AddRow(2, "Second Flow", "Description 2", 3, time.Now(), time.Now(), false, "url2", 5, 100, 200))
 
-	assert.NoError(t, mock.ExpectationsWereMet())
+    flows, err := storage.GetBoardFlow(context.Background(), boardID, userID, page, pageSize)
+    assert.NoError(t, err)
+    assert.Len(t, flows, 2)
+
+    assert.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestGetBoardFlow_Forbidden(t *testing.T) {
@@ -353,12 +353,12 @@ func TestGetBoardFlow_Forbidden(t *testing.T) {
 func createFakeFlowRows() *sqlmock.Rows {
 	cols := []string{
 		"id", "title", "description", "author_id", "created_at", "updated_at",
-		"is_private", "media_url", "like_count",
+		"is_private", "media_url", "like_count", "width", "height",
 	}
 	now := time.Now()
 	rows := sqlmock.NewRows(cols).
-		AddRow(1, "Flow Title 1", "Flow Desc 1", 10, now, now, false, "media1", 5).
-		AddRow(2, "Flow Title 2", "Flow Desc 2", 11, now, now, false, "media2", 3)
+		AddRow(1, "Flow Title 1", "Flow Desc 1", 10, now, now, false, "media1", 5, 100, 200).
+		AddRow(2, "Flow Title 2", "Flow Desc 2", 11, now, now, false, "media2", 3, 100, 200)
 	return rows
 }
 
@@ -396,14 +396,12 @@ func TestGetBoard_Success(t *testing.T) {
 		}).AddRow(boardID, 55, "Test Board", now, false, 10, "author_user"))
 
 	flowsQuery := regexp.QuoteMeta(`
-        SELECT f.id, f.title, f.description, f.author_id, f.created_at, 
-               f.updated_at, f.is_private, f.media_url, f.like_count
-        FROM flow f
-        JOIN board_post bp ON f.id = bp.flow_id
-        WHERE bp.board_id = $1
-          AND (f.is_private = false OR f.author_id = $2)
-        ORDER BY bp.saved_at DESC
-        LIMIT $3 OFFSET $4
+	SELECT f.id, f.title, f.description, f.author_id, f.created_at, f.updated_at, f.is_private, f.media_url, f.like_count, f.width, f.height 
+	FROM flow f 
+	JOIN board_post bp ON
+	f.id = bp.flow_id 
+	WHERE bp.board_id = $1 
+	AND (f.is_private = false OR f.author_id = $2) ORDER BY bp.saved_at DESC LIMIT $3 OFFSET $4
     `)
 	mock.ExpectQuery(flowsQuery).
 		WithArgs(boardID, userID, previewNum, previewStart).
@@ -481,14 +479,13 @@ func TestGetUserPublicBoards_Success(t *testing.T) {
 		WillReturnRows(boardRows)
 
 	flowsQuery := regexp.QuoteMeta(`
-        SELECT f.id, f.title, f.description, f.author_id, f.created_at, 
-               f.updated_at, f.is_private, f.media_url, f.like_count
-        FROM flow f
-        JOIN board_post bp ON f.id = bp.flow_id
-        WHERE bp.board_id = $1
-          AND (f.is_private = false OR f.author_id = $2)
-        ORDER BY bp.saved_at DESC
-        LIMIT $3 OFFSET $4
+	SELECT f.id, f.title, f.description, f.author_id, f.created_at, f.updated_at, f.is_private, f.media_url, f.like_count, f.width, f.height 
+	FROM flow f 
+	JOIN board_post bp ON f.id = bp.flow_id 
+	WHERE bp.board_id = $1 
+	AND (f.is_private = false OR f.author_id = $2) 
+	ORDER BY bp.saved_at 
+	DESC LIMIT $3 OFFSET $4
     `)
 	mock.ExpectQuery(flowsQuery).
 		WithArgs(1, 0, previewNum, previewStart).
@@ -531,14 +528,13 @@ func TestGetUserAllBoards_Success(t *testing.T) {
 		WillReturnRows(boardRows)
 
 	flowsQuery := regexp.QuoteMeta(`
-        SELECT f.id, f.title, f.description, f.author_id, f.created_at, 
-               f.updated_at, f.is_private, f.media_url, f.like_count
-        FROM flow f
-        JOIN board_post bp ON f.id = bp.flow_id
-        WHERE bp.board_id = $1
-          AND (f.is_private = false OR f.author_id = $2)
-        ORDER BY bp.saved_at DESC
-        LIMIT $3 OFFSET $4
+	SELECT f.id, f.title, f.description, f.author_id, f.created_at, f.updated_at, f.is_private, f.media_url, f.like_count, f.width, f.height 
+	FROM flow f 
+	JOIN board_post bp ON f.id = bp.flow_id 
+	WHERE bp.board_id = $1 
+	AND (f.is_private = false OR f.author_id = $2) 
+	ORDER BY bp.saved_at 
+	DESC LIMIT $3 OFFSET $4
     `)
 	mock.ExpectQuery(flowsQuery).
 		WithArgs(10, userID, previewNum, previewStart).
