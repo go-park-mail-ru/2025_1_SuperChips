@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/metrics"
@@ -57,6 +58,13 @@ func (w *ResponseWriterStatus) Write(data []byte) (int, error) {
 }
 
 func normalizePath(path string) string {
+	if strings.HasPrefix(path, "/api/v1/users/") {
+		re := regexp.MustCompile(`^(/api/v1/users/)[^/]+(/boards.*)?$`)
+		return re.ReplaceAllString(path, "${1}:username${2}")
+	}
+	if strings.HasPrefix(path, "/api/v1/dummy/") {
+		return "/api/v1/dummy/:ms"
+	}
 	re := regexp.MustCompile(`/\d+`)
 	return re.ReplaceAllString(path, "/:id")
 }
