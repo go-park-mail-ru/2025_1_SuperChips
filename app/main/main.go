@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -192,6 +193,17 @@ func main() {
 
 	// prometheus
 	mux.Handle("/api/v1/metrics", promhttp.Handler())
+
+	mux.HandleFunc("/api/v1/dummy/{ms}",
+		middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
+			waitTime, err := strconv.Atoi(r.PathValue("ms"))
+			if err == nil {
+				time.Sleep(time.Duration(waitTime) * time.Millisecond)
+			}
+		}, 
+		middleware.CorsMiddleware(config, allowedGetOptions),
+		middleware.MetricsMiddleware(metricsService),
+		middleware.Log()))
 
 	// static
 	mux.Handle("/static/", http.StripPrefix(config.StaticBaseDir, middleware.ChainMiddleware(
