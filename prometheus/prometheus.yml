@@ -13,6 +13,6 @@ scrape_configs:
       - targets: [ 'node_exporter:9100' ]
 
   - job_name: "flow_backend"
-    metrics_path: /api/metrics
+    metrics_path: /api/v1/metrics
     static_configs:
       - targets: [ 'flow_backend:8080' ]
