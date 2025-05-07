@@ -190,6 +190,9 @@ func main() {
 		mux.HandleFunc("/swagger/", httpSwagger.WrapHandler)
 	}
 
+	// prometheus
+	mux.Handle("/api/v1/metrics", promhttp.Handler())
+
 	// static
 	mux.Handle("/static/", http.StripPrefix(config.StaticBaseDir, middleware.ChainMiddleware(
 		fsHandler,
@@ -205,17 +208,21 @@ func main() {
 	// feed
 	mux.HandleFunc("/api/v1/feed",
 		middleware.ChainMiddleware(pinsHandler.FeedHandler, middleware.CorsMiddleware(config, allowedGetOptions),
+		middleware.MetricsMiddleware(metricsService),
 		middleware.Log()))
 
 	// auth
 	mux.HandleFunc("/api/v1/auth/login",
 		middleware.ChainMiddleware(authHandler.LoginHandler, middleware.CorsMiddleware(config, allowedPostOptions),
+		middleware.MetricsMiddleware(metricsService),
 		middleware.Log()))
 	mux.HandleFunc("/api/v1/auth/registration",
 		middleware.ChainMiddleware(authHandler.RegistrationHandler, middleware.CorsMiddleware(config, allowedPostOptions),
+		middleware.MetricsMiddleware(metricsService),
 		middleware.Log()))
 	mux.HandleFunc("/api/v1/auth/logout",
 		middleware.ChainMiddleware(authHandler.LogoutHandler, middleware.CorsMiddleware(config, allowedPostOptions),
+		middleware.MetricsMiddleware(metricsService),
 		middleware.Log()))
 
 	// profile
@@ -223,57 +230,67 @@ func main() {
 		middleware.ChainMiddleware(profileHandler.CurrentUserProfileHandler,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 	mux.HandleFunc("/api/v1/users/{username}",
 		middleware.ChainMiddleware(profileHandler.PublicProfileHandler,
 			middleware.CorsMiddleware(config, allowedGetOptionsHead),
+			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 	mux.HandleFunc("/api/v1/profile/update",
 		middleware.ChainMiddleware(profileHandler.PatchUserProfileHandler,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedPatchOptions),
+			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 	mux.HandleFunc("/api/v1/profile/avatar",
 		middleware.ChainMiddleware(profileHandler.UserAvatarHandler,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedPostOptions),
+			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 	mux.HandleFunc("/api/v1/profile/password",
 		middleware.ChainMiddleware(profileHandler.ChangeUserPasswordHandler,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedPostOptions),
+			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 
 	// flows
 	mux.HandleFunc("OPTIONS /api/v1/flows",
 		middleware.ChainMiddleware(func(http.ResponseWriter, *http.Request) {},
 			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 	mux.HandleFunc("GET /api/v1/flows",
 		middleware.ChainMiddleware(pinCRUDHandler.ReadHandler,
 			middleware.AuthMiddleware(jwtManager, false),
 			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 	mux.HandleFunc("DELETE /api/v1/flows",
 		middleware.ChainMiddleware(pinCRUDHandler.DeleteHandler,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedDeleteOptions),
+			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 	mux.HandleFunc("PUT /api/v1/flows",
 		middleware.ChainMiddleware(pinCRUDHandler.UpdateHandler,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedPutOptions),
+			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 	mux.HandleFunc("POST /api/v1/flows",
 		middleware.ChainMiddleware(pinCRUDHandler.CreateHandler,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedPostOptions),
+			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 
 	// likes
@@ -282,12 +299,14 @@ func main() {
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedPostOptions),
+			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 
 	mux.HandleFunc("OPTIONS /api/v1/like", middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}, 
 		middleware.CorsMiddleware(config, allowedGetOptions),
+		middleware.MetricsMiddleware(metricsService),
 		middleware.Log()))
 
 	
@@ -297,18 +316,21 @@ func main() {
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedPostOptions),
+			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 
 	mux.HandleFunc("GET /api/v1/boards/{board_id}/flows",
 		middleware.ChainMiddleware(boardHandler.GetBoardFlows,
 			middleware.AuthMiddleware(jwtManager, false),
 			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 
 	mux.HandleFunc("OPTIONS /api/v1/boards/{board_id}/flows",
 		middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
 		}, middleware.CorsMiddleware(config, allowedOptions),
+		middleware.MetricsMiddleware(metricsService),
 		middleware.Log()))
 
 	mux.HandleFunc("/api/v1/boards/{board_id}/flows/{id}",
@@ -316,6 +338,7 @@ func main() {
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedDeleteOptions),
+			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 
 	mux.HandleFunc("DELETE /api/v1/boards/{board_id}",
@@ -323,6 +346,7 @@ func main() {
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedDeleteOptions),
+			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 
 	mux.HandleFunc("PUT /api/v1/boards/{board_id}",
@@ -330,23 +354,27 @@ func main() {
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedPutOptions),
+			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 
 	mux.HandleFunc("GET /api/v1/boards/{board_id}",
 		middleware.ChainMiddleware(boardHandler.GetBoard,
 			middleware.AuthMiddleware(jwtManager, false),
 			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 
 	mux.HandleFunc("OPTIONS /api/v1/boards/{board_id}",
 		middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
 		}, middleware.CorsMiddleware(config, allowedOptions),
+		middleware.MetricsMiddleware(metricsService),
 		middleware.Log()))
 
 	mux.HandleFunc("GET /api/v1/users/{username}/boards",
 		middleware.ChainMiddleware(boardHandler.GetUserPublic,
 			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 
 	mux.HandleFunc("POST /api/v1/users/{username}/boards",
@@ -354,36 +382,42 @@ func main() {
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedPostOptions),
+			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 
 	mux.HandleFunc("OPTIONS /api/v1/users/{username}/boards",
 		middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
 		}, middleware.CorsMiddleware(config, allowedOptions),
+		middleware.MetricsMiddleware(metricsService),
 		middleware.Log()))
 
 	mux.HandleFunc("/api/v1/profile/boards",
 		middleware.ChainMiddleware(boardHandler.GetUserAllBoards,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 
 	// search
 	mux.HandleFunc("/api/v1/search/flows", 
 		middleware.ChainMiddleware(searchHander.SearchPins,
 			middleware.CorsMiddleware(config, allowedGetOptionsHead),
+			middleware.MetricsMiddleware(metricsService),
 			middleware.Log(),
 			middleware.Recovery()))
 
 	mux.HandleFunc("/api/v1/search/boards", 
 	middleware.ChainMiddleware(searchHander.SearchBoards,
 		middleware.CorsMiddleware(config, allowedGetOptionsHead),
+		middleware.MetricsMiddleware(metricsService),
 		middleware.Log(),
 		middleware.Recovery()))
 
 	mux.HandleFunc("/api/v1/search/users", 
 	middleware.ChainMiddleware(searchHander.SearchUsers,
 		middleware.CorsMiddleware(config, allowedGetOptionsHead),
+		middleware.MetricsMiddleware(metricsService),
 		middleware.Log(),
 		middleware.Recovery()))
 
@@ -391,23 +425,27 @@ func main() {
 	mux.HandleFunc("/api/v1/auth/vkid/login",
 		middleware.ChainMiddleware(authHandler.ExternalLogin,
 			middleware.CorsMiddleware(config, allowedPostOptions),
+			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 
 	mux.HandleFunc("/api/v1/auth/vkid/register",
 		middleware.ChainMiddleware(authHandler.ExternalRegister,
 			middleware.CorsMiddleware(config, allowedPostOptions),
+			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 
 	mux.HandleFunc("GET /api/v1/profile/followers",
 		middleware.ChainMiddleware(subscriptionHandler.GetUserFollowers,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 
 	mux.HandleFunc("GET /api/v1/profile/following",
 		middleware.ChainMiddleware(subscriptionHandler.GetUserFollowing, 
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 
 	mux.HandleFunc("POST /api/v1/subscription",
@@ -415,6 +453,7 @@ func main() {
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedPostOptions),
+			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 
 	mux.HandleFunc("DELETE /api/v1/subscription",
@@ -422,16 +461,15 @@ func main() {
 		middleware.AuthMiddleware(jwtManager, true),
 		middleware.CSRFMiddleware(),
 		middleware.CorsMiddleware(config, allowedDeleteOptions),
+		middleware.MetricsMiddleware(metricsService),
 		middleware.Log()))
 
 	mux.HandleFunc("OPTIONS /api/v1/subscription", 	
 	middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}, middleware.CorsMiddleware(config, allowedOptions),
+	middleware.MetricsMiddleware(metricsService),
 	middleware.Log()))
-	
-	// prometheus
-	mux.Handle("api/v1/metrics", promhttp.Handler())
 		
 	server := http.Server{
 		Addr:    config.Port,
