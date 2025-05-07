@@ -1,6 +1,7 @@
 package repository_test
 
 import (
+	"regexp"
 	"testing"
 	"time"
 
@@ -17,11 +18,12 @@ func TestGetUserPublicInfoByEmail(t *testing.T) {
 	defer db.Close()
 
 	email := "test@example.com"
-	rows := sqlmock.NewRows([]string{"id", "username", "email", "avatar", "birthday", "about", "public_name"}).
-		AddRow(1, "cool_user", email, "avatar_url", nil, nil, "Cool User")
+	rows := sqlmock.NewRows([]string{"id", "username", "email", "avatar", "birthday", "about", "public_name", "external_id", "is_external_avatar", "subscriber_count"}).
+		AddRow(1, "cool_user", email, "avatar_url", nil, nil, "Cool User", 123321321, false, 10)
 
-	mock.ExpectQuery(`SELECT id, username, email, avatar, birthday, about, public_name
-		FROM flow_user WHERE email = ?`).
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT id, username, email, avatar, birthday, about, public_name, external_id, is_external_avatar, subscriber_count 
+	FROM flow_user 
+	WHERE email = $1`)).
 		WithArgs(email).
 		WillReturnRows(rows)
 
@@ -53,11 +55,12 @@ func TestGetUserPublicInfoByUsername(t *testing.T) {
 	defer db.Close()
 
 	username := "cool_user"
-	rows := sqlmock.NewRows([]string{"id", "username", "email", "avatar", "birthday", "about", "public_name"}).
-		AddRow(1, username, "cool_user@yandex.ru", "avatar_url", nil, nil, "Cool User")
+	rows := sqlmock.NewRows([]string{"id", "username", "email", "avatar", "birthday", "about", "public_name", "is_external_avatar", "subscriber_count"}).
+		AddRow(1, username, "cool@email.ru", "avatar_url", nil, nil, "Cool User", false, 10)
 
-	mock.ExpectQuery(`SELECT id, username, email, avatar, birthday, about, public_name
-		FROM flow_user WHERE username = ?`).
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT id, username, email, avatar, birthday, about, public_name, is_external_avatar, subscriber_count 
+	FROM flow_user 
+	WHERE username = $1`)).
 		WithArgs(username).
 		WillReturnRows(rows)
 
@@ -90,7 +93,7 @@ func TestSaveUserAvatar(t *testing.T) {
 	email := "hello@mail.ru"
 	avatarURL := "new_avatar_url"
 
-	mock.ExpectExec(`UPDATE flow_user SET avatar = \$1 WHERE email = \$2`).
+	mock.ExpectExec(regexp.QuoteMeta("UPDATE flow_user SET avatar = $1, is_external_avatar = false WHERE email = $2")).
 		WithArgs(avatarURL, email).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 

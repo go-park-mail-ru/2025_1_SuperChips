@@ -19,6 +19,7 @@ func TestCreateJWT(t *testing.T) {
 		cfg       configs.Config
 		userID    int
 		email     string
+		username  string
 		wantError error
 	}{
 		{
@@ -26,6 +27,7 @@ func TestCreateJWT(t *testing.T) {
 			cfg:       validConfig,
 			userID:    1,
 			email:     "valid@example.com",
+			username:  "cooluser",
 			wantError: nil,
 		},
 		{
@@ -33,6 +35,7 @@ func TestCreateJWT(t *testing.T) {
 			cfg:       validConfig,
 			userID:    0,
 			email:     "invalid@example.com",
+			username:  "cooluser",
 			wantError: ErrInvalidUser,
 		},
 	}
@@ -40,7 +43,7 @@ func TestCreateJWT(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mngr := NewJWTManager(tt.cfg)
-			token, err := mngr.CreateJWT(tt.email, tt.userID)
+			token, err := mngr.CreateJWT(tt.email, tt.username, tt.userID)
 
 			if tt.wantError != nil {
 				require.ErrorIs(t, err, tt.wantError)
@@ -75,13 +78,13 @@ func TestParseJWTToken(t *testing.T) {
 	}
 
 	validMngr := NewJWTManager(validConfig)
-	validToken, _ := validMngr.CreateJWT("valid@example.com", 1)
+	validToken, _ := validMngr.CreateJWT("valid@example.com", "cooluser", 1)
 
 	expiredMngr := NewJWTManager(expiredConfig)
-	expiredToken, _ := expiredMngr.CreateJWT("expired@example.com", 2)
+	expiredToken, _ := expiredMngr.CreateJWT("expired@example.com", "cooluser", 2)
 
 	invalidMngr := NewJWTManager(invalidSecretConfig)
-	invalidToken, _ := invalidMngr.CreateJWT("invalid@example.com", 3)
+	invalidToken, _ := invalidMngr.CreateJWT("invalid@example.com", "cooluser", 3)
 
 	tests := []struct {
 		name        string

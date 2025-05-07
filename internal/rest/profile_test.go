@@ -82,7 +82,7 @@ func TestCurrentUserProfileHandler_GET(t *testing.T) {
 			URL:          base,
 			Token:        "yes",
 			ExpectedCode: 200,
-			ExpectedBody: `{"data":{"user_id":1,"username":"JohnDoe","email":"","birthday":"2000-01-01T00:00:00Z"}}`,
+			ExpectedBody: `{"data":{"user_id":1,"username":"JohnDoe","email":"","birthday":"2000-01-01T00:00:00Z","is_external":false,"subscriber_count":0}}`,
 		},
 		{
 			Name:         "Unauthorized request",
@@ -240,7 +240,7 @@ func TestPublicProfileHandler(t *testing.T) {
 			URL:          "/profile/johndoe",
 			Token:        "yes",
 			ExpectedCode: 200,
-			ExpectedBody: `{"data":{"username":"johndoe","email":"","birthday":"0001-01-01T00:00:00Z","about":"Developer","public_name":"John Doe"}`,
+			ExpectedBody: `{"data":{"username":"johndoe","email":"","birthday":"0001-01-01T00:00:00Z","about":"Developer","public_name":"John Doe","is_external":false,"subscriber_count":0}}`,
 		},
 		{
 			Name:         "Non-existent user",

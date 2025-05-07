@@ -27,6 +27,7 @@ import (
 	pincrudService "github.com/go-park-mail-ru/2025_1_SuperChips/pincrud"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/profile"
 	genAuth "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/auth"
+	genChat "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/chat"
 	genFeed "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/feed"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/search"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/subscription"
@@ -98,10 +99,11 @@ func main() {
 	likeStorage := pgStorage.NewPgLikeStorage(db)
 	boardStorage := pgStorage.NewBoardStorage(db)
 	searchStorage := pgStorage.NewSearchRepository(db)
+	chatStorage := pgStorage.NewChatRepository(db)
 
 	jwtManager := auth.NewJWTManager(config)
 
-	subscriptionService := subscription.NewSubscriptionUsecase(subscriptionStorage)
+	subscriptionService := subscription.NewSubscriptionUsecase(subscriptionStorage, chatStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
 	pinCRUDService := pincrudService.NewPinCRUDService(pinStorage, boardStorage, imageStorage)
 	profileService := profile.NewProfileService(profileStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
 	boardService := board.NewBoardService(boardStorage, config.BaseUrl, config.ImageBaseDir)
@@ -129,8 +131,18 @@ func main() {
 	}
 	defer grpcConnFeed.Close()
 
+	grpcConnChat, err := grpc.NewClient(
+		"chat:8012",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer grpcConnChat.Close()
+
 	authClient := genAuth.NewAuthClient(grpcConnAuth)
 	feedClient := genFeed.NewFeedClient(grpcConnFeed)
+	chatClient := genChat.NewChatServiceClient(grpcConnChat)
 
 	authHandler := rest.AuthHandler{
 		Config:      config,
@@ -142,6 +154,11 @@ func main() {
 	subscriptionHandler := rest.SubscriptionHandler{
 		ContextExpiration: config.ContextExpiration,
 		SubscriptionService: subscriptionService,
+	}
+
+	chatHandler := rest.ChatHandler{
+		ContextExpiration: config.ContextExpiration,
+		ChatService: chatClient,
 	}
 
 	pinsHandler := rest.PinsHandler{
@@ -433,7 +450,7 @@ func main() {
 		middleware.Log(),
 		middleware.Recovery()))
 
-	// server
+	// external id
 	mux.HandleFunc("/api/v1/auth/vkid/login",
 		middleware.ChainMiddleware(authHandler.ExternalLogin,
 			middleware.CorsMiddleware(config, allowedPostOptions),
@@ -446,6 +463,8 @@ func main() {
 			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 
+
+	// subscription
 	mux.HandleFunc("GET /api/v1/profile/followers",
 		middleware.ChainMiddleware(subscriptionHandler.GetUserFollowers,
 			middleware.AuthMiddleware(jwtManager, true),
@@ -482,7 +501,41 @@ func main() {
 	}, middleware.CorsMiddleware(config, allowedOptions),
 	middleware.MetricsMiddleware(metricsService),
 	middleware.Log()))
-		
+
+	// chat
+	mux.HandleFunc("GET /api/v1/chats", middleware.ChainMiddleware(chatHandler.GetChats,
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CorsMiddleware(config, allowedGetOptions),
+		middleware.Log()))
+
+	mux.HandleFunc("POST /api/v1/chats", middleware.ChainMiddleware(chatHandler.NewChat,
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CSRFMiddleware(),
+		middleware.CorsMiddleware(config, allowedPostOptions),
+		middleware.Log()))
+
+	mux.HandleFunc("OPTIONS /api/v1/chats", middleware.ChainMiddleware(chatHandler.GetChats,
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CorsMiddleware(config, allowedGetOptions),
+		middleware.Log()))
+
+	// contacts
+	mux.HandleFunc("GET /api/v1/contacts", middleware.ChainMiddleware(chatHandler.GetContacts, 
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CorsMiddleware(config, allowedGetOptions),
+		middleware.Log()))
+
+	mux.HandleFunc("OPTIONS /api/v1/contacts", middleware.ChainMiddleware(chatHandler.GetContacts, 
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CorsMiddleware(config, allowedGetOptions),
+		middleware.Log()))
+	
+	mux.HandleFunc("POST /api/v1/contacts", middleware.ChainMiddleware(chatHandler.CreateContact,
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CSRFMiddleware(),
+		middleware.CorsMiddleware(config, allowedPostOptions),
+		middleware.Log()))
+
 	server := http.Server{
 		Addr:    config.Port,
 		Handler: mux,

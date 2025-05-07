@@ -18,6 +18,13 @@ mocks:
 	$(MOCKGEN) -source=./like/service.go -destination=$(MOCK_DST)/like/repository/repository.go
 	$(MOCKGEN) -source=./internal/rest/like.go -destination=$(MOCK_DST)/like/service/service.go
 	$(MOCKGEN) -source=./internal/rest/board.go -destination=$(MOCK_DST)/board/service/service.go
+	$(MOCKGEN) -source=./protos/gen/auth/auth_grpc.pb.go -destination=$(MOCK_DST)/auth/grpc/client.go
+	$(MOCKGEN) -source=./protos/gen/feed/feed_grpc.pb.go -destination=$(MOCK_DST)/feed/grpc/client.go
+	$(MOCKGEN) -source=./protos/gen/chat/chat_grpc.pb.go -destination=$(MOCK_DST)/chat/grpc/client.go
+	$(MOCKGEN) -source=./internal/rest/search.go -destination=$(MOCK_DST)/search/service/service.go
+	$(MOCKGEN) -source=./internal/rest/subscription.go -destination=$(MOCK_DST)/subscription/service/service.go
+	$(MOCKGEN) -source=./internal/grpc/feed.go -destination=$(MOCK_DST)/feed/service/service.go
+
 
 proto_generate: 
 	protoc \
@@ -25,11 +32,13 @@ proto_generate:
     --go_opt=module=protos \
     --go-grpc_out=./protos \
     --go-grpc_opt=module=protos \
-    protos/proto/auth/auth.proto protos/proto/feed/feed.proto
+    protos/proto/auth/auth.proto \
+	protos/proto/feed/feed.proto \
+	protos/proto/chat/chat.proto
 
 test: mocks
 	go test $(TESTED_DIRS) -coverprofile=$(COVERAGE_FILE)
 	
 cover: mocks test
-	cat $(COVERAGE_FILE) | grep -v 'mock_' | grep -v 'docs' | grep -v 'test_utils' > cover.out
+	cat $(COVERAGE_FILE) | grep -v 'mock_' | grep -v 'docs' | grep -v 'test_utils' | grep -v 'gen' > cover.out
 	go tool cover -func=cover.out

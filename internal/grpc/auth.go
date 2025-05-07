@@ -12,8 +12,8 @@ import (
 
 type UserUsecase interface {
 	AddUser(ctx context.Context, user domain.User) (uint64, error)
-	LoginUser(ctx context.Context, email, password string) (uint64, error)
-	LoginExternalUser(ctx context.Context, email string, externalID string) (int, string, error)
+	LoginUser(ctx context.Context, email, password string) (uint64, string, error)
+	LoginExternalUser(ctx context.Context, email string, externalID string) (int, string, string, error)
 	AddExternalUser(ctx context.Context, email, username, avatarURL string, externalID string) (uint64, error)
 }
 
@@ -51,18 +51,19 @@ func (h *GrpcAuthHandler) AddUser(ctx context.Context, in *gen.AddUserRequest) (
 }
 
 func (h *GrpcAuthHandler) LoginUser(ctx context.Context, in *gen.LoginUserRequest) (*gen.LoginUserResponse, error) {
-	id, err := h.usecase.LoginUser(ctx, in.Email, in.Password)
+	id, username, err := h.usecase.LoginUser(ctx, in.Email, in.Password)
 	if err != nil { 
 		return nil, mapToGrpcError(err)
 	}
 
 	return &gen.LoginUserResponse{
 		ID: int64(id),
+		Username: username,
 	}, nil
 }
 
 func (h *GrpcAuthHandler) LoginExternalUser(ctx context.Context, in *gen.LoginExternalUserRequest) (*gen.LoginExternalUserResponse, error) {
-	id, email, err := h.usecase.LoginExternalUser(ctx, in.Email, in.ExternalID)
+	id, email, username, err := h.usecase.LoginExternalUser(ctx, in.Email, in.ExternalID)
 	if err != nil {
 		return nil, mapToGrpcError(err)
 	}
@@ -70,6 +71,7 @@ func (h *GrpcAuthHandler) LoginExternalUser(ctx context.Context, in *gen.LoginEx
 	return &gen.LoginExternalUserResponse{
 		ID:    int64(id),
 		Email: email,
+		Username: username,
 	}, nil
 }
 

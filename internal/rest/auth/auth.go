@@ -20,8 +20,9 @@ var (
 )
 
 type Claims struct {
-	UserID int
-	Email  string
+	UserID   int
+	Username string
+	Email    string
 	jwt.RegisteredClaims
 }
 
@@ -39,7 +40,7 @@ func NewJWTManager(cfg configs.Config) *JWTManager {
 	}
 }
 
-func (mngr *JWTManager) CreateJWT(email string, userID int) (string, error) {
+func (mngr *JWTManager) CreateJWT(email, username string, userID int) (string, error) {
 	if userID == 0 {
 		return "", ErrInvalidUser
 	}
@@ -48,6 +49,7 @@ func (mngr *JWTManager) CreateJWT(email string, userID int) (string, error) {
 	claims := &Claims{
 		UserID: int(userID),
 		Email:  email,
+		Username: username,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expiration),
 			Issuer:    mngr.issuer,
