@@ -1,12 +1,14 @@
 package repository
-import (
-    "database/sql"
-    "testing"
-    "time"
 
-    "github.com/DATA-DOG/go-sqlmock"
-    "github.com/go-park-mail-ru/2025_1_SuperChips/domain"
-    "github.com/stretchr/testify/assert"
+import (
+	"context"
+	"database/sql"
+	"testing"
+	"time"
+
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
+	"github.com/stretchr/testify/assert"
 )
 
 func setupMock(t *testing.T) (sqlmock.Sqlmock, *pgUserStorage) {
@@ -30,14 +32,23 @@ func TestAddUser_Success(t *testing.T) {
         PublicName: "user1",
         Email:     "user@example.com",
         Password:  "pass123",
-        Birthday:  time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
     }
 
-    mock.ExpectQuery("INSERT INTO flow_user").
-        WithArgs(userInfo.Username, userInfo.Avatar, userInfo.Username, userInfo.Email, userInfo.Password, userInfo.Birthday).
+    mock.ExpectQuery(`
+    WITH conflict_check AS \(
+        SELECT id
+        FROM flow_user
+        WHERE username = \$1 OR email = \$4
+    \)
+    INSERT INTO flow_user \(username, avatar, public_name, email, password\)
+    SELECT \$1, \$2, \$3, \$4, \$5
+    WHERE NOT EXISTS \(SELECT 1 FROM conflict_check\)
+    RETURNING id;
+        `).
+        WithArgs(userInfo.Username, userInfo.Avatar, userInfo.Username, userInfo.Email, userInfo.Password).
         WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
 
-    id, err := storage.AddUser(userInfo)
+    id, err := storage.AddUser(context.Background(), userInfo)
     assert.NoError(t, err)
     assert.Equal(t, uint64(1), id)
     assert.NoError(t, mock.ExpectationsWereMet())
@@ -49,16 +60,17 @@ func TestGetHash_Success(t *testing.T) {
 
     email := "user@example.com"
     password := "hashedpassword"
+    username := "coolusername"
     id := uint64(1)
 
-    rows := sqlmock.NewRows([]string{"id", "password"}).
-        AddRow(id, password)
+    rows := sqlmock.NewRows([]string{"id", "password", "username"}).
+        AddRow(id, password, username)
 
-    mock.ExpectQuery("SELECT id, password FROM flow_user WHERE email =").
+    mock.ExpectQuery("SELECT id, password, username FROM flow_user WHERE email = \\$1").
         WithArgs(email).
         WillReturnRows(rows)
 
-    returnedID, returnedHash, err := storage.GetHash(email, "")
+    returnedID, returnedHash, _, err := storage.GetHash(context.Background(), email, "")
     assert.NoError(t, err)
     assert.Equal(t, id, returnedID)
     assert.Equal(t, password, returnedHash)
@@ -71,11 +83,11 @@ func TestGetHash_UserNotFound(t *testing.T) {
 
     email := "user@example.com"
 
-    mock.ExpectQuery("SELECT id, password FROM flow_user WHERE email =").
+    mock.ExpectQuery("SELECT id, password, username FROM flow_user WHERE email = \\$1").
         WithArgs(email).
         WillReturnError(sql.ErrNoRows)
 
-    _, _, err := storage.GetHash(email, "")
+    _, _, _, err := storage.GetHash(context.Background(), email, "")
     assert.Equal(t, domain.ErrInvalidCredentials, err)
     assert.NoError(t, mock.ExpectationsWereMet())
 }
@@ -89,14 +101,14 @@ func TestGetUserPublicInfo_Success(t *testing.T) {
     avatar := "avatar.jpg"
     birthday := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
 
-    rows := sqlmock.NewRows([]string{"username", "email", "avatar", "birthday"}).
-        AddRow(username, email, avatar, birthday)
+    rows := sqlmock.NewRows([]string{"username", "email", "avatar", "birthday", "about", "public_name", "subscriber_count"}).
+        AddRow(username, email, avatar, birthday, "", "", 0)
 
-    mock.ExpectQuery(`SELECT username, email, avatar, birthday, about, public_name, FROM flow_user WHERE email = \$1`).
+    mock.ExpectQuery(`SELECT username, email, avatar, birthday, about, public_name, subscriber_count FROM flow_user WHERE email = \$1`).
         WithArgs(email).
         WillReturnRows(rows)
 
-    publicUser, err := storage.GetUserPublicInfo(email)
+    publicUser, err := storage.GetUserPublicInfo(context.Background(), email)
     assert.NoError(t, err)
     assert.Equal(t, username, publicUser.Username)
     assert.Equal(t, email, publicUser.Email)
@@ -114,14 +126,14 @@ func TestGetUserPublicInfo_NullAvatar(t *testing.T) {
     var avatar sql.NullString
     birthday := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
 
-    rows := sqlmock.NewRows([]string{"username", "email", "avatar", "birthday"}).
-        AddRow(username, email, avatar, birthday)
+    rows := sqlmock.NewRows([]string{"username", "email", "avatar", "birthday", "about", "public_name", "subscriber_count"}).
+        AddRow(username, email, avatar, birthday, "", "", 0)
 
-    mock.ExpectQuery(`SELECT username, email, avatar, birthday, about, public_name, FROM flow_user WHERE email = \$1`).
+    mock.ExpectQuery(`SELECT username, email, avatar, birthday, about, public_name, subscriber_count FROM flow_user WHERE email = \$1`).
         WithArgs(email).
         WillReturnRows(rows)
 
-    publicUser, err := storage.GetUserPublicInfo(email)
+    publicUser, err := storage.GetUserPublicInfo(context.Background(), email)
     assert.NoError(t, err)
     assert.Equal(t, username, publicUser.Username)
     assert.Equal(t, email, publicUser.Email)
@@ -136,11 +148,11 @@ func TestGetUserPublicInfo_UserNotFound(t *testing.T) {
 
     email := "user@example.com"
 
-    mock.ExpectQuery(`SELECT username, email, avatar, birthday, about, public_name, FROM flow_user WHERE email = \$1`).
+    mock.ExpectQuery(`SELECT username, email, avatar, birthday, about, public_name, subscriber_count FROM flow_user WHERE email = \$1`).
         WithArgs(email).
         WillReturnError(sql.ErrNoRows)
 
-    _, err := storage.GetUserPublicInfo(email)
+    _, err := storage.GetUserPublicInfo(context.Background(), email)
     assert.Equal(t, domain.ErrInvalidCredentials, err)
     assert.NoError(t, mock.ExpectationsWereMet())
 }
@@ -158,7 +170,7 @@ func TestGetUserId_Success(t *testing.T) {
         WithArgs(email).
         WillReturnRows(rows)
 
-    returnedID, err := storage.GetUserId(email)
+    returnedID, err := storage.GetUserId(context.Background(), email)
     assert.NoError(t, err)
     assert.Equal(t, id, returnedID)
     assert.NoError(t, mock.ExpectationsWereMet())
@@ -174,7 +186,7 @@ func TestGetUserId_UserNotFound(t *testing.T) {
         WithArgs(email).
         WillReturnError(sql.ErrNoRows)
 
-    _, err := storage.GetUserId(email)
+    _, err := storage.GetUserId(context.Background(), email)
     assert.Equal(t, domain.ErrUserNotFound, err)
     assert.NoError(t, mock.ExpectationsWereMet())
 }

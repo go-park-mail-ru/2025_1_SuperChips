@@ -121,6 +121,61 @@ func (p *pgBoardStorage) AddToBoard(ctx context.Context, boardID, userID, flowID
 	return nil
 }
 
+func (p *pgBoardStorage) AddToSavedBoard(ctx context.Context, userID, flowID int) error {
+	tx, err := p.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var boardID int
+	err = tx.QueryRowContext(ctx, `
+	SELECT id
+	FROM board
+	WHERE board_name = 'Созданные вами' AND
+	author_id = $1
+	`, userID).Scan(&boardID)
+	if err != nil {
+		return err
+	}
+
+	result, err := tx.ExecContext(ctx, `
+        UPDATE board
+        SET flow_count = flow_count + 1
+        WHERE id = $1 AND author_id = $2
+    `, boardID, userID)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	var insertedID int
+	err = tx.QueryRowContext(ctx, `
+        INSERT INTO board_post (board_id, flow_id)
+        VALUES ($1, $2)
+        RETURNING board_id
+    `, boardID, flowID).Scan(&insertedID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (p *pgBoardStorage) DeleteFromBoard(ctx context.Context, boardID, userID, flowID int) error {
     tx, err := p.db.Begin()
     if err != nil {
@@ -340,7 +395,7 @@ func (p *pgBoardStorage) GetBoardFlow(ctx context.Context, boardID, userID, page
 func (p *pgBoardStorage) fetchFirstNFlowsForBoard(ctx context.Context, boardID, userID, pageSize, offset int) ([]domain.PinData, error) {
 	rows, err := p.db.QueryContext(ctx, `
         SELECT f.id, f.title, f.description, f.author_id, f.created_at, 
-               f.updated_at, f.is_private, f.media_url, f.like_count
+               f.updated_at, f.is_private, f.media_url, f.like_count, f.width, f.height
         FROM flow f
         JOIN board_post bp ON f.id = bp.flow_id
         WHERE bp.board_id = $1
@@ -373,6 +428,8 @@ func (p *pgBoardStorage) fetchFirstNFlowsForBoard(ctx context.Context, boardID, 
 			&flow.IsPrivate,
 			&flow.MediaURL,
 			&flow.LikeCount,
+			&flow.Width,
+			&flow.Height,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan flow: %w", err)

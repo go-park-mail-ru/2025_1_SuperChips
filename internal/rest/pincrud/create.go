@@ -103,7 +103,7 @@ func (app PinCRUDHandler) CreateHandler(w http.ResponseWriter, r *http.Request) 
 	data := domain.PinDataCreate{
 		Header:      "",
 		Description: "",
-		IsPrivate:   true,
+		IsPrivate:   false,
 	}
 	if r.PostFormValue("header") != "" {
 		data.Header = r.PostFormValue("header")
@@ -126,6 +126,7 @@ func (app PinCRUDHandler) CreateHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if err != nil {
+		println(err.Error())
 		rest.HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}

@@ -24,7 +24,9 @@ func DecodeData(w http.ResponseWriter, body io.ReadCloser, placeholder any) erro
 	defer body.Close()
 
 	if err := json.NewDecoder(body).Decode(placeholder); err != nil {
-		HttpErrorToJson(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		if w != nil {
+			HttpErrorToJson(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		}
 		return err
 	}
 

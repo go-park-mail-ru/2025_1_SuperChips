@@ -8,7 +8,7 @@ import (
 )
 
 type flowDBSchema struct {
-	Id             uint64
+	ID             uint64
 	Title          sql.NullString
 	Description    sql.NullString
 	AuthorId       uint64
@@ -18,6 +18,8 @@ type flowDBSchema struct {
 	IsPrivate      bool
 	LikeCount      int
 	MediaURL       string
+	Width          sql.NullInt64
+	Height         sql.NullInt64
 }
 
 type pgPinStorage struct {
@@ -51,6 +53,8 @@ func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
 		f.author_id, 
 		f.is_private, 
 		f.media_url,
+		f.width,
+		f.height,
 		fu.username
 	FROM flow f
 	JOIN flow_user fu ON f.author_id = fu.id
@@ -60,7 +64,7 @@ func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
 	OFFSET $2
 	`, pageSize, (page-1)*pageSize)
 	if err != nil {
-		return []pin.PinData{}, err
+		return nil, err
 	}
 
 	defer rows.Close()
@@ -69,16 +73,20 @@ func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
 
 	for rows.Next() {
 		var flowDBRow flowDBSchema
-		err := rows.Scan(&flowDBRow.Id, &flowDBRow.Title, &flowDBRow.Description, &flowDBRow.AuthorId, &flowDBRow.IsPrivate, &flowDBRow.MediaURL, &flowDBRow.AuthorUsername)
+		err := rows.Scan(&flowDBRow.ID, &flowDBRow.Title, &flowDBRow.Description,
+		&flowDBRow.AuthorId, &flowDBRow.IsPrivate, &flowDBRow.MediaURL, &flowDBRow.Width,
+		&flowDBRow.Height, &flowDBRow.AuthorUsername)
 		if err != nil {
-			return []pin.PinData{}, err
+			return nil, err
 		}
 
 		pin := pin.PinData{
-			FlowID:         flowDBRow.Id,
+			FlowID:         flowDBRow.ID,
 			Description:    flowDBRow.Description.String,
 			Header:         flowDBRow.Title.String,
 			MediaURL:       p.assembleMediaURL(flowDBRow.MediaURL),
+			Width: int(flowDBRow.Width.Int64),
+			Height: int(flowDBRow.Height.Int64),
 			AuthorUsername: flowDBRow.AuthorUsername,
 		}
 		pins = append(pins, pin)
@@ -86,4 +94,3 @@ func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
 
 	return pins, nil
 }
-

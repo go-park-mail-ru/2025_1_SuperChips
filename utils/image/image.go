@@ -1,12 +1,18 @@
 package image
 
 import (
+	"fmt"
+	"image"
 	"io"
+	"mime/multipart"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/google/uuid"
+	_ "image/png"
+	_ "image/jpeg"
+	_ "image/gif"
 )
 
 func IsImageFile(filename string) bool {
@@ -50,4 +56,22 @@ func UploadImage(imageFilename, staticDir, imageDir, baseUrl string, file io.Rea
 	url := baseUrl + filePath
 
 	return filename, url, nil
+}
+
+func GetImageDimensions(file multipart.File) (int, int, error) {
+	_ , err := file.Seek(0, 0)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to reset file pointer: %w", err)
+	}
+
+	img, _, err := image.Decode(file)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to decode image: %w", err)
+	}
+
+	bounds := img.Bounds()
+	width := bounds.Max.X - bounds.Min.X
+	height := bounds.Max.Y - bounds.Min.Y
+
+	return width, height, nil
 }

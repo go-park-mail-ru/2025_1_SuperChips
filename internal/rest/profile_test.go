@@ -82,7 +82,7 @@ func TestCurrentUserProfileHandler_GET(t *testing.T) {
 			URL:          base,
 			Token:        "yes",
 			ExpectedCode: 200,
-			ExpectedBody: `{"data":{"user_id":1,"username":"JohnDoe","email":"","birthday":"2000-01-01T00:00:00Z"}}`,
+			ExpectedBody: `{"data":{"user_id":1,"username":"JohnDoe","email":"","birthday":"2000-01-01T00:00:00Z","is_external":false,"subscriber_count":0}}`,
 		},
 		{
 			Name:         "Unauthorized request",
@@ -102,7 +102,7 @@ func TestCurrentUserProfileHandler_GET(t *testing.T) {
 
 			if tc.Name == "Valid request" {
 				mockService.EXPECT().GetUserPublicInfoByEmail("email@email.ru").Return(domain.User{
-					Id:       1,
+					ID:       1,
 					Birthday: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
 					Username: "JohnDoe",
 				}, nil)
@@ -185,14 +185,14 @@ func TestCurrentUserProfileHandler_PATCH(t *testing.T) {
 			switch tc.Name {
 			case "Patch profile":
 				mockService.EXPECT().GetUserPublicInfoByEmail("email@email.ru").Return(domain.User{
-					Id:       1,
+					ID:       1,
 					Birthday: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
 					Username: "JohnDoe",
 				}, nil)
 				mockService.EXPECT().UpdateUserData(gomock.Any(), "email@email.ru").Return(nil)
 			case "patch validation error":
 				mockService.EXPECT().GetUserPublicInfoByEmail("email@email.ru").Return(domain.User{
-					Id:       1,
+					ID:       1,
 					Birthday: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
 					Username: "JohnDoe",
 				}, nil)
@@ -240,7 +240,7 @@ func TestPublicProfileHandler(t *testing.T) {
 			URL:          "/profile/johndoe",
 			Token:        "yes",
 			ExpectedCode: 200,
-			ExpectedBody: `{"data":{"username":"johndoe","email":"","birthday":"0001-01-01T00:00:00Z","about":"Developer","public_name":"John Doe"}`,
+			ExpectedBody: `{"data":{"username":"johndoe","email":"","birthday":"0001-01-01T00:00:00Z","about":"Developer","public_name":"John Doe","is_external":false,"subscriber_count":0}}`,
 		},
 		{
 			Name:         "Non-existent user",
@@ -324,8 +324,8 @@ func TestUserAvatarHandler(t *testing.T) {
 			Method:       "POST",
 			URL:          base,
 			Token:        "validToken",
-			ExpectedCode: 413,
-			ExpectedBody: `{"description":"image is too large"}`,
+			ExpectedCode: 400,
+			ExpectedBody: `{"description":"image extension and type are mismatched"}`,
 		},
 		{
 			Name:         "Invalid content type",

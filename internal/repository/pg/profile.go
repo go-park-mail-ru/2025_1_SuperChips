@@ -8,12 +8,12 @@ import (
 )
 
 type pgProfileStorage struct {
-	db        *sql.DB
+	db *sql.DB
 }
 
 func NewPGProfileStorage(db *sql.DB) (*pgProfileStorage, error) {
 	storage := &pgProfileStorage{
-		db:        db,
+		db: db,
 	}
 
 	return storage, nil
@@ -21,11 +21,12 @@ func NewPGProfileStorage(db *sql.DB) (*pgProfileStorage, error) {
 
 func (p *pgProfileStorage) GetUserPublicInfoByEmail(email string) (domain.User, error) {
 	var userDB userDB
+	var externalID sql.NullString
 
 	err := p.db.QueryRow(`
-		SELECT id, username, email, avatar, birthday, about, public_name
+		SELECT id, username, email, avatar, birthday, about, public_name, external_id, is_external_avatar, subscriber_count
 		FROM flow_user WHERE email = $1
-	`, email).Scan(&userDB.Id, &userDB.Username, &userDB.Email, &userDB.Avatar, &userDB.Birthday, &userDB.About, &userDB.PublicName)
+	`, email).Scan(&userDB.ID, &userDB.Username, &userDB.Email, &userDB.Avatar, &userDB.Birthday, &userDB.About, &userDB.PublicName, &externalID, &userDB.IsExternalAvatar, &userDB.SubscriberCount)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return domain.User{}, domain.ErrUserNotFound
 	} else if err != nil {
@@ -33,13 +34,16 @@ func (p *pgProfileStorage) GetUserPublicInfoByEmail(email string) (domain.User, 
 	}
 
 	user := domain.User{
-		Id:         userDB.Id,
+		ID:         userDB.ID,
 		Username:   userDB.Username,
 		Email:      userDB.Email,
 		Avatar:     userDB.Avatar.String,
 		Birthday:   userDB.Birthday.Time,
 		PublicName: userDB.PublicName,
 		About:      userDB.About.String,
+		IsExternal: externalID.String != "",
+		IsExternalAvatar: userDB.IsExternalAvatar.Bool,
+		SubscriberCount: int(userDB.SubscriberCount.Int64),
 	}
 
 	return user, nil
@@ -49,9 +53,9 @@ func (p *pgProfileStorage) GetUserPublicInfoByUsername(username string) (domain.
 	var userDB userDB
 
 	err := p.db.QueryRow(`
-		SELECT id, username, email, avatar, birthday, about, public_name
+		SELECT id, username, email, avatar, birthday, about, public_name, is_external_avatar, subscriber_count
 		FROM flow_user WHERE username = $1
-	`, username).Scan(&userDB.Id, &userDB.Username, &userDB.Email, &userDB.Avatar, &userDB.Birthday, &userDB.About, &userDB.PublicName)
+	`, username).Scan(&userDB.ID, &userDB.Username, &userDB.Email, &userDB.Avatar, &userDB.Birthday, &userDB.About, &userDB.PublicName, &userDB.IsExternalAvatar, &userDB.SubscriberCount)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return domain.User{}, domain.ErrUserNotFound
 	} else if err != nil {
@@ -59,13 +63,15 @@ func (p *pgProfileStorage) GetUserPublicInfoByUsername(username string) (domain.
 	}
 
 	user := domain.User{
-		Id:         userDB.Id,
-		Username:   userDB.Username,
-		Email:      userDB.Email,
-		Avatar:     userDB.Avatar.String,
-		Birthday:   userDB.Birthday.Time,
-		PublicName: userDB.PublicName,
-		About:      userDB.About.String,
+		ID:               userDB.ID,
+		Username:         userDB.Username,
+		Email:            userDB.Email,
+		Avatar:           userDB.Avatar.String,
+		Birthday:         userDB.Birthday.Time,
+		PublicName:       userDB.PublicName,
+		About:            userDB.About.String,
+		IsExternalAvatar: userDB.IsExternalAvatar.Bool,
+		SubscriberCount:  int(userDB.SubscriberCount.Int64),
 	}
 
 	return user, nil
@@ -73,7 +79,9 @@ func (p *pgProfileStorage) GetUserPublicInfoByUsername(username string) (domain.
 
 func (p *pgProfileStorage) SaveUserAvatar(email string, avatar string) error {
 	_, err := p.db.Exec(`
-		UPDATE flow_user SET avatar = $1 WHERE email = $2
+		UPDATE flow_user SET avatar = $1,
+		is_external_avatar = false
+		WHERE email = $2
 	`, avatar, email)
 	if err != nil {
 		return err
@@ -120,4 +128,3 @@ func (p *pgProfileStorage) SetNewPassword(email string, newPassword string) (int
 
 	return id, nil
 }
-

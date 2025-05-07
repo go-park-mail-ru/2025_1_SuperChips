@@ -1,0 +1,2 @@
+ALTER TABLE flow_user
+ADD COLUMN IF NOT EXISTS external_id TEXT;

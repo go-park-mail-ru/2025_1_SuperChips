@@ -1,8 +1,13 @@
 # на случай, если тут что-то важное:)
 config.cfg
 variables.env
+*.env
 static/img/*
 *.out
 auto_restart.sh
 static/
 mocks/
+pyenv
+/grafana/*
+!/grafana/provisioning
+!/grafana/dashboards
