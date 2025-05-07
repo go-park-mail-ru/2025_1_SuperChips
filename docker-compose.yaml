@@ -121,7 +121,7 @@ services:
     command:
       - --config.file=/etc/prometheus/prometheus.yml
     ports:
-      - "9090:9090"
+      - "8090:9090"
   
   node_exporter:
     networks:
@@ -139,7 +139,7 @@ services:
       - ^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)
     hostname: node_exporter
     ports:
-      - "9100:9100"
+      - "8091:9100"
     depends_on:
       - prometheus
   
@@ -148,12 +148,12 @@ services:
       - flow_network
     image: grafana/grafana-enterprise
     volumes:
-      - ${GRAFANA_DIR}:/var/lib/grafana/
-      - ${GRAFANA_DIR}/provisioning/:/etc/grafana/provisioning/
-      - ${GRAFANA_DIR}/dashboards:/etc/grafana/dashboards
+      - grafana_storage:${GRAFANA_DIR}:/var/lib/grafana/
+      - grafana_storage:${GRAFANA_DIR}/provisioning/:/etc/grafana/provisioning/
+      - grafana_storage:${GRAFANA_DIR}/dashboards:/etc/grafana/dashboards
     user: "${UID}"
     ports:
-      - "9010:3000"
+      - "8092:3000"
     depends_on:
       - prometheus
 
@@ -163,3 +163,4 @@ networks:
 
 volumes:
   db_data:
+  grafana_storage:
