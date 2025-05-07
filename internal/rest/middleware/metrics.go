@@ -14,13 +14,13 @@ func MetricsMiddleware(m metrics.MetricsServicer) func(http.HandlerFunc) http.Ha
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			ws := NewResponseWriterStatus(w)
-			duration := time.Since(time.Now())
+			start := time.Now()
 
 			next.ServeHTTP(ws, r)
 
 			normalizedPath := normalizePath(r.URL.Path)
 
-			m.AddDurationToHistogram(r.Method, normalizedPath, duration)
+			m.AddDurationToHistogram(r.Method, normalizedPath, time.Since(start))
 			m.IncreaseHits(r.Method, normalizedPath, strconv.Itoa(ws.statusCode))
 			if ws.statusCode/100 != 2 {
 				m.IncreaseErr(r.Method, normalizedPath, ws.description)
