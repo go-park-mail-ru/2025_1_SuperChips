@@ -1,10 +1,14 @@
 package metrics
 
 import (
+	"context"
+	"log"
+	"strconv"
+	"strings"
 	"time"
 
-	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	"github.com/prometheus/client_golang/prometheus"
+	"google.golang.org/grpc"
 )
 
 type MetricsService struct {
@@ -13,7 +17,7 @@ type MetricsService struct {
 	durations *prometheus.HistogramVec
 }
 
-func NewMetricsService(cfg configs.Config) *MetricsService {
+func NewMetricsService() *MetricsService {
 	return &MetricsService{
 		hits: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "http_method_hits_total",
@@ -49,4 +53,45 @@ func (m *MetricsService) IncreaseErr(method string, path string, description str
 
 func (m *MetricsService) AddDurationToHistogram(method, service string, duration time.Duration) {
 	m.durations.WithLabelValues(method, service).Observe(duration.Seconds())
+}
+
+func (m *MetricsService) ServerMetricsInterceptor(
+	ctx context.Context,
+	req interface{},
+	info *grpc.UnaryServerInfo,
+	handler grpc.UnaryHandler,
+) (interface{}, error) {
+	serviceName := extractServiceName(info.FullMethod)
+
+	start := time.Now()
+
+	h, err := handler(ctx, req)
+
+	m.AddDurationToHistogram(serviceName, info.FullMethod, time.Since(start))
+	m.IncreaseHits(serviceName, info.FullMethod, strconv.Itoa(200))
+	if err != nil {
+		m.IncreaseErr(serviceName, info.FullMethod, serviceName + " : " + err.Error())
+	}
+
+	return h, err
+}
+
+func extractServiceName(fullMethod string) string {
+	parts := strings.Split(fullMethod, "/")
+	if len(parts) >= 2 {
+		if len(parts[1]) >= 2 {
+			return strings.Split(parts[1], ".")[0]
+		}
+	}
+	return "unknown"
+}
+
+func extractPath(fullMethod string) string {
+	parts := strings.Split(fullMethod, "/")
+	if len(parts) >= 3 {
+		log.Println(fullMethod)
+		log.Println(parts[2])
+		return parts[2]
+	}
+	return "unknown"
 }

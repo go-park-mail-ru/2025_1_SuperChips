@@ -108,7 +108,7 @@ func main() {
 	likeService := like.NewLikeService(likeStorage)
 	searchService := search.NewSearchService(searchStorage, config.BaseUrl, config.ImageBaseDir, config.StaticBaseDir, config.AvatarDir)
 	
-	metricsService := metrics.NewMetricsService(config)
+	metricsService := metrics.NewMetricsService()
 	metricsService.RegisterMetrics()
 
 	grpcConnAuth, err := grpc.NewClient(
