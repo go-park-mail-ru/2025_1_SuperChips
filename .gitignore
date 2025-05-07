@@ -10,3 +10,4 @@ mocks/
 pyenv
 /grafana/*
 !/grafana/provisioning
+!/grafana/dashboards

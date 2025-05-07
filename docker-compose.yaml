@@ -112,6 +112,7 @@ services:
     volumes:
       - ${GRAFANA_DIR}:/var/lib/grafana/
       - ${GRAFANA_DIR}/provisioning/:/etc/grafana/provisioning/
+      - ${GRAFANA_DIR}/dashboards:/etc/grafana/dashboards
     user: "${UID}"
     ports:
       - "9010:3000"
