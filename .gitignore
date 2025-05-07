@@ -8,3 +8,6 @@ auto_restart.sh
 static/
 mocks/
 pyenv
+/grafana/*
+!/grafana/provisioning
+!/grafana/dashboards

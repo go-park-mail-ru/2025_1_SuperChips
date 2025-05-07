@@ -6,18 +6,21 @@ import (
 	"log"
 	"log/slog"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/go-park-mail-ru/2025_1_SuperChips/pin"
-	microserviceGrpc "github.com/go-park-mail-ru/2025_1_SuperChips/internal/grpc"
-	gen "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/feed"
-	repository "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
+	microserviceGrpc "github.com/go-park-mail-ru/2025_1_SuperChips/internal/grpc"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/pg"
+	repository "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/metrics"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/pin"
+	gen "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/feed"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 )
 
@@ -55,7 +58,10 @@ func main() {
 
 	defer db.Close()
 
-	server := grpc.NewServer()
+	metricsService := metrics.NewMetricsService()
+	metricsService.RegisterMetrics()
+
+	server := grpc.NewServer(grpc.UnaryInterceptor(metricsService.ServerMetricsInterceptor))
 
 	feedRepo, err := repository.NewPGPinStorage(db, config.ImageBaseDir, config.BaseUrl)
 	if err != nil {
@@ -73,6 +79,18 @@ func main() {
 			log.Fatalf("Error starting server: %v", err)
 		}
 		log.Println("started on port :8011")
+	}()
+
+	// HTTP сервер для prometheus.
+	go func() {
+		mux := http.NewServeMux()
+		mux.Handle("/api/v1/metrics", promhttp.Handler())
+		
+		log.Println("Starting HTTP server on :2112")
+		if err := http.ListenAndServe(":2112", mux); err != nil {
+			log.Fatalf("Error starting HTTP server: %v", err)
+		}
+		log.Println("HTTP server started on port :2112")
 	}()
 
 	shutdown := make(chan os.Signal, 1)

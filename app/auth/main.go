@@ -6,18 +6,21 @@ import (
 	"log"
 	"log/slog"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/auth"
-	microserviceGrpc "github.com/go-park-mail-ru/2025_1_SuperChips/internal/grpc"
-	gen "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/auth"
-	repository "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
+	microserviceGrpc "github.com/go-park-mail-ru/2025_1_SuperChips/internal/grpc"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/pg"
+	repository "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/metrics"
+	gen "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/auth"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 )
 
@@ -50,7 +53,10 @@ func main() {
 
 	defer db.Close()
 
-	server := grpc.NewServer()
+	metricsService := metrics.NewMetricsService()
+	metricsService.RegisterMetrics()
+
+	server := grpc.NewServer(grpc.UnaryInterceptor(metricsService.ServerMetricsInterceptor))
 
 	authRepo, err := repository.NewPGUserStorage(db)
 	if err != nil {
@@ -65,11 +71,23 @@ func main() {
 	gen.RegisterAuthServer(server, authServer)
 
 	go func() {
-		log.Println("Starting server on :8010")
+		log.Println("Starting gRPC server on :8010")
 		if err := server.Serve(lis); err != nil {
-			log.Fatalf("Error starting server: %v", err)
+			log.Fatalf("Error starting gRPC server: %v", err)
 		}
-		log.Println("started on port :8010")
+		log.Println("gRPC server started on port :8010")
+	}()
+
+	// HTTP сервер для prometheus.
+	go func() {
+		mux := http.NewServeMux()
+		mux.Handle("/api/v1/metrics", promhttp.Handler())
+		
+		log.Println("Starting HTTP server on :2112")
+		if err := http.ListenAndServe(":2112", mux); err != nil {
+			log.Fatalf("Error starting HTTP server: %v", err)
+		}
+		log.Println("HTTP server started on port :2112")
 	}()
 
 	shutdown := make(chan os.Signal, 1)
