@@ -118,27 +118,6 @@ func (p *pgUserStorage) GetUserId(ctx context.Context, email string) (uint64, er
 	return id, nil
 }
 
-func (p *pgUserStorage) CheckImgPermission(ctx context.Context, imageName string, userID int) (bool, error) {
-	var exists bool
-
-
-    err := p.db.QueryRowContext(ctx, `
-    SELECT EXISTS (
-        SELECT 1
-        FROM flow
-        WHERE media_url = $1
-        AND (
-            is_private = false
-            OR (is_private = true AND author_id = $2)
-        )
-    )`, imageName, userID).Scan(&exists)
-	if err != nil {
-		return false, err
-	}
-
-	return exists, nil
-}
-
 func (p *pgUserStorage) FindExternalServiceUser(ctx context.Context, email string, externalID string) (int, string, string, error) {
 	var id int
 	var gotEmail string

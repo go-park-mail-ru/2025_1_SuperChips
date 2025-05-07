@@ -14,7 +14,6 @@ type UserRepository interface {
 	GetUserId(ctx context.Context, email string) (uint64, error)
 	FindExternalServiceUser(ctx context.Context, email string, externalID string) (int, string, string, error)
 	AddExternalUser(ctx context.Context, email, username, password, avatarURL string, externalID string) (uint64, error)
-	CheckImgPermission(ctx context.Context, imageName string, userID int) (bool, error)
 }
 
 type BoardRepository interface {
@@ -32,11 +31,6 @@ func NewUserService(u UserRepository, b BoardRepository) *UserService {
 		boardRepo: b,
 	}
 }
-
-func (u *UserService) CheckImgPermission(ctx context.Context, imageName string, userID int) (bool, error) {
-	return u.userRepo.CheckImgPermission(ctx, imageName, userID)
-}
-
 
 func (u *UserService) AddUser(ctx context.Context, user domain.User) (uint64, error) {
 	if err := user.ValidateUser(); err != nil {

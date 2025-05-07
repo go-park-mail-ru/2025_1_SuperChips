@@ -15,7 +15,6 @@ type UserUsecase interface {
 	LoginUser(ctx context.Context, email, password string) (uint64, string, error)
 	LoginExternalUser(ctx context.Context, email string, externalID string) (int, string, string, error)
 	AddExternalUser(ctx context.Context, email, username, avatarURL string, externalID string) (uint64, error)
-	CheckImgPermission(ctx context.Context, imageName string, userID int) (bool, error)
 }
 
 type GrpcAuthHandler struct {
@@ -84,17 +83,6 @@ func (h *GrpcAuthHandler) AddExternalUser(ctx context.Context, in *gen.AddExtern
 
 	return &gen.AddExternalUserResponse{
 		ID: int64(id),
-	}, nil
-}
-
-func (h *GrpcAuthHandler) CheckImgPermission(ctx context.Context, in *gen.CheckImgPermissionRequest) (*gen.CheckImgPermissionResponse, error) {
-	hasAccess, err := h.usecase.CheckImgPermission(ctx, in.ImageName, int(in.ID))
-	if err != nil {
-		return nil, err
-	}
-
-	return &gen.CheckImgPermissionResponse{
-		HasAccess: hasAccess,
 	}, nil
 }
 

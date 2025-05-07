@@ -53,8 +53,6 @@ func (h *ChatHandler) GetChats(w http.ResponseWriter, r *http.Request) {
 
 	chats := chatsToNormal(grpcResp.Chats)
 	for i := range chats {
-		chats[i].Escape()
-
 		if len(chats[i].Messages) > 0 {
 			chats[i].LastMessage = &chats[i].Messages[0]
 		}
@@ -124,10 +122,6 @@ func (h *ChatHandler) GetContacts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	contacts := contactsToNormal(grpcResp.Contacts)
-
-	for i := range contacts {
-		contacts[i].Escape()
-	}
 
 	resp := ServerResponse{
 		Description: "OK",
@@ -218,8 +212,6 @@ func (h *ChatHandler) GetChat(w http.ResponseWriter, r *http.Request) {
 		MessageCount: uint(grpcResp.MessageCount),
 		Messages:     messagesToNormal(grpcResp.Messages.Messages),
 	}
-
-	chat.Escape()
 
 	resp := ServerResponse{
 		Description: "OK",
