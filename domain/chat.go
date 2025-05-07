@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"html"
+	"time"
+)
 
 type Message struct {
 	MessageID uint      `json:"message_id"`
@@ -29,4 +32,36 @@ type Contact struct {
 	PublicName       string `json:"public_name"`
 	Avatar           string `json:"avatar"`
 	IsExternalAvatar bool   `json:"-"`
+}
+
+func (m *Message) Escape() {
+	m.Content = html.EscapeString(m.Content)
+	m.Sender = html.EscapeString(m.Sender)
+	m.Recipient = html.EscapeString(m.Recipient)
+}
+
+func (c *Chat) Escape() {
+	c.Username = html.EscapeString(c.Username)
+	c.PublicName = html.EscapeString(c.PublicName)
+	
+	if !c.IsExternalAvatar {
+		c.Avatar = html.EscapeString(c.Avatar)
+	}
+	
+	if c.LastMessage != nil {
+		c.LastMessage.Escape()
+	}
+	
+	for i := range c.Messages {
+		c.Messages[i].Escape()
+	}
+}
+
+func (c *Contact) Escape() {
+	c.Username = html.EscapeString(c.Username)
+	c.PublicName = html.EscapeString(c.PublicName)
+	
+	if !c.IsExternalAvatar {
+		c.Avatar = html.EscapeString(c.Avatar)
+	}
 }
