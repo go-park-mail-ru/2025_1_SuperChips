@@ -18,7 +18,6 @@ type ChatUsecase interface {
 	GetContacts(ctx context.Context, username string) ([]domain.Contact, error)
 	CreateContact(ctx context.Context, username, targetUsername string) (domain.Chat, error)
 	GetChat(ctx context.Context, id uint64, username string) (domain.Chat, error)
-	GetChatMessages(ctx context.Context, id, page uint64) ([]domain.Message, error)
 }
 
 type GrpcChatHandler struct {

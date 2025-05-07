@@ -350,11 +350,20 @@ func chatsToNormal(grpcChats []*gen.Chat) []domain.Chat {
 			Avatar:       chat.Avatar,
 			PublicName:   chat.PublicName,
 			MessageCount: uint(chat.MessageCount),
-			Messages:     messagesToNormal(chat.Messages.Messages),
+			Messages:     messagesToNormal(getMessagesFromGrpc(chat)),
 		})
 	}
 
 	return normal
+}
+
+// for null pointer dereference safety
+func getMessagesFromGrpc(chat *gen.Chat) []*gen.Message {
+	if chat.Messages != nil {
+		return chat.Messages.Messages
+	}
+
+	return nil
 }
 
 func messagesToNormal(grpcNormal []*gen.Message) []domain.Message {

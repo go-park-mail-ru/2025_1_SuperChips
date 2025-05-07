@@ -13,7 +13,6 @@ type ChatRepository interface {
 	GetContacts(ctx context.Context, username string) ([]domain.Contact, error)
 	CreateContact(ctx context.Context, username, targetUsername string) (domain.Chat, error)
 	GetChat(ctx context.Context, id uint64, username string) (domain.Chat, error)
-	GetChatMessages(ctx context.Context, id, page uint64) ([]domain.Message, error)
 }
 
 type ChatService struct {
@@ -99,10 +98,6 @@ func (service *ChatService) GetChat(ctx context.Context, id uint64, username str
 	}
 
 	return chat, nil
-}
-
-func (service *ChatService) GetChatMessages(ctx context.Context, id, page uint64) ([]domain.Message, error) {
-	return service.repo.GetChatMessages(ctx, id, page)
 }
 
 func (s *ChatService) generateAvatarURL(filename string) string {

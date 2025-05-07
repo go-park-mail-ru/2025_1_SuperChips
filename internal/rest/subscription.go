@@ -118,6 +118,11 @@ func (h *SubscriptionHandler) CreateSubscription(w http.ResponseWriter, r *http.
 		return
 	}
 
+	if len(subData.TargetUsername) <= 2 {
+		HttpErrorToJson(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), h.ContextExpiration)
 	defer cancel()
 
@@ -150,6 +155,11 @@ func (h *SubscriptionHandler) DeleteSubscription(w http.ResponseWriter, r *http.
 	var subData SubscriptionData
 	
 	if err := DecodeData(w, r.Body, &subData); err != nil {
+		return
+	}
+
+	if len(subData.TargetUsername) <= 2 {
+		HttpErrorToJson(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 

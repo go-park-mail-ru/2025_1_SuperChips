@@ -10,15 +10,6 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
 
-// GetNewMessages(ctx context.Context, username string, offset time.Time) ([]string, error)
-// AddMessage(ctx context.Context, message domain.Message) error
-// MarkRead(ctx context.Context, messageID, chatID int) error
-// GetChats(ctx context.Context, username string) ([]domain.Chat, error)
-// CreateChat(ctx context.Context, targetUsername string) (int, string, error)
-// GetContacts(ctx context.Context, username string) ([]domain.Contact, error)
-// GetChat(ctx context.Context, id uint64) ([]domain.Chat, error)
-// GetChatMessages(ctx context.Context, id, page uint64) ([]domain.Message, error)
-
 type ChatRepository struct {
 	db *sql.DB
 }
@@ -456,6 +447,3 @@ func (repo *ChatRepository) GetChat(ctx context.Context, id uint64, username str
 	return *chat, nil
 }
 
-func (repo *ChatRepository) GetChatMessages(ctx context.Context, id, page uint64) ([]domain.Message, error) {
-	return nil, nil
-}
