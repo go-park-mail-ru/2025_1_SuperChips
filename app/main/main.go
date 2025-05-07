@@ -202,9 +202,13 @@ func main() {
 		mux.HandleFunc("/swagger/", httpSwagger.WrapHandler)
 	}
 
+	fsContext := context.Background()
+
 	// static
 	mux.Handle("/static/", http.StripPrefix(config.StaticBaseDir, middleware.ChainMiddleware(
 		fsHandler,
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.Fileserver(fsContext, authClient),
 		middleware.CorsMiddleware(config, allowedGetOptionsHead),
 	)))
 
