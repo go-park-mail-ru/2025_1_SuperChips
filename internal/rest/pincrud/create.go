@@ -2,6 +2,7 @@ package rest
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -105,6 +106,7 @@ func (app PinCRUDHandler) CreateHandler(w http.ResponseWriter, r *http.Request) 
 		Description: "",
 		IsPrivate:   false,
 	}
+
 	if r.PostFormValue("header") != "" {
 		data.Header = r.PostFormValue("header")
 	}
@@ -120,13 +122,13 @@ func (app PinCRUDHandler) CreateHandler(w http.ResponseWriter, r *http.Request) 
 		data.IsPrivate = boolValue
 	}
 
-	pinID, err := app.PinService.CreatePin(r.Context(), data, file, handler, userID)
+	pinID, err := app.PinService.CreatePin(r.Context(), data, file, handler, contentType, userID)
 	if errors.Is(err, pincrud.ErrInvalidImageExt) {
 		rest.HttpErrorToJson(w, "invalid image extension", http.StatusBadRequest)
 		return
 	}
 	if err != nil {
-		println(err.Error())
+		log.Printf("create flow err: %v", err)
 		rest.HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
