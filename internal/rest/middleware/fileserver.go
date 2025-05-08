@@ -14,7 +14,11 @@ import (
 func Fileserver(ctx context.Context, UserService gen.AuthClient) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
+			userID := 0
+			claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
+			if ok {
+				userID = claims.UserID
+			}
 
 			filePath := strings.Split(r.URL.Path, "/")
 			if len(filePath) < 2 {
@@ -30,7 +34,7 @@ func Fileserver(ctx context.Context, UserService gen.AuthClient) func(http.Handl
 				log.Println("checking permission")
 				resp, err := UserService.CheckImgPermission(ctx, &gen.CheckImgPermissionRequest{
 					ImageName: filePath[1],
-					ID: int64(claims.UserID),
+					ID: int64(userID),
 				})
 				if err != nil {
 					log.Printf("permission err %v", err)
