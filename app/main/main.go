@@ -222,9 +222,13 @@ func main() {
 		middleware.MetricsMiddleware(metricsService),
 		middleware.Log()))
 
+	fsContext := context.Background()
+
 	// static
 	mux.Handle("/static/", http.StripPrefix(config.StaticBaseDir, middleware.ChainMiddleware(
 		fsHandler,
+		middleware.AuthMiddleware(jwtManager, false),
+		middleware.Fileserver(fsContext, authClient),
 		middleware.CorsMiddleware(config, allowedGetOptionsHead),
 	)))
 

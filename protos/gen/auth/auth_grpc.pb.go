@@ -22,6 +22,7 @@ type AuthClient interface {
 	LoginUser(ctx context.Context, in *LoginUserRequest, opts ...grpc.CallOption) (*LoginUserResponse, error)
 	LoginExternalUser(ctx context.Context, in *LoginExternalUserRequest, opts ...grpc.CallOption) (*LoginExternalUserResponse, error)
 	AddExternalUser(ctx context.Context, in *AddExternalUserRequest, opts ...grpc.CallOption) (*AddExternalUserResponse, error)
+	CheckImgPermission(ctx context.Context, in *CheckImgPermissionRequest, opts ...grpc.CallOption) (*CheckImgPermissionResponse, error)
 }
 
 type authClient struct {
@@ -68,6 +69,15 @@ func (c *authClient) AddExternalUser(ctx context.Context, in *AddExternalUserReq
 	return out, nil
 }
 
+func (c *authClient) CheckImgPermission(ctx context.Context, in *CheckImgPermissionRequest, opts ...grpc.CallOption) (*CheckImgPermissionResponse, error) {
+	out := new(CheckImgPermissionResponse)
+	err := c.cc.Invoke(ctx, "/proto_auth.Auth/CheckImgPermission", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuthServer is the server API for Auth service.
 // All implementations must embed UnimplementedAuthServer
 // for forward compatibility
@@ -76,6 +86,7 @@ type AuthServer interface {
 	LoginUser(context.Context, *LoginUserRequest) (*LoginUserResponse, error)
 	LoginExternalUser(context.Context, *LoginExternalUserRequest) (*LoginExternalUserResponse, error)
 	AddExternalUser(context.Context, *AddExternalUserRequest) (*AddExternalUserResponse, error)
+	CheckImgPermission(context.Context, *CheckImgPermissionRequest) (*CheckImgPermissionResponse, error)
 	mustEmbedUnimplementedAuthServer()
 }
 
@@ -94,6 +105,9 @@ func (UnimplementedAuthServer) LoginExternalUser(context.Context, *LoginExternal
 }
 func (UnimplementedAuthServer) AddExternalUser(context.Context, *AddExternalUserRequest) (*AddExternalUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddExternalUser not implemented")
+}
+func (UnimplementedAuthServer) CheckImgPermission(context.Context, *CheckImgPermissionRequest) (*CheckImgPermissionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CheckImgPermission not implemented")
 }
 func (UnimplementedAuthServer) mustEmbedUnimplementedAuthServer() {}
 
@@ -180,6 +194,24 @@ func _Auth_AddExternalUser_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Auth_CheckImgPermission_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CheckImgPermissionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServer).CheckImgPermission(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto_auth.Auth/CheckImgPermission",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServer).CheckImgPermission(ctx, req.(*CheckImgPermissionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Auth_ServiceDesc is the grpc.ServiceDesc for Auth service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -202,6 +234,10 @@ var Auth_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AddExternalUser",
 			Handler:    _Auth_AddExternalUser_Handler,
+		},
+		{
+			MethodName: "CheckImgPermission",
+			Handler:    _Auth_CheckImgPermission_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
