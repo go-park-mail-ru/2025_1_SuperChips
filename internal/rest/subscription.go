@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -127,6 +128,7 @@ func (h *SubscriptionHandler) CreateSubscription(w http.ResponseWriter, r *http.
 	defer cancel()
 
 	if err := h.SubscriptionService.CreateSubscription(ctx, claims.Username, subData.TargetUsername, claims.UserID); err != nil {
+		log.Printf("create sub err: %v", err)
 		handleSubscriptionError(w, err)
 		return
 	}
@@ -167,6 +169,7 @@ func (h *SubscriptionHandler) DeleteSubscription(w http.ResponseWriter, r *http.
 	defer cancel()
 
 	if err := h.SubscriptionService.DeleteSubscription(ctx, subData.TargetUsername, claims.UserID); err != nil {
+		log.Printf("delete sub err: %v", err)
 		handleSubscriptionError(w, err)
 		return
 	}
