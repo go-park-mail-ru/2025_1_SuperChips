@@ -122,14 +122,8 @@ func (s *PinCRUDService) CreatePin(ctx context.Context, data domain.PinDataCreat
 	data.Width = width
 	data.Height = height
 
-	var colors []string
 
-	// dont allow gifs
-	if extension != "image/gif" {
-		colors = imageUtil.GetImageMainColors(img)
-	} else {
-		colors = nil
-	}
+	colors := imageUtil.GetImageMainColors(img)
 
 	data.Colors = colors
 
