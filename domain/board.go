@@ -22,7 +22,7 @@ type Board struct {
 	IsPrivate      bool      `json:"is_private"`
 	FlowCount      int       `json:"flow_count"`
 	Preview        []PinData `json:"preview,omitempty"`
-	Gradient       *Gradient `json:"gradient,omitempty"`
+	Gradient       []string  `json:"gradient,omitempty"`
 }
 
 func (b *Board) Escape() {

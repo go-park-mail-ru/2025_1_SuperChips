@@ -127,7 +127,7 @@ func (b *BoardService) GetBoard(ctx context.Context, boardID, userID int, author
 		sectionSize := len(sortedColors) / 4
 		avgColors := make([]string, 4)
 
-		for i := 0; i < 4; i++ {
+		for i := range 4 {
 			start := i * sectionSize
 			end := start + sectionSize
 			section := sortedColors[start:end]
@@ -139,12 +139,7 @@ func (b *BoardService) GetBoard(ctx context.Context, boardID, userID int, author
 			avgColors[i] = avgHex
 		}
 
-		board.Gradient = &domain.Gradient{
-			First:  avgColors[0],
-			Second: avgColors[1],
-			Third:  avgColors[2],
-			Fourth: avgColors[3],
-		}
+		board.Gradient = avgColors
 	}
 
 	return board, nil
