@@ -6,6 +6,13 @@ import (
 	"time"
 )
 
+type Gradient struct {
+	First  string `json:"first_color"`
+	Second string `json:"second_color"`
+	Third  string `json:"third_color"`
+	Fourth string `json:"fourth_color"`
+}
+
 type Board struct {
 	ID             int       `json:"id"`
 	AuthorID       int       `json:"author_id"`
@@ -15,6 +22,7 @@ type Board struct {
 	IsPrivate      bool      `json:"is_private"`
 	FlowCount      int       `json:"flow_count"`
 	Preview        []PinData `json:"preview,omitempty"`
+	Gradient       []string  `json:"gradient,omitempty"`
 }
 
 func (b *Board) Escape() {

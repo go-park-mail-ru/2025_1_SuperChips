@@ -156,16 +156,37 @@ func (p *pgPinStorage) UpdatePin(ctx context.Context, patch domain.PinDataUpdate
 }
 
 func (p *pgPinStorage) CreatePin(ctx context.Context, data domain.PinDataCreate, imgName string, userID uint64) (uint64, error) {
-	row := p.db.QueryRowContext(ctx, `
+	tx, err := p.db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+	
+	row := tx.QueryRowContext(ctx, `
         INSERT INTO flow (title, description, author_id, is_private, media_url, width, height)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id
     `, data.Header, data.Description, userID, data.IsPrivate, imgName, data.Width, data.Height)
 
 	var pinID uint64
-	err := row.Scan(&pinID)
+	err = row.Scan(&pinID)
 	if err != nil {
-		return 0, pincrudService.ErrUntracked
+		return 0, err
+	}
+
+	for i := range data.Colors {
+		_, err := tx.ExecContext(ctx, `
+		INSERT INTO color
+		(flow_id, color_hex)
+		VALUES ($1, $2)
+		`, pinID, data.Colors[i])
+		if err != nil {
+			return 0, err
+		}
+	}
+	
+	if err := tx.Commit(); err != nil {
+		return 0, err
 	}
 
 	return pinID, nil

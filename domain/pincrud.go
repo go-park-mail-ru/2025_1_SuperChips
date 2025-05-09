@@ -11,6 +11,7 @@ type PinDataCreate struct {
 	Header      string `json:"header,omitempty"`
 	Description string `json:"description,omitempty"`
 	IsPrivate   bool   `json:"is_private,omitempty"`
+	Colors      []string
 	Width       int
 	Height      int
 }

@@ -3,6 +3,7 @@ package rest
 import (
 	"context"
 	"errors"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -376,6 +377,7 @@ func (b *BoardHandler) GetBoard(w http.ResponseWriter, r *http.Request) {
 
 	board, err := b.BoardService.GetBoard(ctx, boardID, userID, authorized)
 	if err != nil {
+		log.Printf("get board err: %v", err)
 		handleBoardError(w, err)
 		return
 	}
