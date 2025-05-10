@@ -3,6 +3,7 @@ package pincrud
 import (
 	"context"
 	"image"
+	"log"
 	"mime/multipart"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
@@ -122,8 +123,9 @@ func (s *PinCRUDService) CreatePin(ctx context.Context, data domain.PinDataCreat
 	data.Width = width
 	data.Height = height
 
-
 	colors := imageUtil.GetImageMainColors(img)
+
+	log.Printf("usecase colors len: %v", len(colors))
 
 	data.Colors = colors
 

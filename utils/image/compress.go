@@ -31,7 +31,7 @@ func сolorToHex(c color.Color) string {
 }
 
 func get2x2Colors(img image.Image) []string {
-	var colors [4]color.Color
+	colors := make([]color.Color, 4)
 	colors[0] = img.At(0, 0)
 	colors[1] = img.At(1, 0)
 	colors[2] = img.At(0, 1)
