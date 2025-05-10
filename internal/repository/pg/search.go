@@ -86,6 +86,7 @@ func (s *SearchRepository) SearchUsers(ctx context.Context, query string, page, 
 	offset := (page - 1) * pageSize
 
 	var isExternalAvatar sql.NullBool
+	var birthday sql.NullTime
 
 	rows, err := s.db.QueryContext(ctx, `
     SELECT username, email, avatar, birthday, about, public_name, is_external_avatar
@@ -108,7 +109,7 @@ func (s *SearchRepository) SearchUsers(ctx context.Context, query string, page, 
 			&user.Username,
 			&user.Email,
 			&user.Avatar,
-			&user.Birthday,
+			&birthday,
 			&about,
 			&user.PublicName,
 			&isExternalAvatar,
@@ -118,6 +119,7 @@ func (s *SearchRepository) SearchUsers(ctx context.Context, query string, page, 
 
 		user.About = about.String
 		user.IsExternalAvatar = isExternalAvatar.Bool
+		user.Birthday = birthday.Time
 
 		users = append(users, user)
 	}
