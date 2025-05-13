@@ -58,3 +58,17 @@ easyjson:
 	$(REST_FLDR)/chat.go \
 	$(REST_FLDR)/profile.go \
 	$(REST_FLDR)/subscription.go
+
+easyjson_stub:
+	easyjson -stub $(DOMAIN_FLDR)/auth.go \
+	$(DOMAIN_FLDR)/board.go \
+	$(DOMAIN_FLDR)/chat.go \
+	$(DOMAIN_FLDR)/feed.go \
+	$(DOMAIN_FLDR)/like.go \
+	$(DOMAIN_FLDR)/user.go \
+	$(DOMAIN_FLDR)/pincrud.go \
+	$(REST_FLDR)/helper.go \
+	$(REST_FLDR)/board.go \
+	$(REST_FLDR)/chat.go \
+	$(REST_FLDR)/profile.go \
+	$(REST_FLDR)/subscription.go
