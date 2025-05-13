@@ -26,11 +26,14 @@ var allowedTypes = map[string]bool{
 	"image/gif":  true,
 }
 
+
+//easyjson:json
 type passwordChange struct {
 	OldPassword string `json:"old_password"`
 	NewPassword string `json:"new_password"`
 }
 
+//easyjson:json
 type UserUpdateRequest struct {
 	Username   *string    `json:"username"`
 	Email      *string    `json:"email"`

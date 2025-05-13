@@ -9,6 +9,7 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/utils/wrapper"
 )
 
+//easyjson:json
 type User struct {
 	ID               uint64    `json:"user_id,omitempty"`
 	Username         string    `json:"username"`
@@ -24,6 +25,7 @@ type User struct {
 	SubscriberCount  int       `json:"subscriber_count"`
 }
 
+//easyjson:json
 type PublicUser struct {
 	Username         string    `json:"username"`
 	Email            string    `json:"email,omitempty"`

@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+//easyjson:json
 type Message struct {
 	MessageID uint      `json:"message_id"`
 	Content   string    `json:"message"`
@@ -16,6 +17,7 @@ type Message struct {
 	Sent      bool      `json:"-"`
 }
 
+//easyjson:json
 type Chat struct {
 	ChatID           uint      `json:"chat_id"`
 	Username         string    `json:"username"`
@@ -27,6 +29,7 @@ type Chat struct {
 	Messages         []Message `json:"messages,omitempty"`
 }
 
+//easyjson:json
 type Contact struct {
 	Username         string `json:"username"`
 	PublicName       string `json:"public_name"`

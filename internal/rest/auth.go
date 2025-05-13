@@ -24,21 +24,6 @@ type AuthHandler struct {
 	ContextDuration time.Duration
 }
 
-type ExternalData struct {
-	AccessToken string `json:"access_token,omitempty"`
-	Username    string `json:"username,omitempty"`
-}
-
-type VKUser struct {
-	UserID string `json:"user_id"`
-	Email  string `json:"email"`
-	Avatar string `json:"avatar"`
-}
-
-type CSRFResponse struct {
-	CSRFToken string `json:"csrf_token"`
-}
-
 // LoginHandler godoc
 // @Summary Log in user
 // @Description Tries to log the user in
@@ -84,7 +69,7 @@ func (app AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	app.setCookieCSRF(w, app.Config, token)
 
-	csrfData := CSRFResponse{
+	csrfData := domain.CSRFResponse{
 		CSRFToken: token,
 	}
 
@@ -108,13 +93,9 @@ func (app AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 string serverResponse.Description "Internal server error"
 // @Router /api/v1/auth/register [post]
 func (app AuthHandler) RegistrationHandler(w http.ResponseWriter, r *http.Request) {
-	type registerData struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-		Email    string `json:"email"`
-	}
 
-	var regData registerData
+
+	var regData domain.RegisterData
 
 	if err := DecodeData(w, r.Body, &regData); err != nil {
 		return
@@ -158,7 +139,7 @@ func (app AuthHandler) RegistrationHandler(w http.ResponseWriter, r *http.Reques
 
 	app.setCookieCSRF(w, app.Config, token)
 
-	data := CSRFResponse{
+	data := domain.CSRFResponse{
 		CSRFToken: token,
 	}
 
@@ -188,7 +169,7 @@ func (app AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app AuthHandler) ExternalLogin(w http.ResponseWriter, r *http.Request) {
-	var data ExternalData
+	var data domain.ExternalData
 	if err := DecodeData(w, r.Body, &data); err != nil {
 		return
 	}
@@ -228,7 +209,7 @@ func (app AuthHandler) ExternalLogin(w http.ResponseWriter, r *http.Request) {
 
 	app.setCookieCSRF(w, app.Config, token)
 
-	csrf := CSRFResponse{
+	csrf := domain.CSRFResponse{
 		CSRFToken: token,
 	}
 
@@ -238,7 +219,7 @@ func (app AuthHandler) ExternalLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app AuthHandler) ExternalRegister(w http.ResponseWriter, r *http.Request) {
-	var data ExternalData
+	var data domain.ExternalData
 	if err := DecodeData(w, r.Body, &data); err != nil {
 		return
 	}
@@ -276,7 +257,7 @@ func (app AuthHandler) ExternalRegister(w http.ResponseWriter, r *http.Request) 
 
 	app.setCookieCSRF(w, app.Config, token)
 
-	csrf := CSRFResponse{
+	csrf := domain.CSRFResponse{
 		CSRFToken: token,
 	}
 
@@ -288,11 +269,7 @@ func (app AuthHandler) ExternalRegister(w http.ResponseWriter, r *http.Request) 
 	ServerGenerateJSONResponse(w, resp, http.StatusOK)
 }
 
-func vkGetData(accessToken string, clientID string) (VKUser, error) {
-	type VKUserTop struct {
-		User VKUser `json:"user"`
-	}
-
+func vkGetData(accessToken string, clientID string) (domain.VKUser, error) {
 	postURL := "https://id.vk.com/oauth2/user_info"
 
 	formData := url.Values{}
@@ -301,7 +278,7 @@ func vkGetData(accessToken string, clientID string) (VKUser, error) {
 
 	req, err := http.NewRequest("POST", postURL, bytes.NewBufferString(formData.Encode()))
 	if err != nil {
-		return VKUser{}, err
+		return domain.VKUser{}, err
 	}
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -309,13 +286,13 @@ func vkGetData(accessToken string, clientID string) (VKUser, error) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return VKUser{}, err
+		return domain.VKUser{}, err
 	}
 	defer resp.Body.Close()
 
-	var data VKUserTop
+	var data domain.VKUserTop
 	if err := DecodeData(nil, resp.Body, &data); err != nil {
-		return VKUser{}, err
+		return domain.VKUser{}, err
 	}
 
 	return data.User, nil

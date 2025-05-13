@@ -32,10 +32,6 @@ type BoardHandler struct {
 	ContextDeadline time.Duration
 }
 
-type BoardRequest struct {
-	FlowID int `json:"flow_id,omitempty"`
-}
-
 // CreateBoard godoc
 // @Summary      Create a new board
 // @Description  Creates a new board for the specified user
@@ -182,7 +178,7 @@ func (b *BoardHandler) AddToBoard(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(ctx, b.ContextDeadline)
 	defer cancel()
 
-	var request BoardRequest
+	var request domain.BoardRequest
 	if err := DecodeData(w, r.Body, &request); err != nil {
 		return
 	}
@@ -288,10 +284,7 @@ func (b *BoardHandler) UpdateBoard(w http.ResponseWriter, r *http.Request) {
 
 	claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
 
-	var updateData struct {
-		Name      string `json:"name"`
-		IsPrivate bool   `json:"is_private"`
-	}
+	var updateData domain.UpdateData
 
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, b.ContextDeadline)
