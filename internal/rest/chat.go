@@ -27,6 +27,7 @@ type ChatWebsocketHandler struct {
 	ContextExpiration time.Duration
 }
 
+//easyjson:json
 type Username struct {
 	Username string `json:"username"`
 }

@@ -20,6 +20,7 @@ type SubscriptionService interface {
 	DeleteSubscription(ctx context.Context, targetUsername string, currentID int) error
 }
 
+//easyjson:json
 type SubscriptionData struct {
 	TargetUsername string `json:"target_user"`
 }

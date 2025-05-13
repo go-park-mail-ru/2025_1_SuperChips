@@ -4,6 +4,7 @@ import (
 	"html"
 )
 
+//easyjson:json
 type PinData struct {
 	FlowID         uint64    `json:"flow_id,omitempty"`
 	Header         string    `json:"header,omitempty"`

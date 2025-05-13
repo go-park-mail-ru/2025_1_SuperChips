@@ -162,7 +162,7 @@ func (p *pgPinStorage) CreatePin(ctx context.Context, data domain.PinDataCreate,
 		return 0, err
 	}
 	defer tx.Rollback()
-	
+
 	row := tx.QueryRowContext(ctx, `
         INSERT INTO flow (title, description, author_id, is_private, media_url, width, height)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -187,7 +187,7 @@ func (p *pgPinStorage) CreatePin(ctx context.Context, data domain.PinDataCreate,
 			return 0, err
 		}
 	}
-	
+
 	if err := tx.Commit(); err != nil {
 		return 0, err
 	}

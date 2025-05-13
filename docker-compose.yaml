@@ -158,9 +158,9 @@ services:
       - flow_network
     image: grafana/grafana-enterprise
     volumes:
-      - grafana_storage:${GRAFANA_DIR}:/var/lib/grafana/
-      - grafana_storage:${GRAFANA_DIR}/provisioning/:/etc/grafana/provisioning/
-      - grafana_storage:${GRAFANA_DIR}/dashboards:/etc/grafana/dashboards
+      - grafana_storage:/var/lib/grafana/
+      - grafana_storage:/etc/grafana/provisioning/
+      - grafana_storage:/etc/grafana/dashboards
     user: "${UID}"
     ports:
       - "8092:3000"
