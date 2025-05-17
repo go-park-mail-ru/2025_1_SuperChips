@@ -7,16 +7,23 @@ import (
 	"log"
 	"time"
 
+	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	_ "github.com/jackc/pgx"
-
 )
 
-func ConnectDB(connString string, ctx context.Context) (*sql.DB, error) {
+func ConnectDB(cfg configs.PostgresConfig, ctx context.Context) (*sql.DB, error) {
 	var pool *sql.DB
 	var err error
 
 	maxRetries := 10
 	retryDelay := time.Second
+
+	connString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", 
+		cfg.PgHost, 
+		cfg.PgPort, 
+		cfg.PgUser, 
+		cfg.PgPassword, 
+		cfg.PgDB)
 
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		if err := ctx.Err(); err != nil {
@@ -28,6 +35,10 @@ func ConnectDB(connString string, ctx context.Context) (*sql.DB, error) {
 			log.Printf("Attempt %d: Failed to open database connection: %v", attempt+1, err)
 		}
 
+		pool.SetMaxOpenConns(cfg.MaxOpenConns)
+		pool.SetMaxIdleConns(cfg.MaxIdleConns)
+		pool.SetConnMaxIdleTime(cfg.ConnMaxIdleTime)
+		
 		if err := pool.Ping(); err != nil {
 			log.Printf("Attempt %d: Failed to ping database: %v", attempt+1, err)
 			pool.Close()

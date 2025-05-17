@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"log/slog"
 	"net"
@@ -29,9 +28,9 @@ func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
-	lis, err := net.Listen("tcp", ":8012")
-	if err != nil {
-		log.Fatal(err)
+	connConfig := configs.ConnConfig{}
+	if err := connConfig.LoadConfigFromEnv(); err != nil {
+		log.Fatalf("Cannot launch due to connection config error: %s", err)
 	}
 
 	pgConfig := configs.PostgresConfig{}
@@ -39,12 +38,16 @@ func main() {
 		log.Fatal(err)
 	}
 
+	lis, err := net.Listen("tcp", connConfig.Port)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	slog.Info("Waiting for database to start...")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 	
-	psqlconn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", pgConfig.PgHost, 5432, pgConfig.PgUser, pgConfig.PgPassword, pgConfig.PgDB)
-	db, err := pg.ConnectDB(psqlconn, ctx)
+	db, err := pg.ConnectDB(pgConfig, ctx)
 	if err != nil {
 		log.Fatalf("Cannot launch due to database connection error: %s", err)
 	}
@@ -80,11 +83,11 @@ func main() {
 	gen.RegisterChatServiceServer(server, chatServer)
 
 	go func() {
-		log.Println("Starting server on :8012")
+		log.Println("Starting server on " + connConfig.Port)
 		if err := server.Serve(lis); err != nil {
 			log.Fatalf("Error starting server: %v", err)
 		}
-		log.Println("started on port :8012")
+		log.Println("started on port " + connConfig.Port)
 	}()
 
 	shutdown := make(chan os.Signal, 1)

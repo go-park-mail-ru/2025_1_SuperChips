@@ -6,10 +6,11 @@ import (
 )
 
 func TestLoadPgConfigFromEnv_Success(t *testing.T) {
-    t.Setenv("POSTGRES_USER", "testuser")
-    t.Setenv("POSTGRES_PASSWORD", "testpass")
-    t.Setenv("POSTGRES_DB", "testdb")
-    t.Setenv("POSTGRES_HOST", "localhost")
+    t.Setenv("PGUSER", "testuser")
+    t.Setenv("PGPASSWORD", "testpass")
+    t.Setenv("PGDATABASE", "testdb")
+    t.Setenv("PGHOST", "localhost")
+    t.Setenv("PGPORT", "5432")
 
     var cfg PostgresConfig
     err := cfg.LoadConfigFromEnv()
@@ -29,25 +30,30 @@ func TestLoadPgConfigFromEnv_Success(t *testing.T) {
     if cfg.PgHost != "localhost" {
         t.Errorf("Expected PgHost 'localhost', got '%s'", cfg.PgHost)
     }
+    if cfg.PgPort != "5432" {
+        t.Errorf("Expected PgPort '5432', got '%s'", cfg.PgPort)
+    }
 }
 
 var missingEnvTestCases = []struct {
     missingEnv string
 }{
-    {"POSTGRES_USER"},
-    {"POSTGRES_PASSWORD"},
-    {"POSTGRES_DB"},
-    {"POSTGRES_HOST"},
+    {"PGUSER"},
+    {"PGPASSWORD"},
+    {"PGDATABASE"},
+    {"PGHOST"},
+    {"PGPORT"},
 }
 
 func TestLoadConfigFromEnv_MissingEnvs(t *testing.T) {
     for _, tc := range missingEnvTestCases {
         t.Run(tc.missingEnv, func(t *testing.T) {
             envs := []string{
-                "POSTGRES_USER",
-                "POSTGRES_PASSWORD",
-                "POSTGRES_DB",
-                "POSTGRES_HOST",
+                "PGUSER",
+                "PGPASSWORD",
+                "PGDATABASE",
+                "PGHOST",
+                "PGPORT",
             }
             for _, env := range envs {
                 if env != tc.missingEnv {

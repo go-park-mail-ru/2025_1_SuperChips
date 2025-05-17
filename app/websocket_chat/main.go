@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
@@ -11,11 +10,11 @@ import (
 	"syscall"
 	"time"
 
-	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/pg"
 	repository "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
+	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/middleware"
 	chatWebsocket "github.com/go-park-mail-ru/2025_1_SuperChips/internal/websocket"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -24,6 +23,11 @@ import (
 func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
+
+	connConfig := configs.ConnConfig{}
+	if err := connConfig.LoadConfigFromEnv(); err != nil {
+		log.Fatalf("Cannot launch due to connection config error: %s", err)
+	}
 
 	pgConfig := configs.PostgresConfig{}
 	if err := pgConfig.LoadConfigFromEnv(); err != nil {
@@ -34,8 +38,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 	
-	psqlconn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", pgConfig.PgHost, 5432, pgConfig.PgUser, pgConfig.PgPassword, pgConfig.PgDB)
-	db, err := pg.ConnectDB(psqlconn, ctx)
+	db, err := pg.ConnectDB(pgConfig, ctx)
 	if err != nil {
 		log.Fatalf("Cannot launch due to database connection error: %s", err)
 	}
@@ -73,14 +76,14 @@ func main() {
 		middleware.Log()))
 
 	server := http.Server{
-		Addr:    ":8013",
+		Addr:    connConfig.Port,
 		Handler: mux,
 	}
 
 	errorChan := make(chan error, 1)
 
 	go func() {
-		log.Printf("Server listening on port %s", ":8013")
+		log.Printf("Server listening on port %s", connConfig.Port)
 		err := server.ListenAndServe()
 		if err != nil && err != http.ErrServerClosed {
 			errorChan <- err

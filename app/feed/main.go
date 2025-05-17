@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"log/slog"
 	"net"
@@ -25,13 +24,13 @@ import (
 )
 
 func main() {
-	lis, err := net.Listen("tcp", ":8011")
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
+
+	connConfig := configs.ConnConfig{}
+	if err := connConfig.LoadConfigFromEnv(); err != nil {
+		log.Fatalf("Cannot launch due to connection config error: %s", err)
+	}
 
 	config := configs.FeedConfig{}
 	if err := config.LoadConfigFromEnv(); err != nil {
@@ -43,6 +42,11 @@ func main() {
 		log.Fatalf("Cannot launch due to pg config error: %s", err)
 	}
 
+	lis, err := net.Listen("tcp", connConfig.Port)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	slog.Info("Waiting for database to start...")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 
@@ -50,8 +54,7 @@ func main() {
 
 	// т.к. бд не сразу после запуска начинает принимать запросы
 	// пробуем подключиться к бд в течение 10 секунд
-	psqlconn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", pgConfig.PgHost, 5432, pgConfig.PgUser, pgConfig.PgPassword, pgConfig.PgDB)
-	db, err := pg.ConnectDB(psqlconn, ctx)
+	db, err := pg.ConnectDB(pgConfig, ctx)
 	if err != nil {
 		log.Fatalf("Cannot launch due to database connection error: %s", err)
 	}
@@ -74,11 +77,11 @@ func main() {
 	gen.RegisterFeedServer(server, feedServer)
 
 	go func() {
-		log.Println("Starting server on :8011")
+		log.Println("Starting server on " + connConfig.Port)
 		if err := server.Serve(lis); err != nil {
 			log.Fatalf("Error starting server: %v", err)
 		}
-		log.Println("started on port :8011")
+		log.Println("started on port " + connConfig.Port)
 	}()
 
 	// HTTP сервер для prometheus.
@@ -86,11 +89,11 @@ func main() {
 		mux := http.NewServeMux()
 		mux.Handle("/api/v1/metrics", promhttp.Handler())
 		
-		log.Println("Starting HTTP server on :2112")
-		if err := http.ListenAndServe(":2112", mux); err != nil {
+		log.Println("Starting HTTP server on " + connConfig.PrometheusPort)
+		if err := http.ListenAndServe(connConfig.PrometheusPort, mux); err != nil {
 			log.Fatalf("Error starting HTTP server: %v", err)
 		}
-		log.Println("HTTP server started on port :2112")
+		log.Println("HTTP server started on port " + connConfig.PrometheusPort)
 	}()
 
 	shutdown := make(chan os.Signal, 1)

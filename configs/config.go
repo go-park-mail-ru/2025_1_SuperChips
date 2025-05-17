@@ -25,6 +25,11 @@ type Config struct {
 	AllowedOrigins    []string
 	ContextExpiration time.Duration
 	VKClientID        string
+
+	// Порты микросервисов.
+	MSAuthPort        string
+	MSFeedPort        string
+	MSChatPort        string
 }
 
 var (
@@ -36,7 +41,6 @@ func (config *Config) LoadConfigFromEnv() error {
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
-
 	config.Port = ":" + port
 
 	jwtSecret, ok := os.LookupEnv("JWT_SECRET")
@@ -142,8 +146,25 @@ func (config *Config) LoadConfigFromEnv() error {
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
-
 	config.VKClientID = VKClientID
+
+	msAuthPort, err := getEnvHelper("MS_AUTH_PORT", ":8010")
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
+	config.MSAuthPort = ":" + msAuthPort
+
+	msFeedPort, err := getEnvHelper("MS_FEED_PORT", ":8011")
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
+	config.MSFeedPort = ":" + msFeedPort
+
+	msChatPort, err := getEnvHelper("MS_CHAT_PORT", ":8012")
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
+	config.MSChatPort = ":" + msChatPort
 
 	config.printConfig()
 
@@ -164,6 +185,9 @@ func (cfg Config) printConfig() {
 	log.Printf("Static base dir: %s\n", cfg.StaticBaseDir)
 	log.Printf("Avatar folder: %s\n", cfg.AvatarDir)
 	log.Printf("Base URL: %s\n", cfg.BaseUrl)
+	log.Printf("Microservice Auth port: %s\n", cfg.MSAuthPort)
+	log.Printf("Microservice Feed port: %s\n", cfg.MSFeedPort)
+	log.Printf("Microservice Chat port: %s\n", cfg.MSChatPort)
 	log.Println("-----------------------------------------------")
 }
 

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
@@ -72,8 +71,7 @@ func main() {
 
 	// т.к. бд не сразу после запуска начинает принимать запросы
 	// пробуем подключиться к бд в течение 10 секунд
-	psqlconn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", pgConfig.PgHost, 5432, pgConfig.PgUser, pgConfig.PgPassword, pgConfig.PgDB)
-	db, err := pg.ConnectDB(psqlconn, ctx)
+	db, err := pg.ConnectDB(pgConfig, ctx)
 	if err != nil {
 		log.Fatalf("Cannot launch due to database connection error: %s", err)
 	}
@@ -114,7 +112,7 @@ func main() {
 	metricsService.RegisterMetrics()
 
 	grpcConnAuth, err := grpc.NewClient(
-		"auth:8010",
+		"auth" + config.MSAuthPort,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
@@ -123,7 +121,7 @@ func main() {
 	defer grpcConnAuth.Close()
 
 	grpcConnFeed, err := grpc.NewClient(
-		"feed:8011",
+		"feed" + config.MSFeedPort,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
@@ -132,7 +130,7 @@ func main() {
 	defer grpcConnFeed.Close()
 
 	grpcConnChat, err := grpc.NewClient(
-		"chat:8012",
+		"chat" + config.MSChatPort,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {

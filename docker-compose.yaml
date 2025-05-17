@@ -4,42 +4,71 @@ services:
       - flow_network
     container_name: postgres_db
     image: postgres:15
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
+    env_file:
+      - ./env/database/path.env
+      - ./env/database/roles/superuser.env
+    command: -c config_file=/etc/postgresql/postgresql.conf
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 5s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
     ports:
-      - "5432:5432"
+      - "${_env_database__path__PGPORT}:${_env_database__path__PGPORT}"
     volumes:
       - db_data:/var/lib/postgresql/data
+      - ./db/postgresql.conf:/etc/postgresql/postgresql.conf
+  
+
+  db_after_init_script:
+    networks:
+      - flow_network
+    container_name: db_after_init_script
+    image: alpine/psql
+    env_file:
+      - ./env/database/path.env
+      - ./env/database/roles/superuser.env
+    entrypoint: >
+      sh -c "
+        chmod +x /db_refresh_role.sh
+        exec /db_refresh_role.sh
+      "
+    volumes: 
+      - ./db/db_after_init_script/db_refresh_role.sh:/db_refresh_role.sh
+      - ./db/roles:/roles_scripts
+      - ./env/database/roles:/roles
+    depends_on:
+      database:
+        condition: service_healthy
+
+
   backend:
     networks:
       - flow_network
     container_name: flow_backend
-    build: 
+    build:
       context: .
       dockerfile: app/main/Dockerfile
+    env_file:
+      - ./env/backend/shared.env
+      - ./env/database/path.env
+      - ./env/database/roles/backend.env
+      - ./env/backend/main.env
     environment:
-      - JWT_SECRET=${JWT_SECRET}
-      - IP=${IP}
-      - ENVIRONMENT=${ENVIRONMENT}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
-      - PORT=${PORT}
-      - EXPIRATION_TIME=${EXPIRATION_TIME}
-      - COOKIE_SECURE=${COOKIE_SECURE}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_HOST=${POSTGRES_HOST}
-      - BASE_URL=${BASE_URL}
-      - VK_CLIENT_ID=${VK_CLIENT_ID}
+      - MS_AUTH_PORT=${_env_auth__main__PORT}
+      - MS_FEED_PORT=${_env_feed__main__PORT}
+      - MS_CHAT_PORT=${_env_chat__main__PORT}
     ports:
-      - "${PORT}:${PORT}"
+      - "${_env_backend__main__PORT}:${_env_backend__main__PORT}"
     depends_on:
-      - database
+      db_after_init_script:
+        condition:
+          service_completed_successfully
     volumes:
       - ./static:/app/static
     restart: on-failure
+
 
   auth:
     networks:
@@ -48,15 +77,17 @@ services:
     build:
       context: .
       dockerfile: app/auth/Dockerfile
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_HOST=${POSTGRES_HOST}
+    env_file:
+      - ./env/backend/shared.env
+      - ./env/database/path.env
+      - ./env/database/roles/auth.env
+      - ./env/auth/main.env
     # ports:
-    #   - "8010:8010"
+    #   - "${_env_auth__main__PORT}:${_env_auth__main__PORT}"
     depends_on:
-      - database
+      db_after_init_script:
+        condition:
+          service_completed_successfully
     restart: on-failure
 
   
@@ -67,16 +98,17 @@ services:
     build:
       context: .
       dockerfile: app/chat/Dockerfile
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_HOST=${POSTGRES_HOST}
-    # таким образом, контейнер доступен только внутри сети
+    env_file:
+      - ./env/backend/shared.env
+      - ./env/database/path.env
+      - ./env/database/roles/chat.env
+      - ./env/chat/main.env
     # ports:
-    #   - "8012:8012"
+    #   - "${_env_chat__main__PORT}:${_env_chat__main__PORT}"
     depends_on:
-      - database
+      db_after_init_script:
+        condition:
+          service_completed_successfully
     restart: on-failure
 
 
@@ -87,18 +119,17 @@ services:
     build:
       context: .
       dockerfile: app/websocket_chat/Dockerfile
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_HOST=${POSTGRES_HOST}
-      - JWT_SECRET=${JWT_SECRET}
-      - EXPIRATION_TIME=${EXPIRATION_TIME}
-      - COOKIE_SECURE=${COOKIE_SECURE}
-    ports:
-      - "8013:8013"
+    env_file:
+      - ./env/backend/shared.env
+      - ./env/database/path.env
+      - ./env/database/roles/websocket_chat.env
+      - ./env/websocket_chat/main.env
+    # ports:
+    #   - "${_env_websocket_chat__main__PORT}:${_env_websocket_chat__main__PORT}"
     depends_on:
-      - database
+      db_after_init_script:
+        condition:
+          service_completed_successfully
     restart: on-failure
 
 
@@ -109,63 +140,69 @@ services:
     build:
       context: .
       dockerfile: app/feed/Dockerfile
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_HOST=${POSTGRES_HOST}
+    env_file:
+      - ./env/backend/shared.env
+      - ./env/database/path.env
+      - ./env/database/roles/feed.env
+      - ./env/feed/main.env
     # ports:
-    #   - "8011:8011"
+    #   - "${_env_feed__main__PORT}:${_env_feed__main__PORT}"
     depends_on:
-      - database
+      db_after_init_script:
+        condition:
+          service_completed_successfully
     restart: on-failure
 
   
-  prometheus:
-    networks:
-      - flow_network
-    container_name: prometheus
-    image: prom/prometheus:latest
-    volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-    command:
-      - --config.file=/etc/prometheus/prometheus.yml
-    ports:
-      - "8090:9090"
+  # prometheus:
+  #   networks:
+  #     - flow_network
+  #   container_name: prometheus
+  #   image: prom/prometheus:latest
+  #   volumes:
+  #     - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+  #   command:
+  #     - --config.file=/etc/prometheus/prometheus.yml
+  #   depends_on:
+  #     - backend
+  #   ports:
+  #     - "8090:9090"
   
-  node_exporter:
-    networks:
-      - flow_network
-    image: quay.io/prometheus/node-exporter:latest
-    container_name: node_exporter
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/rootfs:ro
-    command:
-      - --path.procfs=/host/proc
-      - --path.sysfs=/host/sys
-      - --collector.filesystem.ignored-mount-points
-      - ^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)
-    hostname: node_exporter
-    ports:
-      - "8091:9100"
-    depends_on:
-      - prometheus
+  # node_exporter:
+  #   networks:
+  #     - flow_network
+  #   image: quay.io/prometheus/node-exporter:latest
+  #   container_name: node_exporter
+  #   volumes:
+  #     - /proc:/host/proc:ro
+  #     - /sys:/host/sys:ro
+  #     - /:/rootfs:ro
+  #   command:
+  #     - --path.procfs=/host/proc
+  #     - --path.sysfs=/host/sys
+  #     - --collector.filesystem.ignored-mount-points
+  #     - ^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)
+  #   hostname: node_exporter
+  #   ports:
+  #     - "8091:9100"
+  #   depends_on:
+  #     - prometheus
   
-  grafana:
-    networks:
-      - flow_network
-    image: grafana/grafana-enterprise
-    volumes:
-      - grafana_storage:${GRAFANA_DIR}:/var/lib/grafana/
-      - grafana_storage:${GRAFANA_DIR}/provisioning/:/etc/grafana/provisioning/
-      - grafana_storage:${GRAFANA_DIR}/dashboards:/etc/grafana/dashboards
-    user: "${UID}"
-    ports:
-      - "8092:3000"
-    depends_on:
-      - prometheus
+  # grafana:
+  #   networks:
+  #     - flow_network
+  #   image: grafana/grafana-enterprise
+  #   env_file:
+  #     - ./env/grafana.env
+  #   volumes:
+  #     - ${_env_grafana__main__GRAFANA_DIR}:/var/lib/grafana/
+  #     - ${_env_grafana__main__GRAFANA_DIR}/provisioning/:/etc/grafana/provisioning/
+  #     - ${_env_grafana__main__GRAFANA_DIR}/dashboards:/etc/grafana/dashboards
+  #   user: "${_env_grafana__main__UID}"
+  #   ports:
+  #     - "8092:3000"
+  #   depends_on:
+  #     - prometheus
 
 networks:
   flow_network:
@@ -173,4 +210,3 @@ networks:
 
 volumes:
   db_data:
-  grafana_storage:
