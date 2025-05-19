@@ -8,13 +8,6 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
 
-// type CommentRepository interface {
-// 	GetComments(ctx context.Context, flowID, userID, page, size int) ([]domain.Comment, error)
-// 	LikeComment(ctx context.Context, commentID, userID int) (string, error)
-// 	AddComment(ctx context.Context, flowID, userID int, content string) error
-// 	DeleteComment(ctx context.Context, commentID int) error
-// }
-
 type CommentRepository struct {
 	db *sql.DB
 }
