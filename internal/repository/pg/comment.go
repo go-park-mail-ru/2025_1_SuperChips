@@ -34,7 +34,10 @@ func (r *CommentRepository) GetComments(ctx context.Context, flowID, userID, pag
 	JOIN flow_user fu ON fu.id = c.author_id
 	LEFT JOIN flow f ON f.id = c.flow_id AND (f.is_private = false OR f.author_id = $2)
 	WHERE c.flow_id = $1
-	`, flowID, userID)
+	OFFSET $3
+	LIMIT $4
+	ORDER BY c.created_at DESC
+	`, flowID, userID, page, size)
 	if err != nil {
 		return nil, err
 	}
