@@ -12,9 +12,9 @@ import (
 
 type CommentService interface {
 	GetComments(ctx context.Context, flowID, userID, page, size int) ([]domain.Comment, error)
-	LikeComment(ctx context.Context, commentID, userID int) (string, error)
+	LikeComment(ctx context.Context, flowID, commentID, userID int) (string, error)
 	AddComment(ctx context.Context, flowID, userID int, content string) error
-	DeleteComment(ctx context.Context, commentID int) error
+	DeleteComment(ctx context.Context, commentID, userID int) error
 }
 
 type CommentHandler struct {
@@ -31,7 +31,6 @@ func (h *CommentHandler) GetComments(w http.ResponseWriter, r *http.Request) {
 
 	page, size, err := getQueryPagination(w, r)
 	if err != nil {
-		HttpErrorToJson(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
@@ -60,6 +59,13 @@ func (h *CommentHandler) GetComments(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *CommentHandler) LikeComment(w http.ResponseWriter, r *http.Request) {
+	flowIDStr := r.PathValue("flow_id")
+	flowID, err := strconv.Atoi(flowIDStr)
+	if err != nil {
+		HttpErrorToJson(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
 	commentIDStr := r.PathValue("comment_id")
 	commentID, err := strconv.Atoi(commentIDStr)
 	if err != nil {
@@ -72,7 +78,7 @@ func (h *CommentHandler) LikeComment(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), h.ContextExpiration)
 	defer cancel()
 
-	action, err := h.Service.LikeComment(ctx, commentID, claims.UserID)
+	action, err := h.Service.LikeComment(ctx, flowID, commentID, claims.UserID)
 	if err != nil {
 		handleCommentError(w, err)
 		return
@@ -125,7 +131,6 @@ func (h *CommentHandler) AddComment(w http.ResponseWriter, r *http.Request) {
 
 	resp := ServerResponse{
 		Description: "Created",
-		Data: comment,
 	}
 
 	ServerGenerateJSONResponse(w, resp, http.StatusCreated)
@@ -139,10 +144,12 @@ func (h *CommentHandler) DeleteComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
+
 	ctx, cancel := context.WithTimeout(context.Background(), h.ContextExpiration)
 	defer cancel()
 
-	if err := h.Service.DeleteComment(ctx, commentID); err != nil {
+	if err := h.Service.DeleteComment(ctx, commentID, claims.UserID); err != nil {
 		handleCommentError(w, err)
 		return
 	}
@@ -157,6 +164,6 @@ func (h *CommentHandler) DeleteComment(w http.ResponseWriter, r *http.Request) {
 func handleCommentError(w http.ResponseWriter, err error) {
 	switch {
 	default:
-		HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		HttpErrorToJson(w, err.Error(), http.StatusInternalServerError)
 	}
 }

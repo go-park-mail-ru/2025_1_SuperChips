@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/board"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/comment"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	_ "github.com/go-park-mail-ru/2025_1_SuperChips/docs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/pg"
@@ -100,6 +101,7 @@ func main() {
 	boardStorage := pgStorage.NewBoardStorage(db)
 	searchStorage := pgStorage.NewSearchRepository(db)
 	chatStorage := pgStorage.NewChatRepository(db)
+	commentStorage := pgStorage.NewCommentRepository(db)
 
 	jwtManager := auth.NewJWTManager(config)
 
@@ -109,7 +111,8 @@ func main() {
 	boardService := board.NewBoardService(boardStorage, config.BaseUrl, config.ImageBaseDir)
 	likeService := like.NewLikeService(likeStorage)
 	searchService := search.NewSearchService(searchStorage, config.BaseUrl, config.ImageBaseDir, config.StaticBaseDir, config.AvatarDir)
-	
+	commentService := comment.NewCommentService(commentStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
+
 	metricsService := metrics.NewMetricsService()
 	metricsService.RegisterMetrics()
 
@@ -195,6 +198,11 @@ func main() {
 	searchHander := rest.SearchHandler{
 		Service: searchService,
 		ContextTimeout: config.ContextExpiration,
+	}
+
+	commentHandler := rest.CommentHandler{
+		Service: commentService,
+		ContextExpiration: config.ContextExpiration,
 	}
 
 	fs := http.FileServer(http.Dir("." + config.StaticBaseDir))
@@ -538,6 +546,47 @@ func main() {
 		middleware.AuthMiddleware(jwtManager, true),
 		middleware.CSRFMiddleware(),
 		middleware.CorsMiddleware(config, allowedPostOptions),
+		middleware.Log()))
+
+	// comments
+	mux.HandleFunc("/api/v1/flows/{flow_id}/comments", middleware.ChainMiddleware(commentHandler.GetComments,
+		middleware.CorsMiddleware(config, allowedGetOptions),
+		middleware.Log()))
+
+	mux.HandleFunc("POST /api/v1/flows/{flow_id}/comments", middleware.ChainMiddleware(commentHandler.AddComment,
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CSRFMiddleware(),
+		middleware.CorsMiddleware(config, allowedPostOptions),
+		middleware.Log()))
+
+	mux.HandleFunc("OPTIONS /api/v1/flows/{flow_id}/comments", middleware.ChainMiddleware(commentHandler.GetComments,
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CSRFMiddleware(),
+		middleware.CorsMiddleware(config, allowedGetOptions),
+		middleware.Log()))
+
+	mux.HandleFunc("DELETE /api/v1/flows/{flow_id}/comments/{comment_id}", middleware.ChainMiddleware(commentHandler.DeleteComment,
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CSRFMiddleware(),
+		middleware.CorsMiddleware(config, allowedDeleteOptions),
+		middleware.Log()))
+
+	mux.HandleFunc("OPTIONS /api/v1/flows/{flow_id}/comments/{comment_id}", middleware.ChainMiddleware(commentHandler.DeleteComment,
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CSRFMiddleware(),
+		middleware.CorsMiddleware(config, allowedGetOptions),
+		middleware.Log()))
+
+	mux.HandleFunc("POST /api/v1/flows/{flow_id}/comments/{comment_id}/like", middleware.ChainMiddleware(commentHandler.LikeComment,
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CSRFMiddleware(),
+		middleware.CorsMiddleware(config, allowedPostOptions),
+		middleware.Log()))
+	
+	mux.HandleFunc("OPTIONS /api/v1/flows/{flow_id}/comments/{comment_id}/like", middleware.ChainMiddleware(commentHandler.LikeComment,
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CSRFMiddleware(),
+		middleware.CorsMiddleware(config, allowedGetOptions),
 		middleware.Log()))
 
 	server := http.Server{

@@ -7,18 +7,11 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
 
-// type CommentService interface {
-// 	GetComments(ctx context.Context, flowID, userID, page, size int) ([]domain.Comment, error)
-// 	LikeComment(ctx context.Context, commentID, userID int) (string, error)
-// 	AddComment(ctx context.Context, flowID, userID int, content string) error
-// 	DeleteComment(ctx context.Context, commentID int) error
-// }
-
 type CommentRepository interface {
 	GetComments(ctx context.Context, flowID, userID, page, size int) ([]domain.Comment, error)
-	LikeComment(ctx context.Context, commentID, userID int) (string, error)
+	LikeComment(ctx context.Context, flowID, commentID, userID int) (string, error)
 	AddComment(ctx context.Context, flowID, userID int, content string) error
-	DeleteComment(ctx context.Context, commentID int) error
+	DeleteComment(ctx context.Context, commentID, userID int) error
 }
 
 type CommentService struct {
@@ -52,8 +45,8 @@ func (s *CommentService) GetComments(ctx context.Context, flowID, userID, page, 
 	return comments, nil
 }
 
-func (s *CommentService) LikeComment(ctx context.Context, commentID, userID int) (string, error) {
-	like, err := s.repo.LikeComment(ctx, commentID, userID)
+func (s *CommentService) LikeComment(ctx context.Context, flowID, commentID, userID int) (string, error) {
+	like, err := s.repo.LikeComment(ctx, flowID, commentID, userID)
 	if err != nil {
 		return "", err
 	}
@@ -69,8 +62,8 @@ func (s *CommentService) AddComment(ctx context.Context, flowID, userID int, con
 	return nil
 }
 
-func (s* CommentService) DeleteComment(ctx context.Context, commentID int) error {
-	if err := s.repo.DeleteComment(ctx, commentID); err != nil {
+func (s* CommentService) DeleteComment(ctx context.Context, commentID, userID int) error {
+	if err := s.repo.DeleteComment(ctx, commentID, userID); err != nil {
 		return err
 	}
 

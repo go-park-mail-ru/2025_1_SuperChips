@@ -20,12 +20,6 @@ type Comment struct {
 }
 
 func (c *Comment) Validate() error {
-	if c.FlowID <= 0 {
-		return fmt.Errorf("invalid flow ID")
-	}
-	if c.AuthorID <= 0 {
-		return fmt.Errorf("invalid author ID")
-	}
 	if c.Content == "" {
 		return fmt.Errorf("content cannot be empty")
 	}
