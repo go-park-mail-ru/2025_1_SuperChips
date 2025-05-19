@@ -7,7 +7,7 @@ DOMAIN_FLDR := domain
 REST_FLDR := internal/rest
 TESTED_DIRS := ./$(REST_FLDR)/... ./$(DOMAIN_FLDR)/... ./internal/repository/...
 
-.PHONY : test mocks
+.PHONY : test mocks easyjson
 
 mocks:
 	@mkdir -p $(MOCK_DST)/pin $(MOCK_DST)/user
@@ -53,6 +53,7 @@ easyjson:
 	$(DOMAIN_FLDR)/like.go \
 	$(DOMAIN_FLDR)/user.go \
 	$(DOMAIN_FLDR)/pincrud.go \
+	$(DOMAIN_FLDR)/comment.go \
 	$(REST_FLDR)/helper.go \
 	$(REST_FLDR)/board.go \
 	$(REST_FLDR)/chat.go \
