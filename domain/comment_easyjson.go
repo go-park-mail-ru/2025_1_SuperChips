@@ -52,6 +52,8 @@ func easyjsonE9abebc9DecodeGithubComGoParkMailRu20251SuperChipsDomain(in *jlexer
 			}
 		case "like_count":
 			out.LikeCount = int(in.Int())
+		case "is_liked":
+			out.IsLiked = bool(in.Bool())
 		default:
 			in.SkipRecursive()
 		}
@@ -100,6 +102,11 @@ func easyjsonE9abebc9EncodeGithubComGoParkMailRu20251SuperChipsDomain(out *jwrit
 		const prefix string = ",\"like_count\":"
 		out.RawString(prefix)
 		out.Int(int(in.LikeCount))
+	}
+	{
+		const prefix string = ",\"is_liked\":"
+		out.RawString(prefix)
+		out.Bool(bool(in.IsLiked))
 	}
 	out.RawByte('}')
 }

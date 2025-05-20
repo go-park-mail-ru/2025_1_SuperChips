@@ -550,6 +550,7 @@ func main() {
 
 	// comments
 	mux.HandleFunc("/api/v1/flows/{flow_id}/comments", middleware.ChainMiddleware(commentHandler.GetComments,
+		middleware.AuthMiddleware(jwtManager, false),
 		middleware.CorsMiddleware(config, allowedGetOptions),
 		middleware.Log()))
 

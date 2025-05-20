@@ -20,28 +20,32 @@ func NewCommentRepository(db *sql.DB) *CommentRepository {
 
 func (r *CommentRepository) GetComments(ctx context.Context, flowID, userID, page, size int) ([]domain.Comment, error) {
 	var isExternalAvatar sql.NullBool
+	offset := (page - 1) * size
 
 	rows, err := r.db.QueryContext(ctx, `
-	SELECT 
-		c.id, 
-		c.author_id, 
-		c.flow_id, 
-		c.contents, 
-		c.like_count, 
-		c.created_at, 
-		fu.username, 
-		fu.avatar, 
-		fu.is_external_avatar,
-		CASE WHEN cl.user_id IS NOT NULL THEN true ELSE false END AS is_liked
-	FROM comment c
-	JOIN flow_user fu ON fu.id = c.author_id
-	LEFT JOIN flow f ON f.id = c.flow_id AND (f.is_private = false OR f.author_id = $2)
-	LEFT JOIN comment_like cl ON cl.comment_id = c.id AND cl.user_id = $2
-	WHERE c.flow_id = $1
-	ORDER BY c.created_at DESC
-	OFFSET $3
-	LIMIT $4
-	`, flowID, userID, page, size)
+    SELECT 
+        c.id, 
+        c.author_id, 
+        c.flow_id, 
+        c.contents, 
+        c.like_count, 
+        c.created_at, 
+        fu.username, 
+        fu.avatar, 
+        fu.is_external_avatar,
+        EXISTS (
+            SELECT 1 FROM comment_like cl 
+            WHERE cl.comment_id = c.id AND cl.user_id = $2
+        ) AS is_liked
+    FROM comment c
+    JOIN flow_user fu ON fu.id = c.author_id
+    LEFT JOIN flow f ON f.id = c.flow_id
+    WHERE c.flow_id = $1
+    AND (f.is_private = false OR f.author_id = $2)
+    ORDER BY c.created_at DESC
+    OFFSET $3
+    LIMIT $4
+	`, flowID, userID, offset, size)
 	if err != nil {
 		return nil, err
 	}
