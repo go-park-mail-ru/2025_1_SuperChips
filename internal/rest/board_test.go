@@ -125,7 +125,7 @@ func TestAddToBoard_Success(t *testing.T) {
 
 	claims := &auth.Claims{UserID: 333}
 	pathValues := map[string]string{"id": "200"}
-	boardReq := BoardRequest{FlowID: 555}
+	boardReq := domain.BoardRequest{FlowID: 555}
 	payloadBytes, err := json.Marshal(boardReq)
 	if err != nil {
 		t.Fatal(err)

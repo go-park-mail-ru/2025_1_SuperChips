@@ -509,9 +509,9 @@ func (p *pgBoardStorage) fetchFlowsAndColors(ctx context.Context, boardID, userI
 
 	var colors []string
 
-	// if flow count is >= 20
+	// if flow count is >= 1
 	// get the colors
-	if pinCount >= 20 {
+	if pinCount >= 1 {
 		colors, err = p.fetchColors(ctx, boardID, userID)
 		if err != nil {
 			return nil, nil, err
