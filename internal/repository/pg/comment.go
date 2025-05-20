@@ -22,14 +22,25 @@ func (r *CommentRepository) GetComments(ctx context.Context, flowID, userID, pag
 	var isExternalAvatar sql.NullBool
 
 	rows, err := r.db.QueryContext(ctx, `
-	SELECT c.id, c.author_id, c.flow_id, c.contents, c.like_count, c.created_at, fu.username, fu.avatar, fu.is_external_avatar
+	SELECT 
+		c.id, 
+		c.author_id, 
+		c.flow_id, 
+		c.contents, 
+		c.like_count, 
+		c.created_at, 
+		fu.username, 
+		fu.avatar, 
+		fu.is_external_avatar,
+		CASE WHEN cl.user_id IS NOT NULL THEN true ELSE false END AS is_liked
 	FROM comment c
 	JOIN flow_user fu ON fu.id = c.author_id
 	LEFT JOIN flow f ON f.id = c.flow_id AND (f.is_private = false OR f.author_id = $2)
+	LEFT JOIN comment_like cl ON cl.comment_id = c.id AND cl.user_id = $2
 	WHERE c.flow_id = $1
+	ORDER BY c.created_at DESC
 	OFFSET $3
 	LIMIT $4
-	ORDER BY c.created_at DESC
 	`, flowID, userID, page, size)
 	if err != nil {
 		return nil, err
@@ -50,6 +61,7 @@ func (r *CommentRepository) GetComments(ctx context.Context, flowID, userID, pag
 			&comment.AuthorUsername,
 			&comment.AuthorAvatar,
 			&isExternalAvatar,
+			&comment.IsLiked,
 		); err != nil {
 			return nil, err
 		}

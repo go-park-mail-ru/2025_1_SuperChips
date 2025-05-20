@@ -17,6 +17,7 @@ type Comment struct {
 	Content                string    `json:"content"`
 	Timestamp              time.Time `json:"timestamp"`
 	LikeCount              int       `json:"like_count"`
+	IsLiked                bool      `json:"is_liked"`
 }
 
 func (c *Comment) Validate() error {
