@@ -2,6 +2,7 @@ package rest
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -163,7 +164,9 @@ func (h *CommentHandler) DeleteComment(w http.ResponseWriter, r *http.Request) {
 
 func handleCommentError(w http.ResponseWriter, err error) {
 	switch {
+	case errors.Is(err, domain.ErrForbidden):
+		HttpErrorToJson(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 	default:
-		HttpErrorToJson(w, err.Error(), http.StatusInternalServerError)
+		HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }

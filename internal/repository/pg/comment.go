@@ -118,7 +118,7 @@ func (r *CommentRepository) LikeComment(ctx context.Context, flowID, commentID, 
 	)
 	SELECT COALESCE((SELECT action FROM inserted), (SELECT action FROM deleted)) AS action
     `, userID, flowID, commentID).Scan(&action)
-    if err == sql.ErrNoRows {
+    if errors.Is(err, sql.ErrNoRows) {
         return "", domain.ErrForbidden
     }
     if err != nil {
@@ -147,6 +147,9 @@ func (r *CommentRepository) AddComment(ctx context.Context, flowID, userID int, 
 	WHERE has_access = true
 	RETURNING id;
 	`, userID, flowID, content).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.ErrForbidden
+	}
 	if err != nil {
 		return err
 	}
