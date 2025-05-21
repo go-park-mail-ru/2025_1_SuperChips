@@ -140,6 +140,7 @@ func (h *SubscriptionHandler) CreateSubscription(w http.ResponseWriter, r *http.
 		Type: "notification",
 		Content: domain.Notification{
 			Type:             "subscription",
+			CreatedAt:        time.Now(),
 			SenderUsername:   claims.Username,
 			ReceiverUsername: subData.TargetUsername,
 			AdditionalData:   nil,
