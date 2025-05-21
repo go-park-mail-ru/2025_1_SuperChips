@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
@@ -84,13 +83,13 @@ func (r *NotificationRepository) GetNewNotifications(ctx context.Context, userID
 	return notifications, nil
 }
 
-func (r *NotificationRepository) AddNotification(ctx context.Context, notification domain.Notification) (uint, time.Time, error) {
+func (r *NotificationRepository) AddNotification(ctx context.Context, notification domain.Notification) (domain.NewNotificationData, error) {
 	var authorID int
 	err := r.db.QueryRowContext(ctx, `
 		SELECT id FROM flow_user WHERE username = $1
 	`, notification.SenderUsername).Scan(&authorID)
 	if err != nil {
-		return 0, time.Time{}, fmt.Errorf("get notification sender err: %v", err)
+		return domain.NewNotificationData{}, fmt.Errorf("get notification sender err: %v", err)
 	}
 
 	var receiverID int
@@ -98,22 +97,33 @@ func (r *NotificationRepository) AddNotification(ctx context.Context, notificati
 		SELECT id FROM flow_user WHERE username = $1
 	`, notification.ReceiverUsername).Scan(&receiverID)
 	if err != nil {
-		return 0, time.Time{}, fmt.Errorf("get notification receiver err: %v", err)
+		return domain.NewNotificationData{}, fmt.Errorf("get notification receiver err: %v", err)
 	}
 
 	rawAdditional, err := json.Marshal(notification.AdditionalData)
 	if err != nil {
-		return 0, time.Time{}, err
+		return domain.NewNotificationData{}, err
 	}
+
+	var data domain.NewNotificationData
+	var isExternal sql.NullBool
 
 	err = r.db.QueryRowContext(ctx, `
-		INSERT INTO notification (author_id, receiver_id, notification_type, is_read, additional)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, timestamp
-	`, authorID, receiverID, notification.Type, notification.IsRead, rawAdditional).Scan()
+	WITH sender_data AS (
+		SELECT fu.avatar, fu.is_external_avatar
+		FROM flow_user fu
+		WHERE id = $1
+	)
+	INSERT INTO notification (author_id, receiver_id, notification_type, is_read, additional)
+	VALUES ($1, $2, $3, $4, $5)
+	RETURNING id, timestamp, (SELECT avatar FROM sender_data), (SELECT is_external_avatar FROM sender_data)
+	`, authorID, receiverID, notification.Type, notification.IsRead, rawAdditional).
+	Scan(&data.ID, &data.Timestamp, &data.Avatar, &isExternal)
 	if err != nil {
-		return 0, time.Time{}, err
+		return domain.NewNotificationData{}, err
 	}
 
-	return nil
+	data.IsExternalAvatar = isExternal.Bool
+
+	return data, nil
 }

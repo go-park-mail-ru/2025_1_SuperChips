@@ -23,6 +23,6 @@ type Notification struct {
 type NewNotificationData struct {
 	ID               uint      // id
 	Avatar           string    // sender avatar
-	isExternalAvatar string    // whether sender's avatar is from an external source
+	IsExternalAvatar bool      // whether sender's avatar is from an external source
 	Timestamp        time.Time // timestamp)
 }
