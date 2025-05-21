@@ -29,8 +29,10 @@ func (pg *pgLikeStorage) LikeFlow(ctx context.Context, pinID, userID int) (strin
 				WHEN f.is_private = false OR f.author_id = $1 THEN true
 				ELSE false
 			END AS has_access,
-			f.author_id
+			f.author_id,
+			fu.username AS author_username
 		FROM flow f
+		JOIN flow_user fu ON f.author_id = fu.id
 		WHERE f.id = $2
 	),
 	deleted AS (
@@ -56,7 +58,7 @@ func (pg *pgLikeStorage) LikeFlow(ctx context.Context, pinID, userID int) (strin
 		WHERE id = $2
 	)
 	SELECT 
-		author_id, 
+		author_username, 
 		COALESCE((SELECT action FROM inserted), (SELECT action FROM deleted)) AS action
 	FROM access_check`, userID, pinID).Scan(&author, &action)
     if errors.Is(err, sql.ErrNoRows) {
