@@ -20,6 +20,8 @@ func NewNotificationRepository(db *sql.DB) *NotificationRepository {
 }
 
 func (r *NotificationRepository) GetNewNotifications(ctx context.Context, userID uint64) ([]domain.Notification, error) {
+	var isExternalAvatar sql.NullBool
+	
 	rows, err := r.db.QueryContext(ctx, `
 	SELECT 
 		n.id,
@@ -50,7 +52,7 @@ func (r *NotificationRepository) GetNewNotifications(ctx context.Context, userID
 			&notification.ID,
 			&notification.SenderUsername,
 			&notification.SenderAvatar,
-			&notification.SenderExternalAvatar,
+			&isExternalAvatar,
 			&notification.ReceiverUsername,
 			&notification.Type,
 			&notification.IsRead,
@@ -59,6 +61,8 @@ func (r *NotificationRepository) GetNewNotifications(ctx context.Context, userID
 		); err != nil {
 			return nil, err
 		}
+
+		notification.SenderExternalAvatar = isExternalAvatar.Bool
 
 		notifications = append(notifications, notification)
 	}
