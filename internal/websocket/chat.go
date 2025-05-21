@@ -95,6 +95,8 @@ func (h *Hub) MarkRead(ctx context.Context, messageID, chatID int, targetUsernam
 }
 
 func (h *Hub) SendMessage(ctx context.Context, msg domain.WebMessage, targetUsername string) error {
+	log.Println("sending message for some reason")
+	
 	found := false
 	var targetConn *websocket.Conn
 
