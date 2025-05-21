@@ -18,12 +18,12 @@ func TestLikeFlow_InvalidIDs(t *testing.T) {
     mockRepo := mock_like.NewMockLikeRepository(ctrl)
     service := NewLikeService(mockRepo)
 
-    action, err := service.LikeFlow(context.Background(), 0, 1)
+    action, _, err := service.LikeFlow(context.Background(), 0, 1)
     assert.Error(t, err)
     assert.Empty(t, action)
     assert.Equal(t, "id cannot be less than or equal to zero", err.Error())
 
-    action, err = service.LikeFlow(context.Background(), 1, -1)
+    action, _, err = service.LikeFlow(context.Background(), 1, -1)
     assert.Error(t, err)
     assert.Empty(t, action)
     assert.Equal(t, "id cannot be less than or equal to zero", err.Error())
@@ -38,7 +38,7 @@ func TestLikeFlow_SuccessfulLike(t *testing.T) {
 
     mockRepo.EXPECT().LikeFlow(gomock.Any(), 1, 2).Return("insert", nil)
 
-    action, err := service.LikeFlow(context.Background(), 1, 2)
+    action, _, err := service.LikeFlow(context.Background(), 1, 2)
     assert.NoError(t, err)
     assert.Equal(t, "liked", action)
 }
@@ -52,7 +52,7 @@ func TestLikeFlow_SuccessfulUnlike(t *testing.T) {
 
     mockRepo.EXPECT().LikeFlow(gomock.Any(), 1, 2).Return("delete", nil)
 
-    action, err := service.LikeFlow(context.Background(), 1, 2)
+    action, _, err := service.LikeFlow(context.Background(), 1, 2)
     assert.NoError(t, err)
     assert.Equal(t, "unliked", action)
 }
@@ -66,7 +66,7 @@ func TestLikeFlow_RepositoryError(t *testing.T) {
 
     mockRepo.EXPECT().LikeFlow(gomock.Any(), 1, 2).Return("", domain.ErrForbidden)
 
-    action, err := service.LikeFlow(context.Background(), 1, 2)
+    action, _, err := service.LikeFlow(context.Background(), 1, 2)
     assert.Error(t, err)
     assert.Equal(t, domain.ErrForbidden, err)
     assert.Empty(t, action)
@@ -81,7 +81,7 @@ func TestLikeFlow_UnexpectedError(t *testing.T) {
 
     mockRepo.EXPECT().LikeFlow(gomock.Any(), 1, 2).Return("", errors.New("database error"))
 
-    action, err := service.LikeFlow(context.Background(), 1, 2)
+    action, _, err := service.LikeFlow(context.Background(), 1, 2)
     assert.Error(t, err)
     assert.EqualError(t, err, "database error")
     assert.Empty(t, action)

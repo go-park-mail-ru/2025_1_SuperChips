@@ -15,6 +15,7 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/board"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	_ "github.com/go-park-mail-ru/2025_1_SuperChips/docs"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/pg"
 	osStorage "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/os/pincrud"
 	pgStorage "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
@@ -29,6 +30,7 @@ import (
 	genAuth "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/auth"
 	genChat "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/chat"
 	genFeed "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/feed"
+	genWebsocket "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/websocket"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/search"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/subscription"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -36,6 +38,7 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 var (
@@ -47,6 +50,23 @@ var (
 	allowedOptions        = []string{http.MethodOptions}
 	allowedGetOptionsHead = []string{http.MethodGet, http.MethodOptions, http.MethodHead}
 )
+
+func ToProtoWebMessage(msg domain.WebMessage) (*genWebsocket.WebMessage, error) {
+	msgContent, ok := msg.Content.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid content type")
+	}
+
+	structContent, err := structpb.NewStruct(msgContent)
+	if err != nil {
+		return nil, err
+	}
+
+	return &genWebsocket.WebMessage{
+		Type:    msg.Type,
+		Content: structContent,
+	}, nil
+}
 
 // @title flow API
 // @version 1.0
@@ -140,9 +160,43 @@ func main() {
 	}
 	defer grpcConnChat.Close()
 
+	grpcConnWebsocket, err := grpc.NewClient(
+		"websocket:8020",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer grpcConnWebsocket.Close()
+
 	authClient := genAuth.NewAuthClient(grpcConnAuth)
 	feedClient := genFeed.NewFeedClient(grpcConnFeed)
 	chatClient := genChat.NewChatServiceClient(grpcConnChat)
+	websocketClient := genWebsocket.NewWebsocketClient(grpcConnWebsocket)
+
+	notificationChan := make(chan domain.WebMessage)
+	defer close(notificationChan)
+
+	go func() {
+		for {
+			select {
+			case domainMsg := <-notificationChan:
+				protoMsg, err := ToProtoWebMessage(domainMsg)
+				if err != nil {
+					log.Printf("conversion error: %v", err)
+					continue
+				}
+		
+				_, err = websocketClient.SendWebMessage(ctx, &genWebsocket.SendWebMessageRequest{
+					WebMessage: protoMsg,
+				})
+				if err != nil {
+					log.Printf("gRPC send error: %v", err)
+				}
+			}
+		}
+	}()
+	
 
 	authHandler := rest.AuthHandler{
 		Config:      config,
@@ -185,6 +239,7 @@ func main() {
 	likeHandler := rest.LikeHandler{
 		LikeService: likeService,
 		ContextTimeout: config.ContextExpiration,
+		NotificationChan: notificationChan,
 	}
 
 	boardHandler := rest.BoardHandler{

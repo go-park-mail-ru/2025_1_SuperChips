@@ -23,32 +23,33 @@ type ChatRepository interface {
 	MarkRead(ctx context.Context, messageID, chatID int) error
 }
 
-
 type Hub struct {
-	connect       sync.Map
-	currentOffset time.Time
-	repo          ChatRepository
+	connect          sync.Map
+	currentOffset    time.Time
+	chatRepo         ChatRepository
+	notificationRepo NotificationRepository
 }
 
-func CreateHub(repo ChatRepository) *Hub {
+func CreateHub(chatRepo ChatRepository, notificationRepo NotificationRepository) *Hub {
 	return &Hub{
-		connect:       sync.Map{},
-		currentOffset: time.Now().UTC(),
-		repo:          repo,
+		connect:          sync.Map{},
+		currentOffset:    time.Now().UTC(),
+		chatRepo:         chatRepo,
+		notificationRepo: notificationRepo,
 	}
 }
 
 func (h *Hub) AddClient(username string, client *websocket.Conn) {
-    h.connect.Store(username, client)
+	h.connect.Store(username, client)
 
-    client.SetCloseHandler(func(code int, text string) error {
-        h.connect.Delete(username)
-        return nil
-    })
+	client.SetCloseHandler(func(code int, text string) error {
+		h.connect.Delete(username)
+		return nil
+	})
 }
 
 func (h *Hub) MarkRead(ctx context.Context, messageID, chatID int, targetUsername, senderUsername string) error {
-	if err := h.repo.MarkRead(ctx, messageID, chatID); err != nil {
+	if err := h.chatRepo.MarkRead(ctx, messageID, chatID); err != nil {
 		return fmt.Errorf("couldn't mark messages as read: %v", err)
 	}
 
@@ -93,9 +94,15 @@ func (h *Hub) MarkRead(ctx context.Context, messageID, chatID int, targetUsernam
 	return nil
 }
 
-func (h *Hub) Send(ctx context.Context, message domain.Message, targetUsername string) error {
+func (h *Hub) SendMessage(ctx context.Context, msg domain.WebMessage, targetUsername string) error {
 	found := false
 	var targetConn *websocket.Conn
+
+	message, ok := msg.Content.(domain.Message)
+	if !ok {
+		log.Println("error while casting message")
+		return errors.New("error while casting message")
+	}
 
 	h.connect.Range(func(key, value any) bool {
 		username := key.(string)
@@ -113,7 +120,7 @@ func (h *Hub) Send(ctx context.Context, message domain.Message, targetUsername s
 
 	message.Recipient = targetUsername
 
-	if err := h.repo.AddMessage(ctx, message); err != nil {
+	if err := h.chatRepo.AddMessage(ctx, message); err != nil {
 		log.Printf("error while adding message to db: %v", err)
 		return err
 	}
@@ -145,7 +152,7 @@ func (h *Hub) Run(ctx context.Context) {
 			h.connect.Range(func(key, value any) bool {
 				username := key.(string)
 				conn := value.(*websocket.Conn)
-				messages, err := h.repo.GetNewMessages(ctx, username, h.currentOffset)
+				messages, err := h.chatRepo.GetNewMessages(ctx, username, h.currentOffset)
 				if err != nil {
 					log.Printf("error getting new messages: %v", err)
 				}
@@ -163,4 +170,3 @@ func (h *Hub) Run(ctx context.Context) {
 		}
 	}
 }
-

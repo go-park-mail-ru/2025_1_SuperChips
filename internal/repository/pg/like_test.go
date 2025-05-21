@@ -33,7 +33,7 @@ func TestLikeFlow_SuccessfulLike(t *testing.T) {
         WithArgs(userID, pinID).
         WillReturnRows(sqlmock.NewRows([]string{"action"}).AddRow("insert"))
 
-    action, err := storage.LikeFlow(ctx, pinID, userID)
+    action, _, err := storage.LikeFlow(ctx, pinID, userID)
     assert.NoError(t, err)
     assert.Equal(t, "insert", action)
     assert.NoError(t, mock.ExpectationsWereMet())
@@ -51,7 +51,7 @@ func TestLikeFlow_SuccessfulUnlike(t *testing.T) {
         WithArgs(userID, pinID).
         WillReturnRows(sqlmock.NewRows([]string{"action"}).AddRow("delete"))
 
-    action, err := storage.LikeFlow(ctx, pinID, userID)
+    action, _, err := storage.LikeFlow(ctx, pinID, userID)
     assert.NoError(t, err)
     assert.Equal(t, "delete", action)
     assert.NoError(t, mock.ExpectationsWereMet())
@@ -69,7 +69,7 @@ func TestLikeFlow_AccessDenied(t *testing.T) {
         WithArgs(userID, pinID).
         WillReturnError(sql.ErrNoRows)
 
-    action, err := storage.LikeFlow(ctx, pinID, userID)
+    action, _, err := storage.LikeFlow(ctx, pinID, userID)
     assert.Equal(t, "", action)
     assert.Equal(t, domain.ErrForbidden, err)
     assert.NoError(t, mock.ExpectationsWereMet())
@@ -87,7 +87,7 @@ func TestLikeFlow_DatabaseError(t *testing.T) {
         WithArgs(userID, pinID).
         WillReturnError(errors.New("database error"))
 
-    action, err := storage.LikeFlow(ctx, pinID, userID)
+    action, _, err := storage.LikeFlow(ctx, pinID, userID)
     assert.Equal(t, "", action)
     assert.Error(t, err)
     assert.Contains(t, err.Error(), "database error")

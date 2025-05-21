@@ -10,17 +10,18 @@ import (
 )
 
 type LikeService interface {
-	LikeFlow(ctx context.Context, pinID, userID int) (string, error)
+	LikeFlow(ctx context.Context, pinID, userID int) (string, string, error)
 }
 
 type LikeHandler struct {
-	LikeService    LikeService
-	ContextTimeout time.Duration
+	LikeService      LikeService
+	ContextTimeout   time.Duration
+	NotificationChan chan<- domain.WebMessage
 }
 
 // LikeFlow godoc
 // @Summary Leave a like on a flow
-// @Description Leaves a like on a flow or deletes the like 
+// @Description Leaves a like on a flow or deletes the like
 // @Accept json
 // @Produce json
 // @Param pin_id body integer true "flow id" example(456)
@@ -42,10 +43,22 @@ func (h *LikeHandler) LikeFlow(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(ctx, h.ContextTimeout)
 	defer cancel()
 
-	action, err := h.LikeService.LikeFlow(ctx, likePin.PinID, claims.UserID)
+	action, authorUsername, err := h.LikeService.LikeFlow(ctx, likePin.PinID, claims.UserID)
 	if err != nil {
 		handleLikeError(w, err)
 		return
+	}
+
+	if action == "liked" {
+		h.NotificationChan <- domain.WebMessage{
+			Type: "notification",
+			Content: domain.Notification{
+				Type:             "like",
+				SenderUsername:   claims.Username,
+				ReceiverUsername: authorUsername,
+				AdditionalData:   likePin,
+			},
+		}
 	}
 
 	type likeAction struct {
@@ -58,7 +71,7 @@ func (h *LikeHandler) LikeFlow(w http.ResponseWriter, r *http.Request) {
 
 	resp := ServerResponse{
 		Description: "OK",
-		Data: liked,
+		Data:        liked,
 	}
 
 	ServerGenerateJSONResponse(w, resp, http.StatusOK)

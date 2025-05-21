@@ -7,7 +7,7 @@ import (
 )
 
 type LikeRepository interface {
-	LikeFlow(ctx context.Context, pinID, userID int) (string, error)
+	LikeFlow(ctx context.Context, pinID, userID int) (string, string, error)
 }
 
 type LikeService struct {
@@ -20,16 +20,16 @@ func NewLikeService(likeRepository LikeRepository) *LikeService {
 	}
 }
 
-func (service *LikeService) LikeFlow(ctx context.Context, pinID, userID int) (string, error) {
+func (service *LikeService) LikeFlow(ctx context.Context, pinID, userID int) (string, string, error) {
 	v := validator.New()
 
 	if !v.Check(pinID > 0 && userID > 0, "id", "cannot be less than or equal to zero") {
-		return "", v.GetError("id")
+		return "", "", v.GetError("id")
 	}
 
-	action, err := service.likeRepository.LikeFlow(ctx, pinID, userID)
+	action, username, err := service.likeRepository.LikeFlow(ctx, pinID, userID)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	if action == "insert" {
@@ -38,6 +38,6 @@ func (service *LikeService) LikeFlow(ctx context.Context, pinID, userID int) (st
 		action = "unliked"
 	}
 
-	return action, nil
+	return action, username, nil
 }
 

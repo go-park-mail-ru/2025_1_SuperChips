@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
@@ -17,8 +18,9 @@ func NewPgLikeStorage(db *sql.DB) *pgLikeStorage {
 	}
 }
 
-func (pg *pgLikeStorage) LikeFlow(ctx context.Context, pinID, userID int) (string, error) {
+func (pg *pgLikeStorage) LikeFlow(ctx context.Context, pinID, userID int) (string, string, error) {
     var action string
+	var author string
 
     err := pg.db.QueryRowContext(ctx, `
 	WITH access_check AS (
@@ -26,7 +28,8 @@ func (pg *pgLikeStorage) LikeFlow(ctx context.Context, pinID, userID int) (strin
 			CASE 
 				WHEN f.is_private = false OR f.author_id = $1 THEN true
 				ELSE false
-			END AS has_access
+			END AS has_access,
+			f.author_id
 		FROM flow f
 		WHERE f.id = $2
 	),
@@ -52,15 +55,17 @@ func (pg *pgLikeStorage) LikeFlow(ctx context.Context, pinID, userID int) (strin
 		END
 		WHERE id = $2
 	)
-	SELECT COALESCE((SELECT action FROM inserted), (SELECT action FROM deleted)) AS action
-    `, userID, pinID).Scan(&action)
-    if err == sql.ErrNoRows {
-        return "", domain.ErrForbidden
+	SELECT 
+		author_id, 
+		COALESCE((SELECT action FROM inserted), (SELECT action FROM deleted)) AS action
+	FROM access_check`, userID, pinID).Scan(&author, &action)
+    if errors.Is(err, sql.ErrNoRows) {
+        return "", "", domain.ErrForbidden
     }
     if err != nil {
-        return "", err
+        return "", "", err
     }
 
-    return action, nil
+    return action, author, nil
 }
 
