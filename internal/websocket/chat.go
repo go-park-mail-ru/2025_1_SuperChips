@@ -96,8 +96,6 @@ func (h *Hub) MarkRead(ctx context.Context, messageID, chatID int, targetUsernam
 }
 
 func (h *Hub) SendMessage(ctx context.Context, msg domain.WebMessage, senderUsername string) error {
-	log.Println("sending message for some reason")
-	
 	found := false
 	var targetConn *websocket.Conn
 
@@ -115,7 +113,6 @@ func (h *Hub) SendMessage(ctx context.Context, msg domain.WebMessage, senderUser
 	}
 
 	message.Sender = senderUsername
-	log.Printf("sending message to %s...", message.Recipient)
 
 	h.connect.Range(func(key, value any) bool {
 		username := key.(string)
@@ -138,7 +135,6 @@ func (h *Hub) SendMessage(ctx context.Context, msg domain.WebMessage, senderUser
 
 	// target user offline
 	if !found {
-		log.Println("user not online")
 		return ErrTargetNotFound
 	}
 

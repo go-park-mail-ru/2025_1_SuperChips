@@ -3,7 +3,6 @@ package grpc
 import (
 	"context"
 	"encoding/json"
-	"log"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	chatWebsocket "github.com/go-park-mail-ru/2025_1_SuperChips/internal/websocket"
@@ -11,16 +10,6 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
-
-// func (c *websocketClient) SendWebMessage(ctx context.Context, in *SendWebMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-// 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-// 	out := new(emptypb.Empty)
-// 	err := c.cc.Invoke(ctx, Websocket_SendWebMessage_FullMethodName, in, out, cOpts...)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return out, nil
-// }
 
 type GrpcWebsocketHandler struct {
 	gen.UnimplementedWebsocketServer
@@ -59,7 +48,6 @@ func (c *GrpcWebsocketHandler) SendWebMessage(ctx context.Context, in *gen.SendW
 		return nil, err
 	}
 	
-	log.Printf("Received message: %v", webMsg)
 	if err := c.hub.SendNotification(ctx, webMsg); err != nil {
 		return nil, err
 	}

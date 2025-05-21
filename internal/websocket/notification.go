@@ -17,7 +17,6 @@ type NotificationRepository interface {
 
 
 func (h *Hub) SendNotification(ctx context.Context, webMsg domain.WebMessage) error {
-	log.Println("handling notification")
 	found := false
 	var targetConn *websocket.Conn
 
@@ -28,8 +27,6 @@ func (h *Hub) SendNotification(ctx context.Context, webMsg domain.WebMessage) er
 		log.Printf("notification: error marshalling message %v", err)
 		return fmt.Errorf("notification: error marshalling message: %v", err)
 	}
-
-	log.Printf("contents: %v", webMsg.Content)
 
 	if err := json.Unmarshal(byteData, &notification); err != nil {
 		log.Printf("notification: error unmarshalling message: %v", err)
@@ -59,7 +56,7 @@ func (h *Hub) SendNotification(ctx context.Context, webMsg domain.WebMessage) er
 	notification.SenderAvatar = newData.Avatar
 
 	if !found {
-		log.Println("user not online")
+		return ErrTargetNotFound
 	}
 
 	webMsg = domain.WebMessage{
