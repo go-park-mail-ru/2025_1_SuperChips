@@ -34,7 +34,7 @@ func (s *NotificationService) GetNotifications(ctx context.Context, userID uint)
 	}
 
 	for i := range notifications {
-		if notifications[i].SenderExternalAvatar {
+		if !notifications[i].SenderExternalAvatar {
 			notifications[i].SenderAvatar = s.generateAvatarURL(notifications[i].SenderAvatar)
 		}
 	}
