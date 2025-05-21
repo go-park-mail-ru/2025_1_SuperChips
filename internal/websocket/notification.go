@@ -12,7 +12,7 @@ import (
 
 type NotificationRepository interface {
 	GetNewNotifications(ctx context.Context, userID uint64) ([]domain.Notification, error)
-	AddNotification(ctx context.Context, notification domain.Notification) error
+	AddNotification(ctx context.Context, notification domain.Notification) (domain.NewNotificationData, error)
 }
 
 
@@ -34,8 +34,6 @@ func (h *Hub) SendNotification(ctx context.Context, webMsg domain.WebMessage) er
 		return fmt.Errorf("notification: error unmarshalling message")
 	}
 
-	println(notification.Type)
-
 	h.connect.Range(func(key, value any) bool {
 		username := key.(string)
 		conn := value.(*websocket.Conn)
@@ -48,10 +46,15 @@ func (h *Hub) SendNotification(ctx context.Context, webMsg domain.WebMessage) er
 		return true
 	})
 
-	if err := h.notificationRepo.AddNotification(ctx, notification); err != nil {
+	newData, err := h.notificationRepo.AddNotification(ctx, notification)
+	if err != nil {
 		log.Printf("couldn't add notification to db: %v", err)
 		return err
 	}
+
+	notification.ID = newData.ID
+	notification.CreatedAt = newData.Timestamp
+	notification.SenderAvatar = newData.Avatar
 
 	if !found {
 		log.Println("user not online")
@@ -72,3 +75,4 @@ func (h *Hub) SendNotification(ctx context.Context, webMsg domain.WebMessage) er
 
 	return nil
 }
+

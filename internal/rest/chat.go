@@ -302,26 +302,7 @@ func handleConnect(ctx context.Context, conn *websocket.Conn, msg domain.WebMess
 func handleMessage(ctx context.Context, conn *websocket.Conn, webMsg domain.WebMessage, claims *auth.Claims, hub *chatWebsocket.Hub) error {
 	log.Println("handling message")
 	
-	msg, ok := webMsg.Content.(domain.Message)
-	if !ok {
-		log.Println("error casting message content")
-		return fmt.Errorf("error casting message content")
-	}
-
-	message := domain.Message{
-		Content:   msg.Content,
-		ChatID:    uint64(msg.ChatID),
-		Sender:    claims.Username,
-		Timestamp: time.Now(),
-		Sent:      true,
-	}
-
-	log.Printf("sending a message to chat: %d", msg.ChatID)
-
-	message.Escape()
-	webMsg.Content = message
-
-	if err := hub.SendMessage(ctx, webMsg, msg.Recipient); err != nil {
+	if err := hub.SendMessage(ctx, webMsg, claims.Username); err != nil {
 		log.Printf("error sending message: %v", err)
 	} else {
 		log.Printf("message successfully sent.")

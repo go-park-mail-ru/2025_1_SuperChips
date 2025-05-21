@@ -2,6 +2,7 @@ package websocket
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -94,22 +95,31 @@ func (h *Hub) MarkRead(ctx context.Context, messageID, chatID int, targetUsernam
 	return nil
 }
 
-func (h *Hub) SendMessage(ctx context.Context, msg domain.WebMessage, targetUsername string) error {
+func (h *Hub) SendMessage(ctx context.Context, msg domain.WebMessage, senderUsername string) error {
 	log.Println("sending message for some reason")
 	
 	found := false
 	var targetConn *websocket.Conn
 
-	message, ok := msg.Content.(domain.Message)
-	if !ok {
-		log.Println("error while casting message")
-		return errors.New("error while casting message")
+	var message domain.Message
+
+	byteData, err := json.Marshal(msg.Content)
+	if err != nil {
+		log.Println("notification: error marshalling message")
+		return fmt.Errorf("notification: error marshalling message")
 	}
+
+	if err := json.Unmarshal(byteData, &message); err != nil {
+		log.Println("notification: error unmarshalling message")
+		return fmt.Errorf("notification: error unmarshalling message")
+	}
+
+	message.Sender = senderUsername
 
 	h.connect.Range(func(key, value any) bool {
 		username := key.(string)
 		conn := value.(*websocket.Conn)
-		if targetUsername == username {
+		if message.Recipient == username {
 			found = true
 			targetConn = conn
 			// range realization neat:
@@ -119,8 +129,6 @@ func (h *Hub) SendMessage(ctx context.Context, msg domain.WebMessage, targetUser
 
 		return true
 	})
-
-	message.Recipient = targetUsername
 
 	if err := h.chatRepo.AddMessage(ctx, message); err != nil {
 		log.Printf("error while adding message to db: %v", err)
@@ -138,11 +146,11 @@ func (h *Hub) SendMessage(ctx context.Context, msg domain.WebMessage, targetUser
 		Content: message,
 	}
 
-	err := targetConn.WriteJSON(msg)
+	err = targetConn.WriteJSON(msg)
 	if err != nil {
 		log.Printf("delivery failure: %v", err)
 		targetConn.Close()
-		h.connect.Delete(targetUsername)
+		h.connect.Delete(message.Recipient)
 		return ErrDeliveryFailure
 	}
 
@@ -164,7 +172,12 @@ func (h *Hub) Run(ctx context.Context) {
 					log.Printf("error getting new messages: %v", err)
 				}
 				for _, message := range messages {
-					err := conn.WriteJSON(message)
+					webMsg := domain.WebMessage{
+						Type: "message",
+						Content: message,
+					}
+
+					err := conn.WriteJSON(webMsg)
 					if err != nil {
 						continue
 					}

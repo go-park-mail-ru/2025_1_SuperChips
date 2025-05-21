@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
@@ -83,13 +84,13 @@ func (r *NotificationRepository) GetNewNotifications(ctx context.Context, userID
 	return notifications, nil
 }
 
-func (r *NotificationRepository) AddNotification(ctx context.Context, notification domain.Notification) error {
+func (r *NotificationRepository) AddNotification(ctx context.Context, notification domain.Notification) (uint, time.Time, error) {
 	var authorID int
 	err := r.db.QueryRowContext(ctx, `
 		SELECT id FROM flow_user WHERE username = $1
 	`, notification.SenderUsername).Scan(&authorID)
 	if err != nil {
-		return fmt.Errorf("get notification sender err: %v", err)
+		return 0, time.Time{}, fmt.Errorf("get notification sender err: %v", err)
 	}
 
 	var receiverID int
@@ -97,20 +98,21 @@ func (r *NotificationRepository) AddNotification(ctx context.Context, notificati
 		SELECT id FROM flow_user WHERE username = $1
 	`, notification.ReceiverUsername).Scan(&receiverID)
 	if err != nil {
-		return fmt.Errorf("get notification receiver err: %v", err)
+		return 0, time.Time{}, fmt.Errorf("get notification receiver err: %v", err)
 	}
 
 	rawAdditional, err := json.Marshal(notification.AdditionalData)
 	if err != nil {
-		return err
+		return 0, time.Time{}, err
 	}
 
-	_, err = r.db.ExecContext(ctx, `
+	err = r.db.QueryRowContext(ctx, `
 		INSERT INTO notification (author_id, receiver_id, notification_type, is_read, additional)
-		VALUES ($1, $2, $3, $4, $5);
-	`, authorID, receiverID, notification.Type, notification.IsRead, rawAdditional)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id, timestamp
+	`, authorID, receiverID, notification.Type, notification.IsRead, rawAdditional).Scan()
 	if err != nil {
-		return err
+		return 0, time.Time{}, err
 	}
 
 	return nil
