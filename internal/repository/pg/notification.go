@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
@@ -74,7 +75,7 @@ func (r *NotificationRepository) AddNotification(ctx context.Context, notificati
 		SELECT id FROM flow_user WHERE username = $1
 	`, notification.SenderUsername).Scan(&authorID)
 	if err != nil {
-		return err
+		return fmt.Errorf("get notification sender err: %v", err)
 	}
 
 	var receiverID int
@@ -82,7 +83,7 @@ func (r *NotificationRepository) AddNotification(ctx context.Context, notificati
 		SELECT id FROM flow_user WHERE username = $1
 	`, notification.ReceiverUsername).Scan(&receiverID)
 	if err != nil {
-		return err
+		return fmt.Errorf("get notification receiver err: %v", err)
 	}
 
 	_, err = r.db.ExecContext(ctx, `

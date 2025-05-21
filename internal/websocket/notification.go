@@ -34,6 +34,8 @@ func (h *Hub) SendNotification(ctx context.Context, webMsg domain.WebMessage) er
 		return fmt.Errorf("notification: error unmarshalling message")
 	}
 
+	println(notification.Type)
+
 	h.connect.Range(func(key, value any) bool {
 		username := key.(string)
 		conn := value.(*websocket.Conn)
