@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"log/slog"
@@ -52,20 +53,31 @@ var (
 )
 
 func ToProtoWebMessage(msg domain.WebMessage) (*genWebsocket.WebMessage, error) {
-	msgContent, ok := msg.Content.(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("invalid content type")
-	}
+    var contentMap map[string]interface{}
 
-	structContent, err := structpb.NewStruct(msgContent)
-	if err != nil {
-		return nil, err
-	}
+    switch content := msg.Content.(type) {
+    case map[string]interface{}:
+        contentMap = content
+    default:
+        jsonData, err := json.Marshal(content)
+        if err != nil {
+            return nil, fmt.Errorf("failed to marshal content: %w", err)
+        }
+        
+        if err := json.Unmarshal(jsonData, &contentMap); err != nil {
+            return nil, fmt.Errorf("failed to convert content to map: %w", err)
+        }
+    }
 
-	return &genWebsocket.WebMessage{
-		Type:    msg.Type,
-		Content: structContent,
-	}, nil
+    structContent, err := structpb.NewStruct(contentMap)
+    if err != nil {
+        return nil, err
+    }
+
+    return &genWebsocket.WebMessage{
+        Type:    msg.Type,
+        Content: structContent,
+    }, nil
 }
 
 // @title flow API
