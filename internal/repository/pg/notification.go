@@ -116,7 +116,7 @@ func (r *NotificationRepository) AddNotification(ctx context.Context, notificati
 	)
 	INSERT INTO notification (author_id, receiver_id, notification_type, is_read, additional)
 	VALUES ($1, $2, $3, $4, $5)
-	RETURNING id, timestamp, (SELECT avatar FROM sender_data), (SELECT is_external_avatar FROM sender_data)
+	RETURNING id, created_at, (SELECT avatar FROM sender_data), (SELECT is_external_avatar FROM sender_data)
 	`, authorID, receiverID, notification.Type, notification.IsRead, rawAdditional).
 	Scan(&data.ID, &data.Timestamp, &data.Avatar, &isExternal)
 	if err != nil {
