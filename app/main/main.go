@@ -199,7 +199,7 @@ func main() {
 					continue
 				}
 		
-				_, err = websocketClient.SendWebMessage(ctx, &genWebsocket.SendWebMessageRequest{
+				_, err = websocketClient.SendWebMessage(context.Background(), &genWebsocket.SendWebMessageRequest{
 					WebMessage: protoMsg,
 				})
 				if err != nil {
