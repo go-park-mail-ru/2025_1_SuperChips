@@ -133,7 +133,12 @@ func (h *Hub) SendMessage(ctx context.Context, msg domain.WebMessage, targetUser
 		return ErrTargetNotFound
 	}
 
-	err := targetConn.WriteJSON(message)
+	msg = domain.WebMessage{
+		Type: "message",
+		Content: message,
+	}
+
+	err := targetConn.WriteJSON(msg)
 	if err != nil {
 		log.Printf("delivery failure: %v", err)
 		targetConn.Close()
