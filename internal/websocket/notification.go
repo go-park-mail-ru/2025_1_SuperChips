@@ -57,7 +57,12 @@ func (h *Hub) SendNotification(ctx context.Context, webMsg domain.WebMessage) er
 		log.Println("user not online")
 	}
 
-	err = targetConn.WriteJSON(notification)
+	webMsg = domain.WebMessage{
+		Type: "notification",
+		Content: notification,
+	}
+
+	err = targetConn.WriteJSON(webMsg)
 	if err != nil {
 		log.Printf("delivery failure: %v", err)
 		targetConn.Close()
