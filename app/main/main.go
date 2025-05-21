@@ -26,6 +26,7 @@ import (
 	pincrudDelivery "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/pincrud"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/like"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/metrics"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/notification"
 	pincrudService "github.com/go-park-mail-ru/2025_1_SuperChips/pincrud"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/profile"
 	genAuth "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/auth"
@@ -132,6 +133,7 @@ func main() {
 	boardStorage := pgStorage.NewBoardStorage(db)
 	searchStorage := pgStorage.NewSearchRepository(db)
 	chatStorage := pgStorage.NewChatRepository(db)
+	notificationStorage := pgStorage.NewNotificationRepository(db)
 
 	jwtManager := auth.NewJWTManager(config)
 
@@ -141,7 +143,8 @@ func main() {
 	boardService := board.NewBoardService(boardStorage, config.BaseUrl, config.ImageBaseDir)
 	likeService := like.NewLikeService(likeStorage)
 	searchService := search.NewSearchService(searchStorage, config.BaseUrl, config.ImageBaseDir, config.StaticBaseDir, config.AvatarDir)
-	
+	notificationService := notification.NewNotificationService(notificationStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
+
 	metricsService := metrics.NewMetricsService()
 	metricsService.RegisterMetrics()
 
@@ -262,6 +265,11 @@ func main() {
 	searchHander := rest.SearchHandler{
 		Service: searchService,
 		ContextTimeout: config.ContextExpiration,
+	}
+	
+	notificationHandler := rest.NotificationHandler{
+		NotificationService: notificationService,
+		ContextExpiration: config.ContextExpiration,
 	}
 
 	fs := http.FileServer(http.Dir("." + config.StaticBaseDir))
@@ -605,6 +613,12 @@ func main() {
 		middleware.AuthMiddleware(jwtManager, true),
 		middleware.CSRFMiddleware(),
 		middleware.CorsMiddleware(config, allowedPostOptions),
+		middleware.Log()))
+
+	// notifications
+	mux.HandleFunc("/api/v1/notifications", middleware.ChainMiddleware(notificationHandler.GetNotifications,
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CorsMiddleware(config, allowedGetOptions),
 		middleware.Log()))
 
 	server := http.Server{

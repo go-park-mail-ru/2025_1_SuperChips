@@ -8,7 +8,7 @@ import (
 )
 
 type NotificationRepository interface {
-	GetNewNotifications(ctx context.Context, userID uint) ([]domain.Notification, error)
+	GetNewNotifications(ctx context.Context, userID uint64) ([]domain.Notification, error)
 }
 
 type NotificationService struct {
@@ -18,7 +18,7 @@ type NotificationService struct {
 	avatarDir string
 }
 
-func NewNotifcationService(repo NotificationRepository, baseURL, staticDir, avatarDir string) *NotificationService {
+func NewNotificationService(repo NotificationRepository, baseURL, staticDir, avatarDir string) *NotificationService {
 	return &NotificationService{
 		repo: repo,
 		baseURL:   baseURL,
@@ -28,7 +28,7 @@ func NewNotifcationService(repo NotificationRepository, baseURL, staticDir, avat
 }
 
 func (s *NotificationService) GetNotifications(ctx context.Context, userID uint) ([]domain.Notification, error) {
-	notifications, err := s.repo.GetNewNotifications(ctx, userID)
+	notifications, err := s.repo.GetNewNotifications(ctx, uint64(userID))
 	if err != nil {
 		return nil, err
 	}
