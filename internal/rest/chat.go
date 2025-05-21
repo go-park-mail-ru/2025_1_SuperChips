@@ -300,6 +300,8 @@ func handleConnect(ctx context.Context, conn *websocket.Conn, msg domain.WebMess
 }
 
 func handleMessage(ctx context.Context, conn *websocket.Conn, webMsg domain.WebMessage, claims *auth.Claims, hub *chatWebsocket.Hub) error {
+	log.Println("handling message")
+	
 	msg, ok := webMsg.Content.(domain.Message)
 	if !ok {
 		log.Println("error casting message content")

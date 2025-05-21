@@ -2,6 +2,7 @@ package websocket
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 
@@ -16,13 +17,21 @@ type NotificationRepository interface {
 
 
 func (h *Hub) SendNotification(ctx context.Context, webMsg domain.WebMessage) error {
+	log.Println("handling notification")
 	found := false
 	var targetConn *websocket.Conn
 
-	notification, ok := webMsg.Content.(domain.Notification)
-	if !ok {
-		log.Println("error casting message content")
-		return fmt.Errorf("error casting message content")
+	var notification domain.Notification
+
+	byteData, err := json.Marshal(webMsg.Content)
+	if err != nil {
+		log.Println("notification: error marshalling message")
+		return fmt.Errorf("notification: error marshalling message")
+	}
+
+	if err := json.Unmarshal(byteData, &notification); err != nil {
+		log.Println("notification: error unmarshalling message")
+		return fmt.Errorf("notification: error unmarshalling message")
 	}
 
 	h.connect.Range(func(key, value any) bool {
@@ -46,7 +55,7 @@ func (h *Hub) SendNotification(ctx context.Context, webMsg domain.WebMessage) er
 		log.Println("user not online")
 	}
 
-	err := targetConn.WriteJSON(notification)
+	err = targetConn.WriteJSON(notification)
 	if err != nil {
 		log.Printf("delivery failure: %v", err)
 		targetConn.Close()
