@@ -26,14 +26,14 @@ func (h *Hub) SendNotification(ctx context.Context, webMsg domain.WebMessage) er
 	byteData, err := json.Marshal(webMsg.Content)
 	if err != nil {
 		log.Println("notification: error marshalling message")
-		return fmt.Errorf("notification: error marshalling message")
+		return fmt.Errorf("notification: error marshalling message: %v", err)
 	}
 
 	log.Printf("contents: %v", webMsg.Content)
 
 	if err := json.Unmarshal(byteData, &notification); err != nil {
 		log.Println("notification: error unmarshalling message")
-		return fmt.Errorf("notification: error unmarshalling message")
+		return fmt.Errorf("notification: error unmarshalling message: %v", err)
 	}
 
 	h.connect.Range(func(key, value any) bool {
