@@ -29,6 +29,9 @@ func (h *Hub) SendNotification(ctx context.Context, webMsg domain.WebMessage) er
 		return fmt.Errorf("notification: error marshalling message")
 	}
 
+	println("contents")
+	println(webMsg.Content)
+
 	if err := json.Unmarshal(byteData, &notification); err != nil {
 		log.Println("notification: error unmarshalling message")
 		return fmt.Errorf("notification: error unmarshalling message")
