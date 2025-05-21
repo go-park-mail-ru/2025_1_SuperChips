@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
@@ -86,10 +87,15 @@ func (r *NotificationRepository) AddNotification(ctx context.Context, notificati
 		return fmt.Errorf("get notification receiver err: %v", err)
 	}
 
+	rawAdditional, err := json.Marshal(notification.AdditionalData)
+	if err != nil {
+		return err
+	}
+
 	_, err = r.db.ExecContext(ctx, `
 		INSERT INTO notification (author_id, receiver_id, notification_type, is_read, additional)
 		VALUES ($1, $2, $3, $4, $5);
-	`, authorID, receiverID, notification.Type, notification.IsRead, notification.AdditionalData)
+	`, authorID, receiverID, notification.Type, notification.IsRead, rawAdditional)
 	if err != nil {
 		return err
 	}
