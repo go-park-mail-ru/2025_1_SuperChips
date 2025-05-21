@@ -54,6 +54,7 @@ func (h *LikeHandler) LikeFlow(w http.ResponseWriter, r *http.Request) {
 			Type: "notification",
 			Content: domain.Notification{
 				Type:             "like",
+				CreatedAt:        time.Now(),
 				SenderUsername:   claims.Username,
 				ReceiverUsername: authorUsername,
 				AdditionalData:   likePin,
