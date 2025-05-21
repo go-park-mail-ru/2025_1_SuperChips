@@ -115,6 +115,7 @@ func (h *Hub) SendMessage(ctx context.Context, msg domain.WebMessage, senderUser
 	}
 
 	message.Sender = senderUsername
+	log.Printf("sending message to %s...", message.Recipient)
 
 	h.connect.Range(func(key, value any) bool {
 		username := key.(string)
