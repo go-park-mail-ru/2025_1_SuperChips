@@ -21,6 +21,7 @@ func NewNotificationRepository(db *sql.DB) *NotificationRepository {
 
 func (r *NotificationRepository) GetNewNotifications(ctx context.Context, userID uint64) ([]domain.Notification, error) {
 	var isExternalAvatar sql.NullBool
+	var additionalByte []byte
 	
 	rows, err := r.db.QueryContext(ctx, `
 	SELECT 
@@ -57,12 +58,20 @@ func (r *NotificationRepository) GetNewNotifications(ctx context.Context, userID
 			&notification.Type,
 			&notification.IsRead,
 			&notification.CreatedAt,
-			&notification.AdditionalData,
+			&additionalByte,
 		); err != nil {
 			return nil, err
 		}
 
 		notification.SenderExternalAvatar = isExternalAvatar.Bool
+
+		// unmarshall byte into something
+		var additional map[string]interface{}
+		if err := json.Unmarshal(additionalByte, &additional); err != nil {
+			return nil, err
+		}
+
+		notification.AdditionalData = additional
 
 		notifications = append(notifications, notification)
 	}
