@@ -223,6 +223,7 @@ func main() {
 	subscriptionHandler := rest.SubscriptionHandler{
 		ContextExpiration: config.ContextExpiration,
 		SubscriptionService: subscriptionService,
+		NotificationChan: notificationChan,
 	}
 
 	chatHandler := rest.ChatHandler{
