@@ -25,7 +25,7 @@ func (r *NotificationRepository) GetNewNotifications(ctx context.Context, userID
 		n.id,
 		fu.username AS author_username, 
 		fu.avatar AS author_avatar, 
-		fu.is_external AS author_is_external, 
+		fu.is_external_avatar AS author_is_external, 
 		ru.username AS receiver_username,
 		n.notification_type, 
 		n.is_read, 
