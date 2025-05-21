@@ -46,7 +46,7 @@ func handleNotificationError(w http.ResponseWriter, err error) {
 	case domain.ErrNotFound:
 		http.Error(w, "not found", http.StatusNotFound)
 	default:
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
