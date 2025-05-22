@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/board"
+	boardinvService "github.com/go-park-mail-ru/2025_1_SuperChips/boardinv"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	_ "github.com/go-park-mail-ru/2025_1_SuperChips/docs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/pg"
@@ -20,6 +21,7 @@ import (
 	pgStorage "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
+	boardinvDelivery "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/boardinv"
 	middleware "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/middleware"
 	pincrudDelivery "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/pincrud"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/like"
@@ -48,9 +50,9 @@ var (
 	allowedGetOptionsHead = []string{http.MethodGet, http.MethodOptions, http.MethodHead}
 )
 
-// @title flow API
-// @version 1.0
-// @description API for Flow.
+//	@title			flow API
+//	@version		1.0
+//	@description	API for Flow.
 func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
@@ -98,6 +100,7 @@ func main() {
 	subscriptionStorage := pgStorage.NewSubscriptionStorage(db)
 	likeStorage := pgStorage.NewPgLikeStorage(db)
 	boardStorage := pgStorage.NewBoardStorage(db)
+	boardInvStorage := pgStorage.NewBoardInvStorage(db)
 	searchStorage := pgStorage.NewSearchRepository(db)
 	chatStorage := pgStorage.NewChatRepository(db)
 
@@ -107,6 +110,7 @@ func main() {
 	pinCRUDService := pincrudService.NewPinCRUDService(pinStorage, boardStorage, imageStorage)
 	profileService := profile.NewProfileService(profileStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
 	boardService := board.NewBoardService(boardStorage, config.BaseUrl, config.ImageBaseDir)
+	boardInvService := boardinvService.NewBoardInvService(boardInvStorage)
 	likeService := like.NewLikeService(likeStorage)
 	searchService := search.NewSearchService(searchStorage, config.BaseUrl, config.ImageBaseDir, config.StaticBaseDir, config.AvatarDir)
 	
@@ -189,6 +193,11 @@ func main() {
 
 	boardHandler := rest.BoardHandler{
 		BoardService:    boardService,
+		ContextDeadline: config.ContextExpiration,
+	}
+
+	boardInvHandler := boardinvDelivery.BoardInvHandler{
+		BoardInvService: boardInvService,
 		ContextDeadline: config.ContextExpiration,
 	}
 	
@@ -341,7 +350,7 @@ func main() {
 		middleware.CorsMiddleware(config, allowedGetOptions),
 		middleware.MetricsMiddleware(metricsService),
 		middleware.Log()))
-
+	
 	
 	// boards
 	mux.HandleFunc("POST /api/v1/boards/{id}/flows",
@@ -431,6 +440,30 @@ func main() {
 			middleware.CorsMiddleware(config, allowedGetOptions),
 			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
+	
+
+	// board invitation
+	mux.HandleFunc("POST /api/v1/boards/{board_id}/invitation",
+		middleware.ChainMiddleware(boardInvHandler.CreateInvitation,
+			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CorsMiddleware(config, allowedPostOptions),
+			middleware.MetricsMiddleware(metricsService),
+			middleware.Log()))
+	
+	mux.HandleFunc("DELETE /api/v1/boards/{board_id}/invitations/{link}",
+		middleware.ChainMiddleware(boardInvHandler.DeleteInvitation,
+			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CorsMiddleware(config, allowedDeleteOptions),
+			middleware.MetricsMiddleware(metricsService),
+			middleware.Log()))
+	
+	mux.HandleFunc("GET /api/v1/boards/{board_id}/invitations",
+		middleware.ChainMiddleware(boardInvHandler.GetInvitationLinks,
+			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.MetricsMiddleware(metricsService),
+			middleware.Log()))
+	
 
 	// search
 	mux.HandleFunc("/api/v1/search/flows", 
@@ -454,6 +487,7 @@ func main() {
 		middleware.Log(),
 		middleware.Recovery()))
 
+	
 	// external id
 	mux.HandleFunc("/api/v1/auth/vkid/login",
 		middleware.ChainMiddleware(authHandler.ExternalLogin,
@@ -505,6 +539,7 @@ func main() {
 	}, middleware.CorsMiddleware(config, allowedOptions),
 	middleware.MetricsMiddleware(metricsService),
 	middleware.Log()))
+	
 
 	// chat
 	mux.HandleFunc("GET /api/v1/chats", middleware.ChainMiddleware(chatHandler.GetChats,
