@@ -7,6 +7,10 @@ definitions:
         type: string
       flow_count:
         type: integer
+      gradient:
+        items:
+          type: string
+        type: array
       id:
         type: integer
       is_private:
@@ -32,6 +36,8 @@ definitions:
         type: integer
       header:
         type: string
+      height:
+        type: integer
       is_liked:
         type: boolean
       is_private:
@@ -42,10 +48,7 @@ definitions:
         type: string
       updated_at:
         type: string
-    type: object
-  rest.BoardRequest:
-    properties:
-      flow_id:
+      width:
         type: integer
     type: object
   rest.ServerResponse:
@@ -403,6 +406,119 @@ paths:
       summary: Remove flow from board
       tags:
       - boards
+  /api/v1/boards/{board_id}/invitation:
+    post:
+      description: Create invitation link to the board with parameters (person, time
+        limit, usage limit) for authenticated users
+      parameters:
+      - description: ID of the board
+        in: path
+        name: board_id
+        required: true
+        type: integer
+      - collectionFormat: csv
+        description: Usernames for personal invitation
+        in: query
+        items:
+          type: string
+        name: names
+        type: array
+      - description: Unique uses limit
+        in: query
+        name: usage_limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Link
+          schema:
+            allOf:
+            - $ref: '#/definitions/rest.ServerResponse'
+            - properties:
+                link:
+                  type: string
+              type: object
+        "207":
+          description: Link and invalid usernames
+          schema:
+            allOf:
+            - $ref: '#/definitions/rest.ServerResponse'
+            - properties:
+                ' invalid':
+                  items:
+                    type: string
+                  type: array
+                link:
+                  type: string
+              type: object
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "403":
+          description: Forbidden - access denied
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "404":
+          description: Board not found
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Create invitation link to the board
+      tags:
+      - boards invitations
+  /api/v1/boards/{board_id}/invitations/{link}:
+    delete:
+      description: Delete invitation link to the board for authenticated users
+      parameters:
+      - description: ID of the board
+        in: path
+        name: board_id
+        required: true
+        type: integer
+      - description: Link to the board
+        in: path
+        name: link
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Link
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "403":
+          description: Forbidden - access denied
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Delete invitation link to the board
+      tags:
+      - boards invitations
   /api/v1/boards/{id}/flows:
     post:
       consumes:
@@ -414,12 +530,6 @@ paths:
         name: id
         required: true
         type: integer
-      - description: Flow ID to add
-        in: body
-        name: flow
-        required: true
-        schema:
-          $ref: '#/definitions/rest.BoardRequest'
       produces:
       - application/json
       responses:
@@ -452,6 +562,9 @@ paths:
       summary: Add flow to board
       tags:
       - boards
+  /api/v1/boards/{id}/invitations:
+    get:
+      responses: {}
   /api/v1/boards/{username}:
     post:
       consumes:
@@ -744,6 +857,251 @@ paths:
       summary: Get all user boards
       tags:
       - boards
+  /api/v1/profile/followers:
+    get:
+      description: Returns a pageSized number of user's followers
+      parameters:
+      - description: requested page
+        in: path
+        name: page
+        required: true
+        type: integer
+      - description: requested size
+        in: path
+        name: page
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: bad request
+          schema:
+            type: string
+        "404":
+          description: page not found
+          schema:
+            type: string
+      summary: Get user's followers
+  /api/v1/profile/following:
+    get:
+      description: Returns a pageSized number of user's subscriptions
+      parameters:
+      - description: requested page
+        in: path
+        name: page
+        required: true
+        type: integer
+      - description: requested size
+        in: path
+        name: page
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: bad request
+          schema:
+            type: string
+        "404":
+          description: page not found
+          schema:
+            type: string
+      summary: Get user's subscriptions (or who they follow, in other words)
+  /api/v1/search/boards:
+    get:
+      description: Returns a pageSized number of boards searched for
+      parameters:
+      - description: requested page
+        in: path
+        name: page
+        required: true
+        type: integer
+      - description: requested page size
+        in: path
+        name: size
+        required: true
+        type: integer
+      - description: search query
+        example: '"?query=kittens"'
+        in: path
+        name: query
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: bad request
+          schema:
+            type: string
+        "404":
+          description: page not found
+          schema:
+            type: string
+        "500":
+          description: internal server error
+          schema:
+            type: string
+      summary: Searches for boards
+  /api/v1/search/pins:
+    get:
+      description: Returns a pageSized number of pins searched for
+      parameters:
+      - description: requested page
+        in: path
+        name: page
+        required: true
+        type: integer
+      - description: requested page size
+        in: path
+        name: size
+        required: true
+        type: integer
+      - description: search query
+        example: '"?query=kittens"'
+        in: path
+        name: query
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: bad request
+          schema:
+            type: string
+        "404":
+          description: page not found
+          schema:
+            type: string
+        "500":
+          description: internal server error
+          schema:
+            type: string
+      summary: Searches for pins
+  /api/v1/search/users:
+    get:
+      description: Returns a pageSized number of users searched for
+      parameters:
+      - description: requested page
+        in: path
+        name: page
+        required: true
+        type: integer
+      - description: requested page size
+        in: path
+        name: size
+        required: true
+        type: integer
+      - description: search query
+        example: '"?query=kittens"'
+        in: path
+        name: query
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: bad request
+          schema:
+            type: string
+        "404":
+          description: page not found
+          schema:
+            type: string
+        "500":
+          description: internal server error
+          schema:
+            type: string
+      summary: Searches for users
+  /api/v1/subscription:
+    delete:
+      consumes:
+      - application/json
+      description: Tries to unsubscribe the user from the target user
+      parameters:
+      - description: target user's username
+        example: '"cool_guy"'
+        in: body
+        name: target_user
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "403":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Unsubscribe from target user
+    post:
+      consumes:
+      - application/json
+      description: Tries to subscribe the user to the target user
+      parameters:
+      - description: target user's username
+        example: '"cool_guy"'
+        in: body
+        name: target_user
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "403":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Subscribe to target user
   /api/v1/user/{username}/boards:
     get:
       description: Retrieves public boards for a specific user

@@ -10,11 +10,11 @@ import (
 var ErrBadRequest = fmt.Errorf("bad request")
 
 // HealthCheckHandler godoc
-// @Summary Check server status
-// @Description Returns server status
-// @Produce json
-// @Success 200 string serverResponse.Description
-// @Router /health [get]
+//	@Summary		Check server status
+//	@Description	Returns server status
+//	@Produce		json
+//	@Success		200	string	serverResponse.Description
+//	@Router			/health [get]
 func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	response := ServerResponse{
 		Description: "server is up",

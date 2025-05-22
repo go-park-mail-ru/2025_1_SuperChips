@@ -11,16 +11,16 @@ import (
 )
 
 // ReadHandler godoc
-// @Summary Get public pin by ID or private pin if user its author
-// @Description Returns Pin Data
-// @Produce json
-// @Param id query int true "requested pin"
-// @Success 200 string serverResponse.Data "OK"
-// @Failure 400 string serverResponse.Description "invalid query parameter [id]"
-// @Failure 403 string serverResponse.Description "access to private pin is forbidden"
-// @Failure 404 string serverResponse.Description "no pin with given id"
-// @Failure 500 string serverResponse.Description "untracked error: ${error}"
-// @Router /api/v1/flows [get]
+//	@Summary		Get public pin by ID or private pin if user its author
+//	@Description	Returns Pin Data
+//	@Produce		json
+//	@Param			id	query	int							true	"requested pin"
+//	@Success		200	string	serverResponse.Data			"OK"
+//	@Failure		400	string	serverResponse.Description	"invalid query parameter [id]"
+//	@Failure		403	string	serverResponse.Description	"access to private pin is forbidden"
+//	@Failure		404	string	serverResponse.Description	"no pin with given id"
+//	@Failure		500	string	serverResponse.Description	"untracked error: ${error}"
+//	@Router			/api/v1/flows [get]
 func (app PinCRUDHandler) ReadHandler(w http.ResponseWriter, r *http.Request) {
 	claims, isAuthorized := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
 
