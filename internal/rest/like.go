@@ -49,7 +49,7 @@ func (h *LikeHandler) LikeFlow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if action == "liked" {
+	if claims.Username != authorUsername && action == "liked" {
 		h.NotificationChan <- domain.WebMessage{
 			Type: "notification",
 			Content: domain.Notification{

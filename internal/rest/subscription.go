@@ -136,15 +136,17 @@ func (h *SubscriptionHandler) CreateSubscription(w http.ResponseWriter, r *http.
 	}
 
 	// send notification
-	h.NotificationChan <- domain.WebMessage{
-		Type: "notification",
-		Content: domain.Notification{
-			Type:             "subscription",
-			CreatedAt:        time.Now(),
-			SenderUsername:   claims.Username,
-			ReceiverUsername: subData.TargetUsername,
-			AdditionalData:   nil,
-		},
+	if claims.Username != subData.TargetUsername {
+		h.NotificationChan <- domain.WebMessage{
+			Type: "notification",
+			Content: domain.Notification{
+				Type:             "subscription",
+				CreatedAt:        time.Now(),
+				SenderUsername:   claims.Username,
+				ReceiverUsername: subData.TargetUsername,
+				AdditionalData:   nil,
+			},
+		}
 	}
 
 	resp := ServerResponse{
