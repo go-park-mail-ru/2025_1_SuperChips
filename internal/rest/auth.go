@@ -25,17 +25,17 @@ type AuthHandler struct {
 }
 
 // LoginHandler godoc
-// @Summary Log in user
-// @Description Tries to log the user in
-// @Accept json
-// @Produce json
-// @Param email body string true "user email" example("user@mail.ru")
-// @Param password body string true "user password" example("abcdefgh1234")
-// @Success 200 string Description "OK"
-// @Failure 400 string Description "Bad Request"
-// @Failure 403 string Description "invalid credentials"
-// @Failure 500 string Description "Internal server error"
-// @Router /api/v1/auth/login [post]
+//	@Summary		Log in user
+//	@Description	Tries to log the user in
+//	@Accept			json
+//	@Produce		json
+//	@Param			email		body	string		true	"user email"	example("user@mail.ru")
+//	@Param			password	body	string		true	"user password"	example("abcdefgh1234")
+//	@Success		200			string	Description	"OK"
+//	@Failure		400			string	Description	"Bad Request"
+//	@Failure		403			string	Description	"invalid credentials"
+//	@Failure		500			string	Description	"Internal server error"
+//	@Router			/api/v1/auth/login [post]
 func (app AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var data domain.LoginData
 	if err := DecodeData(w, r.Body, &data); err != nil {
@@ -79,19 +79,19 @@ func (app AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // RegistrationHandler godoc
-// @Summary Register user
-// @Description Tries to register the user
-// @Accept json
-// @Produce json
-// @Param email body string true "user email" example("admin@mail.ru")
-// @Param username body string true "user username" example("mailrudabest")
-// @Param birthday body string true "user date of birth RFC" example("1990-12-31T23:59:60Z")
-// @Param password body string true "user password" example("unbreakable_password")
-// @Success 201 string serverResponse.Description "Created"
-// @Failure 400 string serverResponse.Description "Bad Request"
-// @Failure 409 string serverResponse.Description "Conflict"
-// @Failure 500 string serverResponse.Description "Internal server error"
-// @Router /api/v1/auth/register [post]
+//	@Summary		Register user
+//	@Description	Tries to register the user
+//	@Accept			json
+//	@Produce		json
+//	@Param			email		body	string						true	"user email"				example("admin@mail.ru")
+//	@Param			username	body	string						true	"user username"				example("mailrudabest")
+//	@Param			birthday	body	string						true	"user date of birth RFC"	example("1990-12-31T23:59:60Z")
+//	@Param			password	body	string						true	"user password"				example("unbreakable_password")
+//	@Success		201			string	serverResponse.Description	"Created"
+//	@Failure		400			string	serverResponse.Description	"Bad Request"
+//	@Failure		409			string	serverResponse.Description	"Conflict"
+//	@Failure		500			string	serverResponse.Description	"Internal server error"
+//	@Router			/api/v1/auth/register [post]
 func (app AuthHandler) RegistrationHandler(w http.ResponseWriter, r *http.Request) {
 
 
@@ -149,11 +149,11 @@ func (app AuthHandler) RegistrationHandler(w http.ResponseWriter, r *http.Reques
 }
 
 // LogoutHandler godoc
-// @Summary Logout user
-// @Description Logouts user
-// @Produce json
-// @Success 200 string serverResponse.Description "logged out"
-// @Router /api/v1/auth/logout [post]
+//	@Summary		Logout user
+//	@Description	Logouts user
+//	@Produce		json
+//	@Success		200	string	serverResponse.Description	"logged out"
+//	@Router			/api/v1/auth/logout [post]
 func (app AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	changedConfig := app.Config
 	changedConfig.ExpirationTime = -time.Hour * 24 * 365

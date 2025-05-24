@@ -48,6 +48,7 @@ cover: mocks test
 easyjson:
 	easyjson $(DOMAIN_FLDR)/auth.go \
 	$(DOMAIN_FLDR)/board.go \
+	$(DOMAIN_FLDR)/boardshr.go \
 	$(DOMAIN_FLDR)/chat.go \
 	$(DOMAIN_FLDR)/feed.go \
 	$(DOMAIN_FLDR)/like.go \
@@ -62,6 +63,7 @@ easyjson:
 easyjson_stub:
 	easyjson -stub $(DOMAIN_FLDR)/auth.go \
 	$(DOMAIN_FLDR)/board.go \
+	$(DOMAIN_FLDR)/boardshr.go \
 	$(DOMAIN_FLDR)/chat.go \
 	$(DOMAIN_FLDR)/feed.go \
 	$(DOMAIN_FLDR)/like.go \

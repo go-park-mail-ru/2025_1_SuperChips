@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS board_invitation (
+    id INT GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1) PRIMARY KEY,
+    board_id INT NOT NULL,
+    link TEXT NOT NULL UNIQUE,
+    is_personal BOOLEAN DEFAULT FALSE,
+    expiration TIMESTAMPTZ DEFAULT NULL,
+    usage_limit INT DEFAULT NULL,
+    usage_count INT DEFAULT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    FOREIGN KEY (board_id) REFERENCES board(id)
+);
