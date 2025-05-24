@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package proto_websocket;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
+
+option go_package = "./protos/gen/websocket/;gen";
+
+message WebMessage {
+  string type = 1;
+  google.protobuf.Struct content = 2; // For dynamic payload
+}
+
+message SendWebMessageRequest {
+  WebMessage web_message = 1;
+}
+
+service Websocket {
+  rpc SendWebMessage(SendWebMessageRequest) returns (google.protobuf.Empty) {}
+}

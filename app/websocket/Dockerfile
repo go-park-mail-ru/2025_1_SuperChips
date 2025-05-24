@@ -8,7 +8,7 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build ./app/websocket_chat/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build ./app/websocket/main.go
 
 FROM alpine:latest
 

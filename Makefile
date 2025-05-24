@@ -36,7 +36,8 @@ proto_generate:
     --go-grpc_opt=module=protos \
     protos/proto/auth/auth.proto \
 	protos/proto/feed/feed.proto \
-	protos/proto/chat/chat.proto
+	protos/proto/chat/chat.proto \
+	protos/proto/websocket/websocket.proto
 
 test: mocks
 	go test $(TESTED_DIRS) -coverprofile=$(COVERAGE_FILE)

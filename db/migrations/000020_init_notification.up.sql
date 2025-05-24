@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS notification (
+    id INT GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1) PRIMARY KEY,
+    author_id INTEGER NOT NULL,
+    receiver_id INTEGER NOT NULL,
+    notification_type TEXT NOT NULL,
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW(),
+    additional JSONB NOT NULL DEFAULT '{}'::jsonb,
+    FOREIGN KEY (author_id) REFERENCES flow_user(id) ON DELETE CASCADE,
+    FOREIGN KEY (receiver_id) REFERENCES flow_user(id) ON DELETE CASCADE
+);
