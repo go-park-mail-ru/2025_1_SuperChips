@@ -138,6 +138,9 @@ func (h *Hub) SendMessage(ctx context.Context, msg domain.WebMessage, senderUser
 		return ErrTargetNotFound
 	}
 
+	message.Escape()
+	message.Sent = true
+
 	msg = domain.WebMessage{
 		Type: "message",
 		Content: message,
