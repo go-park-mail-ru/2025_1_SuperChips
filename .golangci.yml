@@ -1,0 +1,14 @@
+version: "2"
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+linters:
+  disable-all: true
+  enable:
+    - typecheck
+    - errcheck
+    - govet
+    - staticcheck
+    - gosec
+    - revive
