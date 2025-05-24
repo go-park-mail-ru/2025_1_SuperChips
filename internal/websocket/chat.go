@@ -113,6 +113,8 @@ func (h *Hub) SendMessage(ctx context.Context, msg domain.WebMessage, senderUser
 	}
 
 	message.Sender = senderUsername
+	message.Escape()
+	message.Sent = true
 
 	h.connect.Range(func(key, value any) bool {
 		username := key.(string)
@@ -137,9 +139,6 @@ func (h *Hub) SendMessage(ctx context.Context, msg domain.WebMessage, senderUser
 	if !found {
 		return ErrTargetNotFound
 	}
-
-	message.Escape()
-	message.Sent = true
 
 	msg = domain.WebMessage{
 		Type: "message",
