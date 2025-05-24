@@ -22,6 +22,21 @@ definitions:
           $ref: '#/definitions/domain.PinData'
         type: array
     type: object
+  domain.LinkParams:
+    properties:
+      link:
+        type: string
+      names:
+        items:
+          type: string
+        type: array
+      time_limit:
+        type: string
+      usage_count:
+        type: integer
+      usage_limit:
+        type: integer
+    type: object
   domain.PinData:
     properties:
       author_id:
@@ -302,6 +317,133 @@ paths:
       summary: Update board details
       tags:
       - boards
+  /api/v1/boards/{board_id}/coauthoring:
+    delete:
+      description: Refuse coauthoring of the board (user must be coauthor of the board)
+      parameters:
+      - description: ID of the board
+        in: path
+        name: board_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User has stopped being a coauthor
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "403":
+          description: Forbidden - access denied
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Refuse coauthoring
+      tags:
+      - Board sharing [coauthor]
+  /api/v1/boards/{board_id}/coauthors:
+    delete:
+      description: Remove coauthor from the board (user must be author of the board)
+      parameters:
+      - description: ID of the board
+        in: path
+        name: board_id
+        required: true
+        type: integer
+      - description: Username of coauthor
+        in: body
+        name: name
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Coauthor has been successfully deleted
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "403":
+          description: Forbidden - access denied
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "404":
+          description: Username doesn't exist
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Remove coauthor
+      tags:
+      - Board sharing [author]
+    get:
+      description: Get coauthors of the board (user must be author of the board)
+      parameters:
+      - description: ID of the board
+        in: path
+        name: board_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: The list of coauthors has been successfully received
+          schema:
+            allOf:
+            - $ref: '#/definitions/rest.ServerResponse'
+            - properties:
+                data:
+                  items:
+                    type: string
+                  type: array
+              type: object
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "403":
+          description: Forbidden - access denied
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Get coauthors
+      tags:
+      - Board sharing [author]
   /api/v1/boards/{board_id}/flows:
     get:
       description: Retrieves flows in a board with pagination for authenticated users
@@ -406,51 +548,33 @@ paths:
       summary: Remove flow from board
       tags:
       - boards
-  /api/v1/boards/{board_id}/invitation:
-    post:
-      description: Create invitation link to the board with parameters (person, time
-        limit, usage limit) for authenticated users
+  /api/v1/boards/{board_id}/invites:
+    get:
+      description: Get invitation links to the board with ID with parameters (user
+        must be author of the board)
       parameters:
       - description: ID of the board
         in: path
         name: board_id
         required: true
         type: integer
-      - collectionFormat: csv
-        description: Usernames for personal invitation
-        in: query
-        items:
-          type: string
-        name: names
-        type: array
-      - description: Unique uses limit
-        in: query
-        name: usage_limit
-        type: integer
       produces:
       - application/json
       responses:
         "200":
-          description: Link
+          description: Link list has been successfully fetched; null value indicates
+            no limit is applied
           schema:
             allOf:
             - $ref: '#/definitions/rest.ServerResponse'
             - properties:
-                link:
-                  type: string
-              type: object
-        "207":
-          description: Link and invalid usernames
-          schema:
-            allOf:
-            - $ref: '#/definitions/rest.ServerResponse'
-            - properties:
-                ' invalid':
-                  items:
-                    type: string
-                  type: array
-                link:
-                  type: string
+                data:
+                  properties:
+                    links:
+                      items:
+                        $ref: '#/definitions/domain.LinkParams'
+                      type: array
+                  type: object
               type: object
         "400":
           description: Invalid request parameters
@@ -474,19 +598,103 @@ paths:
             $ref: '#/definitions/rest.ServerResponse'
       security:
       - jwt_auth: []
-      summary: Create invitation link to the board
+      summary: Get links
       tags:
-      - boards invitations
-  /api/v1/boards/{board_id}/invitations/{link}:
-    delete:
-      description: Delete invitation link to the board for authenticated users
+      - Board sharing [author]
+    post:
+      description: Create invitation link to the board with parameters (person, time
+        limit, usage limit) (user must be author of the board)
       parameters:
       - description: ID of the board
         in: path
         name: board_id
         required: true
         type: integer
-      - description: Link to the board
+      - description: Usernames for personal invitation
+        in: body
+        name: names
+        schema:
+          items:
+            type: string
+          type: array
+      - description: Time limit for link activity
+        in: body
+        name: time_limit
+        schema:
+          type: string
+      - description: Usage limit
+        in: body
+        name: usage_limit
+        schema:
+          type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Link has been successfully created
+          schema:
+            allOf:
+            - $ref: '#/definitions/rest.ServerResponse'
+            - properties:
+                data:
+                  properties:
+                    link:
+                      type: string
+                  type: object
+              type: object
+        "207":
+          description: Link has been successfully created for valid names; Invalid
+            usernames are returned
+          schema:
+            allOf:
+            - $ref: '#/definitions/rest.ServerResponse'
+            - properties:
+                data:
+                  properties:
+                    invalid:
+                      items:
+                        type: string
+                      type: array
+                    link:
+                      type: string
+                  type: object
+              type: object
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "403":
+          description: Forbidden - access denied
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "404":
+          description: Link not found
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Create link
+      tags:
+      - Board sharing [author]
+  /api/v1/boards/{board_id}/invites/{link}:
+    delete:
+      description: Delete invitation link to the board (user must be author of the
+        board)
+      parameters:
+      - description: ID of the board
+        in: path
+        name: board_id
+        required: true
+        type: integer
+      - description: Invitation link
         in: path
         name: link
         required: true
@@ -495,7 +703,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: Link
+          description: Link has been successfully deleted
           schema:
             $ref: '#/definitions/rest.ServerResponse'
         "400":
@@ -516,9 +724,9 @@ paths:
             $ref: '#/definitions/rest.ServerResponse'
       security:
       - jwt_auth: []
-      summary: Delete invitation link to the board
+      summary: Delete link
       tags:
-      - boards invitations
+      - Board sharing [author]
   /api/v1/boards/{id}/flows:
     post:
       consumes:
@@ -562,9 +770,6 @@ paths:
       summary: Add flow to board
       tags:
       - boards
-  /api/v1/boards/{id}/invitations:
-    get:
-      responses: {}
   /api/v1/boards/{username}:
     post:
       consumes:
@@ -794,6 +999,52 @@ paths:
           schema:
             type: string
       summary: Update certain pin's fields by ID if user is its author
+  /api/v1/join/{link}:
+    post:
+      description: Join the board via invitation link as co-author; link mustn't be
+        expired and, if link is private, user must be in group
+      parameters:
+      - description: Link
+        in: path
+        name: link
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User has successfully become a coauthor of the board
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "403":
+          description: Forbidden - access denied
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "409":
+          description: User is already coauthor
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "410":
+          description: Link's time or usage limit has expired
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Join via link
+      tags:
+      - Board sharing [coauthor]
   /api/v1/like:
     post:
       consumes:

@@ -11,20 +11,23 @@ import (
 )
 
 // DeleteInvitation godoc
-//	@Summary		Delete invitation link to the board
-//	@Description	Delete invitation link to the board for authenticated users
-//	@Tags			boards invitations
+//	@Summary		Delete link
+//	@Description	Delete invitation link to the board (user must be author of the board)
+//	@Tags			Board sharing [author]
 //	@Produce		json
 //	@Security		jwt_auth
+//
 //	@Param			board_id	path		int				true	"ID of the board"
-//	@Param			link		path		int				true	"Link to the board"
-//	@Success		200			{object}	ServerResponse	"Link"
+//	@Param			link		path		int				true	"Invitation link"
+//
+//	@Success		200			{object}	ServerResponse	"Link has been successfully deleted"
 //	@Failure		400			{object}	ServerResponse	"Invalid request parameters"
 //	@Failure		401			{object}	ServerResponse	"Unauthorized"
 //	@Failure		403			{object}	ServerResponse	"Forbidden - access denied"
 //	@Failure		500			{object}	ServerResponse	"Internal server error"
-//	@Router			/api/v1/boards/{board_id}/invitations/{link} [delete]
-func (b *BoardInvHandler) DeleteInvitation(w http.ResponseWriter, r *http.Request) {
+//
+//	@Router			/api/v1/boards/{board_id}/invites/{link} [delete]
+func (b *BoardShrHandler) DeleteInvitation(w http.ResponseWriter, r *http.Request) {
 	boardIDStr := r.PathValue("board_id")
 	boardID, err := strconv.Atoi(boardIDStr)
 	if err != nil {
@@ -52,7 +55,7 @@ func (b *BoardInvHandler) DeleteInvitation(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	err = b.BoardInvService.DeleteInvitation(ctx, boardID, userID, link)
+	err = b.BoardShrService.DeleteInvitation(ctx, boardID, userID, link)
 	if err != nil {
 		rest.HttpErrorToJson(w, err.Error(), http.StatusInternalServerError)
 		return

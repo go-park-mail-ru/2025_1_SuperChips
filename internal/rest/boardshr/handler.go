@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-type BoardInvHandler struct {
-	BoardInvService BoardInvServicer
+type BoardShrHandler struct {
+	BoardShrService BoardShrServicer
 	ContextDeadline time.Duration
 }

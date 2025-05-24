@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
-	service "github.com/go-park-mail-ru/2025_1_SuperChips/boardinv"
+	service "github.com/go-park-mail-ru/2025_1_SuperChips/boardshr"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
@@ -14,24 +14,27 @@ import (
 )
 
 // CreateInvitation godoc
-//	@Summary		Create invitation link to the board
-//	@Description	Create invitation link to the board with parameters (person, time limit, usage limit) for authenticated users
-//	@Tags			boards invitations
+//	@Summary		Create link
+//	@Description	Create invitation link to the board with parameters (person, time limit, usage limit) (user must be author of the board)
+//	@Tags			Board sharing [author]
 //	@Produce		json
 //	@Security		jwt_auth
-//	@Param			board_id	path		int												true	"ID of the board"
-//	@Param			names		query		[]string										false	"Usernames for personal invitation"
-//	@Param			time_limit	query		time.Time										false	"Time limit for link activity"
-//	@Param			usage_limit	query		int												false	"Unique uses limit"
-//	@Success		200			{object}	ServerResponse{link=string}						"Link"
-//	@Success		207			{object}	ServerResponse{link=string, invalid=[]string}	"Link and invalid usernames"
-//	@Failure		400			{object}	ServerResponse									"Invalid request parameters"
-//	@Failure		401			{object}	ServerResponse									"Unauthorized"
-//	@Failure		403			{object}	ServerResponse									"Forbidden - access denied"
-//	@Failure		404			{object}	ServerResponse									"Board not found"
-//	@Failure		500			{object}	ServerResponse									"Internal server error"
-//	@Router			/api/v1/boards/{board_id}/invitation [post]
-func (b *BoardInvHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) {
+//
+//	@Param			board_id	path		int															true	"ID of the board"
+//	@Param			names		body		[]string													false	"Usernames for personal invitation"
+//	@Param			time_limit	body		time.Time													false	"Time limit for link activity"
+//	@Param			usage_limit	body		int															false	"Usage limit"
+//
+//	@Success		200			{object}	ServerResponse{data=object{link=string}}					"Link has been successfully created"
+//	@Success		207			{object}	ServerResponse{data=object{link=string,invalid=[]string}}	"Link has been successfully created for valid names; Invalid usernames are returned"
+//	@Failure		400			{object}	ServerResponse												"Invalid request parameters"
+//	@Failure		401			{object}	ServerResponse												"Unauthorized"
+//	@Failure		404			{object}	ServerResponse												"Link not found"
+//	@Failure		403			{object}	ServerResponse												"Forbidden - access denied"
+//	@Failure		500			{object}	ServerResponse												"Internal server error"
+//
+//	@Router			/api/v1/boards/{board_id}/invites [post]
+func (b *BoardShrHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) {
 	boardIDStr := r.PathValue("board_id")
 	boardID, err := strconv.Atoi(boardIDStr)
 	if err != nil {
@@ -58,16 +61,16 @@ func (b *BoardInvHandler) CreateInvitation(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	link, invalidNames, err := b.BoardInvService.CreateInvitation(ctx, boardID, userID, invitation)
-	if err != nil && !errors.Is(err, service.ErrNonExistentUsernames) {
-		rest.HttpErrorToJson(w, err.Error(), http.StatusInternalServerError)
+	link, invalidNames, err := b.BoardShrService.CreateInvitation(ctx, boardID, userID, invitation)
+	if err != nil && !errors.Is(err, service.ErrNonExistentUsername) {
+		handleBoardShrError(w, err)
 		return
 	}
 
 	// Случай: некоторые имена оказались некорректными.
 	description := "OK"
 	statusCode := http.StatusOK
-	if errors.Is(err, service.ErrNonExistentUsernames) {
+	if errors.Is(err, service.ErrNonExistentUsername) {
 		description = http.StatusText(http.StatusMultiStatus)
 		statusCode = http.StatusMultiStatus
 	}

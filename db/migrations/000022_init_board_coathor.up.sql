@@ -5,5 +5,6 @@ CREATE TABLE IF NOT EXISTS board_coauthor (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     FOREIGN KEY (user_id) REFERENCES flow_user(id) ON DELETE CASCADE,
-    FOREIGN KEY (board_id) REFERENCES board(id) ON DELETE CASCADE
+    FOREIGN KEY (board_id) REFERENCES board(id) ON DELETE CASCADE,
+    UNIQUE (board_id, coauthor_id)
 );

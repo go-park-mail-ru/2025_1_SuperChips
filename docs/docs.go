@@ -384,6 +384,208 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/boards/{board_id}/coauthoring": {
+            "delete": {
+                "security": [
+                    {
+                        "jwt_auth": []
+                    }
+                ],
+                "description": "Refuse coauthoring of the board (user must be coauthor of the board)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Board sharing [coauthor]"
+                ],
+                "summary": "Refuse coauthoring",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID of the board",
+                        "name": "board_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User has stopped being a coauthor",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameters",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - access denied",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/boards/{board_id}/coauthors": {
+            "get": {
+                "security": [
+                    {
+                        "jwt_auth": []
+                    }
+                ],
+                "description": "Get coauthors of the board (user must be author of the board)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Board sharing [author]"
+                ],
+                "summary": "Get coauthors",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID of the board",
+                        "name": "board_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The list of coauthors has been successfully received",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/rest.ServerResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameters",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - access denied",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "jwt_auth": []
+                    }
+                ],
+                "description": "Remove coauthor from the board (user must be author of the board)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Board sharing [author]"
+                ],
+                "summary": "Remove coauthor",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID of the board",
+                        "name": "board_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Username of coauthor",
+                        "name": "name",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Coauthor has been successfully deleted",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameters",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - access denied",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Username doesn't exist",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/boards/{board_id}/flows": {
             "get": {
                 "security": [
@@ -548,21 +750,21 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/boards/{board_id}/invitation": {
-            "post": {
+        "/api/v1/boards/{board_id}/invites": {
+            "get": {
                 "security": [
                     {
                         "jwt_auth": []
                     }
                 ],
-                "description": "Create invitation link to the board with parameters (person, time limit, usage limit) for authenticated users",
+                "description": "Get invitation links to the board with ID with parameters (user must be author of the board)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "boards invitations"
+                    "Board sharing [author]"
                 ],
-                "summary": "Create invitation link to the board",
+                "summary": "Get links",
                 "parameters": [
                     {
                         "type": "integer",
@@ -570,27 +772,11 @@ const docTemplate = `{
                         "name": "board_id",
                         "in": "path",
                         "required": true
-                    },
-                    {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        },
-                        "collectionFormat": "csv",
-                        "description": "Usernames for personal invitation",
-                        "name": "names",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Unique uses limit",
-                        "name": "usage_limit",
-                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Link",
+                        "description": "Link list has been successfully fetched; null value indicates no limit is applied",
                         "schema": {
                             "allOf": [
                                 {
@@ -599,32 +785,16 @@ const docTemplate = `{
                                 {
                                     "type": "object",
                                     "properties": {
-                                        "link": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "207": {
-                        "description": "Link and invalid usernames",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/rest.ServerResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        " invalid": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "string"
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "links": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/definitions/domain.LinkParams"
+                                                    }
+                                                }
                                             }
-                                        },
-                                        "link": {
-                                            "type": "string"
                                         }
                                     }
                                 }
@@ -662,23 +832,158 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "post": {
+                "security": [
+                    {
+                        "jwt_auth": []
+                    }
+                ],
+                "description": "Create invitation link to the board with parameters (person, time limit, usage limit) (user must be author of the board)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Board sharing [author]"
+                ],
+                "summary": "Create link",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID of the board",
+                        "name": "board_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Usernames for personal invitation",
+                        "name": "names",
+                        "in": "body",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    {
+                        "description": "Time limit for link activity",
+                        "name": "time_limit",
+                        "in": "body",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Usage limit",
+                        "name": "usage_limit",
+                        "in": "body",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Link has been successfully created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/rest.ServerResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "link": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "207": {
+                        "description": "Link has been successfully created for valid names; Invalid usernames are returned",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/rest.ServerResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "invalid": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "link": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameters",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - access denied",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Link not found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    }
+                }
             }
         },
-        "/api/v1/boards/{board_id}/invitations/{link}": {
+        "/api/v1/boards/{board_id}/invites/{link}": {
             "delete": {
                 "security": [
                     {
                         "jwt_auth": []
                     }
                 ],
-                "description": "Delete invitation link to the board for authenticated users",
+                "description": "Delete invitation link to the board (user must be author of the board)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "boards invitations"
+                    "Board sharing [author]"
                 ],
-                "summary": "Delete invitation link to the board",
+                "summary": "Delete link",
                 "parameters": [
                     {
                         "type": "integer",
@@ -689,7 +994,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Link to the board",
+                        "description": "Invitation link",
                         "name": "link",
                         "in": "path",
                         "required": true
@@ -697,7 +1002,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Link",
+                        "description": "Link has been successfully deleted",
                         "schema": {
                             "$ref": "#/definitions/rest.ServerResponse"
                         }
@@ -794,11 +1099,6 @@ const docTemplate = `{
                         }
                     }
                 }
-            }
-        },
-        "/api/v1/boards/{id}/invitations": {
-            "get": {
-                "responses": {}
             }
         },
         "/api/v1/boards/{username}": {
@@ -1145,6 +1445,76 @@ const docTemplate = `{
                         "description": "untracked error: ${error}",
                         "schema": {
                             "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/join/{link}": {
+            "post": {
+                "security": [
+                    {
+                        "jwt_auth": []
+                    }
+                ],
+                "description": "Join the board via invitation link as co-author; link mustn't be expired and, if link is private, user must be in group",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Board sharing [coauthor]"
+                ],
+                "summary": "Join via link",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Link",
+                        "name": "link",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User has successfully become a coauthor of the board",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameters",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - access denied",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "User is already coauthor",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "410": {
+                        "description": "Link's time or usage limit has expired",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
                         }
                     }
                 }
@@ -1730,6 +2100,29 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/domain.PinData"
                     }
+                }
+            }
+        },
+        "domain.LinkParams": {
+            "type": "object",
+            "properties": {
+                "link": {
+                    "type": "string"
+                },
+                "names": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "time_limit": {
+                    "type": "string"
+                },
+                "usage_count": {
+                    "type": "integer"
+                },
+                "usage_limit": {
+                    "type": "integer"
                 }
             }
         },

@@ -1,4 +1,4 @@
-package boardinv
+package boardshr
 
 import (
 	"context"
@@ -11,7 +11,7 @@ type NameToID struct {
 	ID       *int
 }
 
-func (b *BoardInvServicer) CreateInvitation(ctx context.Context, boardID int, userID int, invitation domain.Invitaion) (string, []string, error) {
+func (b *BoardShrServicer) CreateInvitation(ctx context.Context, boardID int, userID int, invitation domain.Invitaion) (string, []string, error) {
 	// Проверка, что пользователь является автором доски.
 	isAuthor, err := b.repo.IsBoardAuthor(ctx, boardID, userID)
 	if !isAuthor || err != nil {
@@ -22,7 +22,7 @@ func (b *BoardInvServicer) CreateInvitation(ctx context.Context, boardID int, us
 	validInviteeIDs := make([]int, 0)
 	invalidInviteeNames := make([]string, 0)
 	
-	if invitation.Names != nil {
+	if invitation.Names != nil && len(*invitation.Names) != 0 {
 		// Получение ID пользователей по их именам.
 		inviteesData, err := b.repo.GetUserIDsFromUsernames(ctx, *invitation.Names)
 		if err != nil {
@@ -47,7 +47,7 @@ func (b *BoardInvServicer) CreateInvitation(ctx context.Context, boardID int, us
 
 	// В случае частичного успеха также возвращаются имена, которых нет в БД.
 	if len(invalidInviteeNames) != 0 {
-		return link, invalidInviteeNames, ErrNonExistentUsernames
+		return link, invalidInviteeNames, ErrNonExistentUsername
 	}
 
 	return link, nil, nil

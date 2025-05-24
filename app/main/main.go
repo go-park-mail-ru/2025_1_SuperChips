@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/board"
-	boardinvService "github.com/go-park-mail-ru/2025_1_SuperChips/boardinv"
+	boardshrService "github.com/go-park-mail-ru/2025_1_SuperChips/boardshr"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	_ "github.com/go-park-mail-ru/2025_1_SuperChips/docs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/pg"
@@ -21,7 +21,7 @@ import (
 	pgStorage "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
-	boardinvDelivery "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/boardinv"
+	boardshrDelivery "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/boardshr"
 	middleware "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/middleware"
 	pincrudDelivery "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/pincrud"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/like"
@@ -100,7 +100,7 @@ func main() {
 	subscriptionStorage := pgStorage.NewSubscriptionStorage(db)
 	likeStorage := pgStorage.NewPgLikeStorage(db)
 	boardStorage := pgStorage.NewBoardStorage(db)
-	boardInvStorage := pgStorage.NewBoardInvStorage(db)
+	boardShrStorage := pgStorage.NewBoardShrStorage(db)
 	searchStorage := pgStorage.NewSearchRepository(db)
 	chatStorage := pgStorage.NewChatRepository(db)
 
@@ -110,7 +110,7 @@ func main() {
 	pinCRUDService := pincrudService.NewPinCRUDService(pinStorage, boardStorage, imageStorage)
 	profileService := profile.NewProfileService(profileStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
 	boardService := board.NewBoardService(boardStorage, config.BaseUrl, config.ImageBaseDir)
-	boardInvService := boardinvService.NewBoardInvService(boardInvStorage)
+	boardShrService := boardshrService.NewBoardShrService(boardShrStorage)
 	likeService := like.NewLikeService(likeStorage)
 	searchService := search.NewSearchService(searchStorage, config.BaseUrl, config.ImageBaseDir, config.StaticBaseDir, config.AvatarDir)
 	
@@ -196,8 +196,8 @@ func main() {
 		ContextDeadline: config.ContextExpiration,
 	}
 
-	boardInvHandler := boardinvDelivery.BoardInvHandler{
-		BoardInvService: boardInvService,
+	boardShrHandler := boardshrDelivery.BoardShrHandler{
+		BoardShrService: boardShrService,
 		ContextDeadline: config.ContextExpiration,
 	}
 	
@@ -442,29 +442,59 @@ func main() {
 			middleware.Log()))
 	
 
-	// board invitation
-	mux.HandleFunc("POST /api/v1/boards/{board_id}/invitation",
-		middleware.ChainMiddleware(boardInvHandler.CreateInvitation,
+	// board sharing (author)
+	mux.HandleFunc("GET /api/v1/boards/{board_id}/invites",
+		middleware.ChainMiddleware(boardShrHandler.GetInvitationLinks,
+			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.MetricsMiddleware(metricsService),
+			middleware.Log()))		
+
+	mux.HandleFunc("POST /api/v1/boards/{board_id}/invites",
+		middleware.ChainMiddleware(boardShrHandler.CreateInvitation,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedPostOptions),
 			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 	
-	mux.HandleFunc("DELETE /api/v1/boards/{board_id}/invitations/{link}",
-		middleware.ChainMiddleware(boardInvHandler.DeleteInvitation,
+	mux.HandleFunc("DELETE /api/v1/boards/{board_id}/invites/{link}",
+		middleware.ChainMiddleware(boardShrHandler.DeleteInvitation,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedDeleteOptions),
 			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 	
-	mux.HandleFunc("GET /api/v1/boards/{board_id}/invitations",
-		middleware.ChainMiddleware(boardInvHandler.GetInvitationLinks,
+	mux.HandleFunc("GET /api/v1/boards/{board_id}/coauthors",
+		middleware.ChainMiddleware(boardShrHandler.GetCoauthors,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CorsMiddleware(config, allowedGetOptions),
 			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 	
+	mux.HandleFunc("DELETE /api/v1/boards/{board_id}/coauthors",
+		middleware.ChainMiddleware(boardShrHandler.DeleteCoauthor,
+			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CorsMiddleware(config, allowedDeleteOptions),
+			middleware.MetricsMiddleware(metricsService),
+			middleware.Log()))
+	
 
+	// board sharing (coauthor)
+	mux.HandleFunc("POST /api/v1/join/{link}",
+		middleware.ChainMiddleware(boardShrHandler.UseInvitationLink,
+			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CorsMiddleware(config, allowedPostOptions),
+			middleware.MetricsMiddleware(metricsService),
+			middleware.Log()))
+	
+	mux.HandleFunc("DELETE /api/v1/boards/{board_id}/coauthoring",
+		middleware.ChainMiddleware(boardShrHandler.RefuseCoauthoring,
+			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CorsMiddleware(config, allowedDeleteOptions),
+			middleware.MetricsMiddleware(metricsService),
+			middleware.Log()))
+	
+	
 	// search
 	mux.HandleFunc("/api/v1/search/flows", 
 		middleware.ChainMiddleware(searchHander.SearchPins,

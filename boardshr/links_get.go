@@ -1,4 +1,4 @@
-package boardinv
+package boardshr
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
 
-func (b *BoardInvServicer) GetInvitationLinks(ctx context.Context, boardID int, userID int) ([]domain.LinkParams, error) {
+func (b *BoardShrServicer) GetInvitationLinks(ctx context.Context, boardID int, userID int) ([]domain.LinkParams, error) {
 	// Проверка, что пользователь является автором доски.
 	isAuthor, err := b.repo.IsBoardAuthor(ctx, boardID, userID)
 	if !isAuthor || err != nil {

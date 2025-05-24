@@ -20,5 +20,10 @@ type LinkParams struct {
 	Names      *[]string  `json:"names"`
 	TimeLimit  *time.Time `json:"time_limit"`
 	UsageLimit *int64     `json:"usage_limit"`
-	UsageCount *int64     `json:"usage_count"`
+	UsageCount int64     `json:"usage_count"`
+}
+
+//easyjson:json
+type BodyWithUsername struct {
+	Name string `json:"name"`
 }
