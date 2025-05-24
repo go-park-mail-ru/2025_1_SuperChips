@@ -1,4 +1,4 @@
-name: test, lint and deplot
+name: test, lint and deploy
 
 on:
   push:
@@ -21,9 +21,9 @@ jobs:
           make test
       
       - name: run linter
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.1.6
-          golangci-lint run --timeout 5m
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v2.1.6
       
   deploy:
     needs: test-and-lint
