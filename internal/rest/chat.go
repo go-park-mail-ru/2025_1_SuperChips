@@ -233,10 +233,11 @@ func (h *ChatHandler) GetChat(w http.ResponseWriter, r *http.Request) {
 type MessageHandler func(ctx context.Context, conn *websocket.Conn, msg domain.WebMessage, claims *auth.Claims, hub *chatWebsocket.Hub) error
 
 var handlers = map[string]MessageHandler{
-	"message":      handleMessage,
-	"mark_read":    handleMarkRead,
-	"connect":      handleConnect,
-	"notification": handleNotification,
+	"message":             handleMessage,
+	"mark_read":           handleMarkRead,
+	"connect":             handleConnect,
+	"notification":        handleNotification,
+	"delete_notification": handleDeleteNotification,
 }
 
 func (h *ChatWebsocketHandler) WebSocketUpgrader(w http.ResponseWriter, r *http.Request) {
@@ -301,7 +302,7 @@ func handleConnect(ctx context.Context, conn *websocket.Conn, msg domain.WebMess
 
 func handleMessage(ctx context.Context, conn *websocket.Conn, webMsg domain.WebMessage, claims *auth.Claims, hub *chatWebsocket.Hub) error {
 	log.Println("handling message")
-	
+
 	if err := hub.SendMessage(ctx, webMsg, claims.Username); err != nil {
 		log.Printf("error sending message: %v", err)
 	} else {
@@ -322,8 +323,6 @@ func handleMarkRead(ctx context.Context, conn *websocket.Conn, webMsg domain.Web
 
 	return nil
 }
-
-
 
 func contactsToNormal(grpcContacts []*gen.Contact) []domain.Contact {
 	var normal []domain.Contact

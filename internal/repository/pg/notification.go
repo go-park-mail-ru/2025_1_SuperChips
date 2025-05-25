@@ -22,7 +22,7 @@ func NewNotificationRepository(db *sql.DB) *NotificationRepository {
 func (r *NotificationRepository) GetNewNotifications(ctx context.Context, userID uint64) ([]domain.Notification, error) {
 	var isExternalAvatar sql.NullBool
 	var additionalByte []byte
-	
+
 	rows, err := r.db.QueryContext(ctx, `
 	SELECT 
 		n.id,
@@ -85,9 +85,12 @@ func (r *NotificationRepository) GetNewNotifications(ctx context.Context, userID
 
 func (r *NotificationRepository) AddNotification(ctx context.Context, notification domain.Notification) (domain.NewNotificationData, error) {
 	var authorID int
+	var isExternal sql.NullBool
+	var avatar string
+
 	err := r.db.QueryRowContext(ctx, `
-		SELECT id FROM flow_user WHERE username = $1
-	`, notification.SenderUsername).Scan(&authorID)
+		SELECT id FROM flow_user, avatar, is_external_avatar WHERE username = $1
+	`, notification.SenderUsername).Scan(&authorID, &avatar, &isExternal)
 	if err != nil {
 		return domain.NewNotificationData{}, fmt.Errorf("get notification sender err: %v", err)
 	}
@@ -106,24 +109,44 @@ func (r *NotificationRepository) AddNotification(ctx context.Context, notificati
 	}
 
 	var data domain.NewNotificationData
-	var isExternal sql.NullBool
 
 	err = r.db.QueryRowContext(ctx, `
-	WITH sender_data AS (
-		SELECT fu.avatar, fu.is_external_avatar
-		FROM flow_user fu
-		WHERE id = $1
-	)
 	INSERT INTO notification (author_id, receiver_id, notification_type, is_read, additional)
 	VALUES ($1, $2, $3, $4, $5)
-	RETURNING id, created_at, (SELECT avatar FROM sender_data), (SELECT is_external_avatar FROM sender_data)
+	RETURNING id, created_at
 	`, authorID, receiverID, notification.Type, notification.IsRead, rawAdditional).
-	Scan(&data.ID, &data.Timestamp, &data.Avatar, &isExternal)
+		Scan(&data.ID, &data.Timestamp)
 	if err != nil {
 		return domain.NewNotificationData{}, err
 	}
 
 	data.IsExternalAvatar = isExternal.Bool
+	data.Avatar = avatar
+	data.IsExternalAvatar = isExternal.Bool
 
 	return data, nil
+}
+
+func (r *NotificationRepository) DeleteNotification(ctx context.Context,
+	id uint64, usernameID uint64) error {
+	
+	res, err := r.db.ExecContext(ctx, `
+	DELETE FROM notification
+	WHERE id = $1
+	AND receiver_id = $2
+	`, id, usernameID)
+	if err != nil {
+		return err
+	}
+
+	num, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if num == 0 {
+		return domain.ErrNotFound
+	}
+
+	return nil
 }

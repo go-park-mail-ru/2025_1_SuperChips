@@ -9,6 +9,8 @@ import (
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
 )
 
+const LikeType = "like"
+
 type LikeService interface {
 	LikeFlow(ctx context.Context, pinID, userID int) (string, string, error)
 }
@@ -51,9 +53,9 @@ func (h *LikeHandler) LikeFlow(w http.ResponseWriter, r *http.Request) {
 
 	if claims.Username != authorUsername && action == "liked" {
 		h.NotificationChan <- domain.WebMessage{
-			Type: "notification",
+			Type: NotificationType,
 			Content: domain.Notification{
-				Type:             "like",
+				Type:             LikeType,
 				CreatedAt:        time.Now(),
 				SenderUsername:   claims.Username,
 				ReceiverUsername: authorUsername,

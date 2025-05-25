@@ -12,6 +12,8 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+const NotificationType = "notification"
+
 type NotificationService interface {
 	GetNotifications(ctx context.Context, userID uint) ([]domain.Notification, error)
 }
@@ -54,6 +56,17 @@ func handleNotification(ctx context.Context, conn *websocket.Conn,
 	webMsg domain.WebMessage, claims *auth.Claims, hub *chatWebsocket.Hub) error {
 	if err := hub.SendNotification(ctx, webMsg); err != nil {
 		log.Printf("error sending notification: %v", err)
+	}
+
+	return nil
+}
+
+func handleDeleteNotification(ctx context.Context, conn *websocket.Conn,
+	webMsg domain.WebMessage, claims *auth.Claims, hub *chatWebsocket.Hub) error {
+	
+	err := hub.DeleteNotification(ctx, webMsg, uint64(claims.UserID))
+	if err != nil {
+		return err
 	}
 
 	return nil
