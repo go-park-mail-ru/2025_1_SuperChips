@@ -2,7 +2,9 @@ package rest
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
@@ -48,6 +50,45 @@ func (app PinCRUDHandler) ReadHandler(w http.ResponseWriter, r *http.Request) {
 		rest.HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+
+	userAgent := r.Header.Get("User-Agent")
+	botUserAgents := []string{
+	  "facebookexternalhit",
+	  "Twitterbot",
+	  "TelegramBot",
+	  "Slackbot",
+	  "WhatsApp",
+	  "vkShare",
+	  "LinkedInBot",
+	  "Discordbot",
+	  "Googlebot",
+	}
+  
+	isBot := false
+	for _, botAgent := range botUserAgents {
+	  if strings.Contains(userAgent, botAgent) {
+		isBot = true
+		fmt.Printf("This is a known bot: %s\n", botAgent)
+		break
+	  }
+	}
+  
+	var html string
+  
+	if isBot {
+		html = fmt.Sprintf(`<!DOCTYPE html>
+<html lang="ru">
+<head>
+	<meta charset="UTF-8" /><title></title>
+	<meta property="og:title" content="Flow" />
+	<meta property="og:type" content="website" />
+	<meta property="og:image" content="https://yourflow.ru/static/img/%s" />
+	<meta property="og:url" content="https://yourflow.ru/flow/%d" />
+</head></html>`, data.MediaURL, pinID)
+	w.Write([]byte(html))
+	return
+	}
+  
 
 	response := rest.ServerResponse{
 		Description: "OK",
