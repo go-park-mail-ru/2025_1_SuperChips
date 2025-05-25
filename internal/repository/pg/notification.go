@@ -89,7 +89,7 @@ func (r *NotificationRepository) AddNotification(ctx context.Context, notificati
 	var avatar string
 
 	err := r.db.QueryRowContext(ctx, `
-		SELECT id FROM flow_user, avatar, is_external_avatar WHERE username = $1
+		SELECT id, avatar, is_external_avatar FROM flow_user WHERE username = $1
 	`, notification.SenderUsername).Scan(&authorID, &avatar, &isExternal)
 	if err != nil {
 		return domain.NewNotificationData{}, fmt.Errorf("get notification sender err: %v", err)
