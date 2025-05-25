@@ -81,18 +81,18 @@ func (r *CommentRepository) GetComments(ctx context.Context, flowID, userID, pag
 	return comments, nil
 }
 
-func (r *CommentRepository) LikeComment(ctx context.Context, flowID, commentID, userID int) (string, error) {
+func (r *CommentRepository) LikeComment(ctx context.Context, commentID, userID int) (string, error) {
     var action string
 
     err := r.db.QueryRowContext(ctx, `
 	WITH deleted AS (
 		DELETE FROM comment_like
-		WHERE user_id = $1 AND comment_id = $3
+		WHERE user_id = $1 AND comment_id = $2
 		RETURNING 'delete' AS action
 	),
 	inserted AS (
 		INSERT INTO comment_like (user_id, comment_id)
-		SELECT $1, $3
+		SELECT $1, $2
 		WHERE NOT EXISTS (SELECT 1 FROM deleted)
 		RETURNING 'insert' AS action
 	),
@@ -103,10 +103,10 @@ func (r *CommentRepository) LikeComment(ctx context.Context, flowID, commentID, 
 			WHEN EXISTS (SELECT 1 FROM deleted) THEN -1
 			ELSE 0
 		END
-		WHERE id = $3
+		WHERE id = $2
 	)
 	SELECT COALESCE((SELECT action FROM inserted), (SELECT action FROM deleted)) AS action
-    `, userID, flowID, commentID).Scan(&action)
+    `, userID, commentID).Scan(&action)
     if errors.Is(err, sql.ErrNoRows) {
         return "", domain.ErrForbidden
     }

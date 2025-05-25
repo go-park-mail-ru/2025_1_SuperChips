@@ -9,7 +9,7 @@ import (
 
 type CommentRepository interface {
 	GetComments(ctx context.Context, flowID, userID, page, size int) ([]domain.Comment, error)
-	LikeComment(ctx context.Context, flowID, commentID, userID int) (string, error)
+	LikeComment(ctx context.Context, commentID, userID int) (string, error)
 	AddComment(ctx context.Context, flowID, userID int, content string) error
 	DeleteComment(ctx context.Context, commentID, userID int) error
 }
@@ -61,7 +61,7 @@ func (s *CommentService) LikeComment(ctx context.Context, flowID, commentID, use
 		return "", domain.ErrForbidden
 	}
 	
-	like, err := s.repo.LikeComment(ctx, flowID, commentID, userID)
+	like, err := s.repo.LikeComment(ctx, commentID, userID)
 	if err != nil {
 		return "", err
 	}
