@@ -85,26 +85,15 @@ func (r *CommentRepository) LikeComment(ctx context.Context, flowID, commentID, 
     var action string
 
     err := r.db.QueryRowContext(ctx, `
-	WITH access_check AS (
-		SELECT 
-			CASE 
-				WHEN f.is_private = false OR f.author_id = $1 THEN true
-				ELSE false
-			END AS has_access
-		FROM flow f
-		WHERE f.id = $2
-	),
 	deleted AS (
 		DELETE FROM comment_like
 		WHERE user_id = $1 AND comment_id = $3
-		AND (SELECT has_access FROM access_check) = true
 		RETURNING 'delete' AS action
 	),
 	inserted AS (
 		INSERT INTO comment_like (user_id, comment_id)
 		SELECT $1, $3
 		WHERE NOT EXISTS (SELECT 1 FROM deleted)
-		AND (SELECT has_access FROM access_check) = true
 		RETURNING 'insert' AS action
 	),
 	update_like_count AS (
@@ -132,19 +121,8 @@ func (r *CommentRepository) AddComment(ctx context.Context, flowID, userID int, 
 	var id int
 	
 	err := r.db.QueryRowContext(ctx, `
-	WITH access_check AS (
-		SELECT 
-			CASE 
-				WHEN f.is_private = false OR f.author_id = $1 THEN true
-				ELSE false
-			END AS has_access
-		FROM flow f
-		WHERE f.id = $2
-	)
 	INSERT INTO comment (author_id, flow_id, contents)
 	SELECT $1, $2, $3
-	FROM access_check
-	WHERE has_access = true
 	RETURNING id;
 	`, userID, flowID, content).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {

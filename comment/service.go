@@ -14,14 +14,19 @@ type CommentRepository interface {
 	DeleteComment(ctx context.Context, commentID, userID int) error
 }
 
+type PinRepository interface {
+	GetPin(ctx context.Context, pinID, userID uint64) (domain.PinData, uint64, error)
+}
+
 type CommentService struct {
 	repo CommentRepository
+	pinRepo PinRepository
 	avatarDir string
 	staticDir string
 	baseURL string
 }
 
-func NewCommentService(repo CommentRepository, baseURL, staticDir, avatarDir string) *CommentService {
+func NewCommentService(repo CommentRepository, commentRepo PinRepository, baseURL, staticDir, avatarDir string) *CommentService {
 	return &CommentService{
 		repo: repo,
 		avatarDir: avatarDir,
@@ -46,6 +51,15 @@ func (s *CommentService) GetComments(ctx context.Context, flowID, userID, page, 
 }
 
 func (s *CommentService) LikeComment(ctx context.Context, flowID, commentID, userID int) (string, error) {
+	flow, authorID, err := s.pinRepo.GetPin(ctx, uint64(flowID), uint64(userID))
+	if err != nil {
+		return "", err
+	}
+
+	if flow.IsPrivate && authorID != uint64(userID) {
+		return "", domain.ErrForbidden
+	}
+	
 	like, err := s.repo.LikeComment(ctx, flowID, commentID, userID)
 	if err != nil {
 		return "", err
@@ -55,6 +69,15 @@ func (s *CommentService) LikeComment(ctx context.Context, flowID, commentID, use
 }
 
 func (s *CommentService) AddComment(ctx context.Context, flowID, userID int, content string) error {
+	flow, authorID, err := s.pinRepo.GetPin(ctx, uint64(flowID), uint64(userID))
+	if err != nil {
+		return err
+	}
+
+	if flow.IsPrivate && authorID != uint64(userID) {
+		return domain.ErrForbidden
+	}
+
 	if err := s.repo.AddComment(ctx, flowID, userID, content); err != nil {
 		return err
 	}
