@@ -20,6 +20,8 @@ type SubscriptionService interface {
 	DeleteSubscription(ctx context.Context, targetUsername string, currentID int) error
 }
 
+const SubscriptionType = "subscription"
+
 //easyjson:json
 type SubscriptionData struct {
 	TargetUsername string `json:"target_user"`
@@ -28,7 +30,7 @@ type SubscriptionData struct {
 type SubscriptionHandler struct {
 	ContextExpiration   time.Duration
 	SubscriptionService SubscriptionService
-	NotificationChan    chan domain.WebMessage
+	NotificationChan    chan<- domain.WebMessage
 }
 
 // GetUserFollowers godoc
@@ -138,9 +140,9 @@ func (h *SubscriptionHandler) CreateSubscription(w http.ResponseWriter, r *http.
 	// send notification
 	if claims.Username != subData.TargetUsername {
 		h.NotificationChan <- domain.WebMessage{
-			Type: "notification",
+			Type: NotificationType,
 			Content: domain.Notification{
-				Type:             "subscription",
+				Type:             SubscriptionType,
 				CreatedAt:        time.Now(),
 				SenderUsername:   claims.Username,
 				ReceiverUsername: subData.TargetUsername,

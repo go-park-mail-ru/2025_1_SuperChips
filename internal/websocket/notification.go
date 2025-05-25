@@ -10,14 +10,15 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+const NotificationType = "notification"
+
 type NotificationRepository interface {
 	GetNewNotifications(ctx context.Context, userID uint64) ([]domain.Notification, error)
 	AddNotification(ctx context.Context, notification domain.Notification) (domain.NewNotificationData, error)
+	DeleteNotification(ctx context.Context, id, usernameID uint64) error
 }
 
-
 func (h *Hub) SendNotification(ctx context.Context, webMsg domain.WebMessage) error {
-	found := false
 	var targetConn *websocket.Conn
 
 	var notification domain.Notification
@@ -33,17 +34,11 @@ func (h *Hub) SendNotification(ctx context.Context, webMsg domain.WebMessage) er
 		return fmt.Errorf("notification: error unmarshalling message: %v", err)
 	}
 
-	h.connect.Range(func(key, value any) bool {
-		username := key.(string)
-		conn := value.(*websocket.Conn)
-		if notification.ReceiverUsername == username {
-			found = true
-			targetConn = conn
-			return false
-		}
-
-		return true
-	})
+	conn, found := h.connect.Load(notification.ReceiverUsername)
+	targetConn, ok := conn.(*websocket.Conn)
+	if !ok {
+		return ErrDeliveryFailure
+	}
 
 	newData, err := h.notificationRepo.AddNotification(ctx, notification)
 	if err != nil {
@@ -60,7 +55,7 @@ func (h *Hub) SendNotification(ctx context.Context, webMsg domain.WebMessage) er
 	}
 
 	webMsg = domain.WebMessage{
-		Type: "notification",
+		Type: NotificationType,
 		Content: notification,
 	}
 
@@ -75,3 +70,27 @@ func (h *Hub) SendNotification(ctx context.Context, webMsg domain.WebMessage) er
 	return nil
 }
 
+func (h *Hub) DeleteNotification(ctx context.Context, webMsg domain.WebMessage, usernameID uint64) error {
+	byteData, err := json.Marshal(webMsg.Content)
+	if err != nil {
+		log.Printf("delete notification: error marshalling message: %v", err)
+		return fmt.Errorf("delete notification: error marshalling message: %v", err)
+	}
+
+	type DeletionID struct {
+		ID uint64 `json:"id"`
+	}
+
+	var delID DeletionID
+
+	if err := json.Unmarshal(byteData, &delID); err != nil {
+		log.Printf("delete notification: error unmarshalling message: %v", err)
+		return fmt.Errorf("delete notification: error unmarshalling message: %v", err)
+	}
+
+	if err := h.notificationRepo.DeleteNotification(ctx, delID.ID, usernameID); err != nil {
+		return err
+	}
+
+	return nil
+}
