@@ -53,28 +53,27 @@ func (app PinCRUDHandler) ReadHandler(w http.ResponseWriter, r *http.Request) {
 
 	userAgent := r.Header.Get("User-Agent")
 	botUserAgents := []string{
-	  "facebookexternalhit",
-	  "Twitterbot",
-	  "TelegramBot",
-	  "Slackbot",
-	  "WhatsApp",
-	  "vkShare",
-	  "LinkedInBot",
-	  "Discordbot",
-	  "Googlebot",
+		"facebookexternalhit",
+		"Twitterbot",
+		"TelegramBot",
+		"Slackbot",
+		"WhatsApp",
+		"vkShare",
+		"LinkedInBot",
+		"Discordbot",
+		"Googlebot",
 	}
-  
+
 	isBot := false
 	for _, botAgent := range botUserAgents {
-	  if strings.Contains(userAgent, botAgent) {
-		isBot = true
-		fmt.Printf("This is a known bot: %s\n", botAgent)
-		break
-	  }
+		if strings.Contains(userAgent, botAgent) {
+			isBot = true
+			break
+		}
 	}
-  
+
 	var html string
-  
+
 	if isBot {
 		html = fmt.Sprintf(`<!DOCTYPE html>
 <html lang="ru">
@@ -85,10 +84,9 @@ func (app PinCRUDHandler) ReadHandler(w http.ResponseWriter, r *http.Request) {
 	<meta property="og:image" content="https://yourflow.ru/static/img/%s" />
 	<meta property="og:url" content="https://yourflow.ru/flow/%d" />
 </head></html>`, data.MediaURL, pinID)
-	w.Write([]byte(html))
-	return
+		w.Write([]byte(html))
+		return
 	}
-  
 
 	response := rest.ServerResponse{
 		Description: "OK",
