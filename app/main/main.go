@@ -146,7 +146,7 @@ func main() {
 	likeService := like.NewLikeService(likeStorage)
 	searchService := search.NewSearchService(searchStorage, config.BaseUrl, config.ImageBaseDir, config.StaticBaseDir, config.AvatarDir)
 	notificationService := notification.NewNotificationService(notificationStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
-	commentService := comment.NewCommentService(commentStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
+	commentService := comment.NewCommentService(commentStorage, pinStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
 
 	metricsService := metrics.NewMetricsService()
 	metricsService.RegisterMetrics()

@@ -89,7 +89,7 @@ func (s *SearchRepository) SearchUsers(ctx context.Context, query string, page, 
 	var birthday sql.NullTime
 
 	rows, err := s.db.QueryContext(ctx, `
-    SELECT username, email, avatar, birthday, about, public_name, is_external_avatar
+    SELECT username, email, avatar, birthday, about, public_name, is_external_avatar, subscriber_count
     FROM flow_user
     WHERE to_tsvector(username) @@ plainto_tsquery($1) OR 
 	username ILIKE '%' || $1 || '%'
@@ -113,6 +113,7 @@ func (s *SearchRepository) SearchUsers(ctx context.Context, query string, page, 
 			&about,
 			&user.PublicName,
 			&isExternalAvatar,
+			&user.SubscriberCount,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan row %w", err)
 		}

@@ -16,7 +16,7 @@ func (p *pgPinStorage) GetPin(ctx context.Context, pinID, userID uint64) (domain
         SELECT 
             f.id, 
             f.title, 
-            f.description, 
+            f.description,
             f.author_id, 
             f.is_private, 
             f.media_url,
