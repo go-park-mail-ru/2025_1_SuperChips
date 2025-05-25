@@ -51,12 +51,19 @@ func (h *CommentHandler) GetComments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	status := http.StatusOK
+
 	resp := ServerResponse{
 		Description: "OK",
 		Data: comments,
 	}
 
-	ServerGenerateJSONResponse(w, resp, http.StatusOK)
+	if len(comments) == 0 {
+		status = http.StatusNotFound
+		resp.Description = http.StatusText(http.StatusNotFound)
+	}
+
+	ServerGenerateJSONResponse(w, resp, status)
 }
 
 func (h *CommentHandler) LikeComment(w http.ResponseWriter, r *http.Request) {
