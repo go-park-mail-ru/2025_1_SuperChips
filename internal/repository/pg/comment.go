@@ -85,7 +85,7 @@ func (r *CommentRepository) LikeComment(ctx context.Context, flowID, commentID, 
     var action string
 
     err := r.db.QueryRowContext(ctx, `
-	deleted AS (
+	WITH deleted AS (
 		DELETE FROM comment_like
 		WHERE user_id = $1 AND comment_id = $3
 		RETURNING 'delete' AS action
