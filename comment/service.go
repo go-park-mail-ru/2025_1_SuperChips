@@ -26,9 +26,10 @@ type CommentService struct {
 	baseURL string
 }
 
-func NewCommentService(repo CommentRepository, commentRepo PinRepository, baseURL, staticDir, avatarDir string) *CommentService {
+func NewCommentService(repo CommentRepository, pinRepo PinRepository, baseURL, staticDir, avatarDir string) *CommentService {
 	return &CommentService{
 		repo: repo,
+		pinRepo: pinRepo,
 		avatarDir: avatarDir,
 		staticDir: staticDir,
 		baseURL: baseURL,
