@@ -22,9 +22,9 @@ func NewChatRepository(db *sql.DB) *ChatRepository {
 
 func (repo *ChatRepository) GetNewMessages(ctx context.Context, username string, offset time.Time) ([]domain.Message, error) {
 	rows, err := repo.db.QueryContext(ctx, `
-	SELECT id, content, timestamp, is_read, sender, recipient, chat_id
+	SELECT id, content, created_at, is_read, sender, recipient, chat_id
 	FROM message
-	WHERE timestamp > $1
+	WHERE created_at > $1
 	AND recipient = $2
 	AND sent = false;
 	`, offset, username)
