@@ -120,7 +120,25 @@ services:
       - database
     restart: on-failure
 
-  
+  cv:
+    networks:
+      - flow_network
+    container_name: cv
+    build:
+      context: .
+      dockerfile: app/cv/Dockerfile
+    volumes:
+      - ./static/img/:${INPUT_FOLDER}
+    environment:
+      - INPUT_FOLDER=${INPUT_FOLDER}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+    depends_on:
+      - database
+    restart: on-failure
+
   prometheus:
     networks:
       - flow_network
@@ -158,9 +176,9 @@ services:
       - flow_network
     image: grafana/grafana-enterprise
     volumes:
-      - grafana_storage:/var/lib/grafana/
-      - grafana_storage:/etc/grafana/provisioning/
-      - grafana_storage:/etc/grafana/dashboards
+      - ./grafana:/var/lib/grafana/
+      - ./grafana/provisioning:/etc/grafana/provisioning/
+      - ./grafana/dashboards:/etc/grafana/dashboards
     user: "${UID}"
     ports:
       - "8092:3000"

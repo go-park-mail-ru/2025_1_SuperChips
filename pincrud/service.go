@@ -100,24 +100,24 @@ func (s *PinCRUDService) UpdatePin(ctx context.Context, patch domain.PinDataUpda
 	return nil
 }
 
-func (s *PinCRUDService) CreatePin(ctx context.Context, data domain.PinDataCreate, file multipart.File, header *multipart.FileHeader, extension string, userID uint64) (uint64, error) {
+func (s *PinCRUDService) CreatePin(ctx context.Context, data domain.PinDataCreate, file multipart.File, header *multipart.FileHeader, extension string, userID uint64) (uint64, string, error) {
 	imgName, err := s.imgStrg.Save(file, header)
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
 
 	if _, err := file.Seek(0, 0); err != nil {
-        return 0, err
+        return 0, "", err
     }
 
 	img, _, err := image.Decode(file)
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
 
 	width, height, err := imageUtil.GetImageDimensions(img)
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
 
 	data.Width = width
@@ -131,12 +131,12 @@ func (s *PinCRUDService) CreatePin(ctx context.Context, data domain.PinDataCreat
 
 	pinID, err := s.pinRepo.CreatePin(ctx, data, imgName, userID)
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
 
 	if err := s.boardRepo.AddToSavedBoard(ctx, int(userID), int(pinID)); err != nil {
-		return 0, err
+		return 0, "", err
 	}
 
-	return pinID, nil
+	return pinID, imgName, nil
 }

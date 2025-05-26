@@ -31,6 +31,7 @@ func (s *SearchRepository) SearchPins(ctx context.Context, query string, page, p
         f.media_url,
 		f.width,
 		f.height,
+		f.is_nsfw,
         fu.username
     FROM flow f
     JOIN flow_user fu ON f.author_id = fu.id
@@ -64,6 +65,7 @@ func (s *SearchRepository) SearchPins(ctx context.Context, query string, page, p
 			&pin.MediaURL,
 			&pin.Width,
 			&pin.Height,
+			&pin.IsNSFW,
 			&pin.AuthorUsername,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan row: %w", err)

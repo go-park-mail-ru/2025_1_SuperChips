@@ -1,7 +1,10 @@
 package rest
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
+	"io"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -122,7 +125,7 @@ func (app PinCRUDHandler) CreateHandler(w http.ResponseWriter, r *http.Request) 
 		data.IsPrivate = boolValue
 	}
 
-	pinID, err := app.PinService.CreatePin(r.Context(), data, file, handler, contentType, userID)
+	pinID, name, err := app.PinService.CreatePin(r.Context(), data, file, handler, contentType, userID)
 	if errors.Is(err, pincrud.ErrInvalidImageExt) {
 		rest.HttpErrorToJson(w, "invalid image extension", http.StatusBadRequest)
 		return
@@ -131,6 +134,11 @@ func (app PinCRUDHandler) CreateHandler(w http.ResponseWriter, r *http.Request) 
 		log.Printf("create flow err: %v", err)
 		rest.HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
+	}
+
+	if err := sendRequestToCV(name); err != nil {
+		log.Printf("sending request to cv error: %v", err)
+		// no return
 	}
 
 	type DataReturn struct {
@@ -142,4 +150,43 @@ func (app PinCRUDHandler) CreateHandler(w http.ResponseWriter, r *http.Request) 
 		Data:        DataReturn{FlowID: pinID},
 	}
 	rest.ServerGenerateJSONResponse(w, response, http.StatusCreated)
+}
+
+func sendRequestToCV(filename string) error {
+	type Filename struct {
+		Filename string `json:"filename"`
+	}
+
+	pinFilename := Filename{
+		Filename: filename,
+	}
+
+	filenameBytes, err := json.Marshal(pinFilename)
+	if err != nil {
+		log.Printf("Error making request to cv: %v", err)
+		return err
+	} 
+
+	req, err := http.NewRequest("POST", "http://cv:8050/classify", bytes.NewBuffer(filenameBytes))
+	if err != nil {
+		log.Printf("Error creating request: %v", err)
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("Error sending request: %v", err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusAccepted {
+		body, _ := io.ReadAll(resp.Body)
+		log.Printf("Unexpected response status: %d, body: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
 }

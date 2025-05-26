@@ -399,7 +399,7 @@ func (p *pgBoardStorage) GetBoardFlow(ctx context.Context, boardID, userID, page
 func (p *pgBoardStorage) fetchFirstNFlowsForBoard(ctx context.Context, boardID, userID, pageSize, offset int) ([]domain.PinData, error) {
 	rows, err := p.db.QueryContext(ctx, `
         SELECT f.id, f.title, f.description, f.author_id, f.created_at, 
-               f.updated_at, f.is_private, f.media_url, f.like_count, f.width, f.height
+               f.updated_at, f.is_private, f.media_url, f.like_count, f.width, f.height, f.is_nsfw
         FROM flow f
         JOIN board_post bp ON f.id = bp.flow_id
         WHERE bp.board_id = $1
@@ -434,6 +434,7 @@ func (p *pgBoardStorage) fetchFirstNFlowsForBoard(ctx context.Context, boardID, 
 			&flow.LikeCount,
 			&flow.Width,
 			&flow.Height,
+			&flow.IsNSFW,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan flow: %w", err)
@@ -457,7 +458,7 @@ func (p *pgBoardStorage) fetchFirstNFlowsForBoard(ctx context.Context, boardID, 
 func (p *pgBoardStorage) fetchFlowsAndColors(ctx context.Context, boardID, userID, pageSize, offset, pinCount int) ([]domain.PinData, []string, error) {
 	rows, err := p.db.QueryContext(ctx, `
         SELECT f.id, f.title, f.description, f.author_id, f.created_at, 
-               f.updated_at, f.is_private, f.media_url, f.like_count, f.width, f.height
+               f.updated_at, f.is_private, f.media_url, f.like_count, f.width, f.height, f.is_nsfw
         FROM flow f
         JOIN board_post bp ON f.id = bp.flow_id
         WHERE bp.board_id = $1
@@ -492,6 +493,7 @@ func (p *pgBoardStorage) fetchFlowsAndColors(ctx context.Context, boardID, userI
 			&flow.LikeCount,
 			&flow.Width,
 			&flow.Height,
+			&flow.IsNSFW,
 		)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to scan flow: %w", err)
