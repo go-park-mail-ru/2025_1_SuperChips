@@ -39,7 +39,7 @@ os.makedirs(MODEL_CACHE_DIR, exist_ok=True)
 
 # черный список слов для автоматического пометки как NSFW
 NSFW_BLACKLIST = {
-    'duck', "утка"
+    'duck', "утка", "ducks", 'утки'
 }
 
 @dataclass

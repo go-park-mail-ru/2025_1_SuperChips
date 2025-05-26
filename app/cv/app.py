@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from uuid import uuid4
 from image_classifier import *
 from flask import Flask, request, jsonify
 import os
@@ -15,11 +16,11 @@ app = Flask(__name__)
 service = ImageClassificationService()
 
 DB_CONFIG = {
-    'host': os.getenv('DB_HOST', 'localhost'),
-    'database': os.getenv('DB_NAME', 'image_db'),
-    'user': os.getenv('DB_USER', 'postgres'),
-    'password': os.getenv('DB_PASSWORD', 'postgres'),
-    'port': os.getenv('DB_PORT', '5432')
+    'host': os.getenv('POSTGRES_HOST', 'localhost'),
+    'database': os.getenv('POSTGRES_DB', 'image_db'),
+    'user': os.getenv('POSTGRES_USER', 'postgres'),
+    'password': os.getenv('POSTGRES_PASSWORD', 'postgres'),
+    'port': os.getenv('POSTGRES_PORT', '5432')
 }
 
 task_queue = Queue()
@@ -34,10 +35,8 @@ def get_db_connection():
 
 def update_image_status(filename: str, is_nsfw: bool, tags: list, nsfw_reason: str):
     """Update the image status in the database"""
-    
-    print(f"marking image as is_nsfw: {is_nsfw}")
-    
     try:
+        logger.info(f"sending photo {filename} is_nsfw: {is_nsfw}")
         conn = get_db_connection()
         with conn.cursor() as cur:
             query = sql.SQL("""
@@ -62,6 +61,7 @@ def worker():
             file_path = os.path.join(INPUT_FOLDER, filename)
             
             if not os.path.exists(file_path):
+                logger.info(f"file {file_path} doesnt exist")
                 with lock:
                     results[task_id] = {
                         'status': 'error',
@@ -78,6 +78,8 @@ def worker():
                 tags=result.tags,
                 nsfw_reason=result.nsfw_reason
             )
+            
+            logger.info(result.tags)
             
             with lock:
                 results[task_id] = {
@@ -104,16 +106,55 @@ def worker():
         finally:
             task_queue.task_done()
 
-@app.route('/status/<task_id>', methods=['GET'])
-def get_status(task_id):
-    """Check status of a processing task"""
-    with lock:
-        result = results.get(task_id, None)
+@app.route('/classify', methods=['POST'])
+def classify_image():
+    """
+    Submit an image for classification
+    ---
+    consumes:
+      - application/json
+    parameters:
+      - in: body
+        name: body
+        description: JSON containing filename to process
+        required: true
+        schema:
+          type: object
+          properties:
+            filename:
+              type: string
+              description: Name of the file in the input folder
+    responses:
+      202:
+        description: Task accepted for processing
+      400:
+        description: Invalid request
+    """
+    if not request.is_json:
+        logger.warning("Received non-JSON request")
+        return jsonify({'error': 'Request must be JSON'}), 400
+        
+    data = request.get_json()
+    if not data or 'filename' not in data:
+        logger.warning("Missing filename in request")
+        return jsonify({'error': 'Missing filename in request'}), 400
     
-    if not result:
-        return jsonify({'status': 'not_found'}), 404
+    filename = data['filename']
+    if not isinstance(filename, str) or not filename.strip():
+        logger.warning(f"Invalid filename: {filename}")
+        return jsonify({'error': 'Invalid filename'}), 400
     
-    return jsonify(result)
+    task_id = str(uuid4())
+    
+    task_queue.put((task_id, filename))
+    logger.info(f"Queued task {task_id} for file {filename}")
+    
+    return jsonify({
+        'task_id': task_id,
+        'status': 'queued',
+        'filename': filename,
+        'message': 'Image added to processing queue'
+    }), 202
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -124,7 +165,12 @@ def health_check():
         'input_folder': INPUT_FOLDER,
         'files_in_folder': os.listdir(INPUT_FOLDER) if os.path.exists(INPUT_FOLDER) else 'Folder not found'
     })
-    
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8055, threaded=True)
+    NUM_WORKERS = 2
+    for i in range(NUM_WORKERS):
+        t = threading.Thread(target=worker, daemon=True)
+        t.start()
+        logger.info(f"Started worker thread {i+1}")
+        
+    app.run(host='0.0.0.0', port=8050, threaded=True)

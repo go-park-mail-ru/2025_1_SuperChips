@@ -11,9 +11,12 @@ RUN apt-get update && apt-get install -y \
     libgl1-mesa-glx \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY app/cv/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY app/cv ./app/cv
 
-CMD ["python3", "app.py"]
+RUN mkdir -p static/img
+COPY static/img ./static/img
+
+CMD ["python3", "app/cv/app.py"]

@@ -12,5 +12,5 @@ type PinCRUDServicer interface {
 	GetAnyPin(ctx context.Context, pinID uint64, userID uint64) (domain.PinData, error)
 	DeletePin(ctx context.Context, pinID uint64, userID uint64) error
 	UpdatePin(ctx context.Context, data domain.PinDataUpdate, userID uint64) error
-	CreatePin(ctx context.Context, data domain.PinDataCreate, file multipart.File, header *multipart.FileHeader, extension string, userID uint64) (uint64, error)
+	CreatePin(ctx context.Context, data domain.PinDataCreate, file multipart.File, header *multipart.FileHeader, extension string, userID uint64) (uint64, string, error)
 }

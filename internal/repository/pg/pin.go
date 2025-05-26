@@ -16,6 +16,7 @@ type flowDBSchema struct {
 	CreatedAt      sql.NullTime
 	UpdatedAt      sql.NullTime
 	IsPrivate      bool
+	IsNSFW         bool
 	LikeCount      int
 	MediaURL       string
 	Width          sql.NullInt64
@@ -55,6 +56,7 @@ func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
 		f.media_url,
 		f.width,
 		f.height,
+		f.is_nsfw,
 		fu.username
 	FROM flow f
 	JOIN flow_user fu ON f.author_id = fu.id
@@ -75,7 +77,7 @@ func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
 		var flowDBRow flowDBSchema
 		err := rows.Scan(&flowDBRow.ID, &flowDBRow.Title, &flowDBRow.Description,
 		&flowDBRow.AuthorId, &flowDBRow.IsPrivate, &flowDBRow.MediaURL, &flowDBRow.Width,
-		&flowDBRow.Height, &flowDBRow.AuthorUsername)
+		&flowDBRow.Height, &flowDBRow.IsNSFW, &flowDBRow.AuthorUsername)
 		if err != nil {
 			return nil, err
 		}
@@ -87,6 +89,7 @@ func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
 			MediaURL:       p.assembleMediaURL(flowDBRow.MediaURL),
 			Width: int(flowDBRow.Width.Int64),
 			Height: int(flowDBRow.Height.Int64),
+			IsNSFW: flowDBRow.IsNSFW,
 			AuthorUsername: flowDBRow.AuthorUsername,
 		}
 		pins = append(pins, pin)
