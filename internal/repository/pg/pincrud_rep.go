@@ -24,7 +24,7 @@ func (p *pgPinStorage) GetPin(ctx context.Context, pinID, userID uint64) (domain
             f.like_count,
 			f.width,
 			f.height,
-			f.is_nsfw
+			f.is_nsfw,
             CASE 
                 WHEN fl.user_id IS NOT NULL THEN true
                 ELSE false
