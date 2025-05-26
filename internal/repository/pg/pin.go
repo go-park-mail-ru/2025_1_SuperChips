@@ -60,7 +60,7 @@ func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
 		fu.username
 	FROM flow f
 	JOIN flow_user fu ON f.author_id = fu.id
-	WHERE f.is_private = false
+	WHERE f.is_private = false AND f.is_nsfw = false
 	ORDER BY f.created_at DESC
 	LIMIT $1
 	OFFSET $2
