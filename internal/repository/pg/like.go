@@ -23,19 +23,7 @@ func (pg *pgLikeStorage) LikeFlow(ctx context.Context, pinID, userID int) (strin
 	var author string
 
     err := pg.db.QueryRowContext(ctx, `
-	WITH access_check AS (
-		SELECT 
-			CASE 
-				WHEN f.is_private = false OR f.author_id = $1 THEN true
-				ELSE false
-			END AS has_access,
-			f.author_id,
-			fu.username AS author_username
-		FROM flow f
-		JOIN flow_user fu ON f.author_id = fu.id
-		WHERE f.id = $2
-	),
-	deleted AS (
+	WITH deleted AS (
 		DELETE FROM flow_like
 		WHERE user_id = $1 AND flow_id = $2
 		AND (SELECT has_access FROM access_check) = true
@@ -59,8 +47,8 @@ func (pg *pgLikeStorage) LikeFlow(ctx context.Context, pinID, userID int) (strin
 	)
 	SELECT 
 		author_username, 
-		COALESCE((SELECT action FROM inserted), (SELECT action FROM deleted)) AS action
-	FROM access_check`, userID, pinID).Scan(&author, &action)
+		COALESCE((SELECT action FROM inserted), (SELECT action FROM deleted)) AS action`,
+		userID, pinID).Scan(&author, &action)
     if errors.Is(err, sql.ErrNoRows) {
         return "", "", domain.ErrForbidden
     }

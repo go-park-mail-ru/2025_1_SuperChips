@@ -407,7 +407,7 @@ func TestGetBoard_Success(t *testing.T) {
 		WithArgs(boardID, userID, previewNum, previewStart).
 		WillReturnRows(createFakeFlowRows())
 
-	board, err := storage.GetBoard(context.Background(), boardID, userID, previewNum, previewStart)
+	board, _, err := storage.GetBoard(context.Background(), boardID, userID, previewNum, previewStart)
 	assert.NoError(t, err)
 	assert.Equal(t, boardID, board.ID)
 	assert.Equal(t, "Test Board", board.Name)
@@ -446,7 +446,7 @@ func TestGetBoard_BoardNotFound(t *testing.T) {
 		WithArgs(boardID).
 		WillReturnError(sql.ErrNoRows)
 
-	board, err := storage.GetBoard(context.Background(), boardID, userID, previewNum, previewStart)
+	board, _, err := storage.GetBoard(context.Background(), boardID, userID, previewNum, previewStart)
 	assert.Error(t, err)
 	assert.True(t, errors.Is(err, ErrNotFound))
 	assert.Equal(t, domain.Board{}, board)

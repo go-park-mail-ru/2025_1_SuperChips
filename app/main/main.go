@@ -141,7 +141,7 @@ func main() {
 	pinCRUDService := pincrudService.NewPinCRUDService(pinStorage, boardStorage, imageStorage)
 	profileService := profile.NewProfileService(profileStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
 	boardService := board.NewBoardService(boardStorage, config.BaseUrl, config.ImageBaseDir)
-	likeService := like.NewLikeService(likeStorage)
+	likeService := like.NewLikeService(likeStorage, pinStorage)
 	searchService := search.NewSearchService(searchStorage, config.BaseUrl, config.ImageBaseDir, config.StaticBaseDir, config.AvatarDir)
 	notificationService := notification.NewNotificationService(notificationStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
 
