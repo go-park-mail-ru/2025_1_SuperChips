@@ -86,12 +86,3 @@ func extractServiceName(fullMethod string) string {
 	return "unknown"
 }
 
-func extractPath(fullMethod string) string {
-	parts := strings.Split(fullMethod, "/")
-	if len(parts) >= 3 {
-		log.Println(fullMethod)
-		log.Println(parts[2])
-		return parts[2]
-	}
-	return "unknown"
-}
