@@ -20,14 +20,17 @@ type SubscriptionService interface {
 	DeleteSubscription(ctx context.Context, targetUsername string, currentID int) error
 }
 
+const SubscriptionType = "subscription"
+
 //easyjson:json
 type SubscriptionData struct {
 	TargetUsername string `json:"target_user"`
 }
 
 type SubscriptionHandler struct {
-	ContextExpiration time.Duration
+	ContextExpiration   time.Duration
 	SubscriptionService SubscriptionService
+	NotificationChan    chan<- domain.WebMessage
 }
 
 // GetUserFollowers godoc
@@ -59,7 +62,7 @@ func (h *SubscriptionHandler) GetUserFollowers(w http.ResponseWriter, r *http.Re
 
 	resp := ServerResponse{
 		Description: "OK",
-		Data: followers,
+		Data:        followers,
 	}
 
 	ServerGenerateJSONResponse(w, resp, http.StatusOK)
@@ -94,7 +97,7 @@ func (h *SubscriptionHandler) GetUserFollowing(w http.ResponseWriter, r *http.Re
 
 	resp := ServerResponse{
 		Description: "OK",
-		Data: following,
+		Data:        following,
 	}
 
 	ServerGenerateJSONResponse(w, resp, http.StatusOK)
@@ -113,9 +116,9 @@ func (h *SubscriptionHandler) GetUserFollowing(w http.ResponseWriter, r *http.Re
 // @Router /api/v1/subscription [post]
 func (h *SubscriptionHandler) CreateSubscription(w http.ResponseWriter, r *http.Request) {
 	claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
-	
+
 	var subData SubscriptionData
-	
+
 	if err := DecodeData(w, r.Body, &subData); err != nil {
 		return
 	}
@@ -132,6 +135,20 @@ func (h *SubscriptionHandler) CreateSubscription(w http.ResponseWriter, r *http.
 		log.Printf("create sub err: %v", err)
 		handleSubscriptionError(w, err)
 		return
+	}
+
+	// send notification
+	if claims.Username != subData.TargetUsername {
+		h.NotificationChan <- domain.WebMessage{
+			Type: NotificationType,
+			Content: domain.Notification{
+				Type:             SubscriptionType,
+				CreatedAt:        time.Now(),
+				SenderUsername:   claims.Username,
+				ReceiverUsername: subData.TargetUsername,
+				AdditionalData:   nil,
+			},
+		}
 	}
 
 	resp := ServerResponse{
@@ -154,9 +171,9 @@ func (h *SubscriptionHandler) CreateSubscription(w http.ResponseWriter, r *http.
 // @Router /api/v1/subscription [delete]
 func (h *SubscriptionHandler) DeleteSubscription(w http.ResponseWriter, r *http.Request) {
 	claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
-	
+
 	var subData SubscriptionData
-	
+
 	if err := DecodeData(w, r.Body, &subData); err != nil {
 		return
 	}
@@ -212,7 +229,7 @@ func getQueryPagination(w http.ResponseWriter, r *http.Request) (int, int, error
 		return 0, 0, err
 	}
 
-	if pageSizeInt <= 0 || pageSizeInt > 30{
+	if pageSizeInt <= 0 || pageSizeInt > 30 {
 		HttpErrorToJson(w, "page size must be between 1 and 30", http.StatusBadRequest)
 		return 0, 0, fmt.Errorf("page size must be between 1 and 30")
 	}

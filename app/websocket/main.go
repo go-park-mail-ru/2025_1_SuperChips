@@ -5,23 +5,32 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/pg"
 	repository "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
+	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/middleware"
 	chatWebsocket "github.com/go-park-mail-ru/2025_1_SuperChips/internal/websocket"
+	gen "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/websocket"
+	microserviceGrpc "github.com/go-park-mail-ru/2025_1_SuperChips/internal/grpc"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	"google.golang.org/grpc"
 )
 
 func main() {
+	lis, err := net.Listen("tcp", ":8020")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
@@ -53,11 +62,12 @@ func main() {
 	})
 
 	chatRepo := repository.NewChatRepository(db)
+	notificationRepo := repository.NewNotificationRepository(db)
 
 	hubCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	hub := chatWebsocket.CreateHub(chatRepo)
+	hub := chatWebsocket.CreateHub(chatRepo, notificationRepo)
 	
 	chatWebsocketHandler := rest.ChatWebsocketHandler{
 		Hub: hub,
@@ -77,6 +87,10 @@ func main() {
 		Handler: mux,
 	}
 
+	grpcServer := grpc.NewServer()
+	websocketServer := microserviceGrpc.NewGrpcWebsocketHandler(hub)
+	gen.RegisterWebsocketServer(grpcServer, websocketServer)
+
 	errorChan := make(chan error, 1)
 
 	go func() {
@@ -85,6 +99,14 @@ func main() {
 		if err != nil && err != http.ErrServerClosed {
 			errorChan <- err
 		}
+	}()
+
+	go func() {
+		log.Println("Starting server on :8020")
+		if err := grpcServer.Serve(lis); err != nil {
+			log.Fatalf("Error starting server: %v", err)
+		}
+		log.Println("started on port :8020")
 	}()
 
 	shutdown := make(chan os.Signal, 1)
@@ -104,6 +126,8 @@ func main() {
 	if err := server.Shutdown(ctx); err != nil {
 		log.Printf("Graceful shutdown unsuccessful: %v", err)
 	}
+
+	grpcServer.GracefulStop()
 
 	log.Println("Server has been gracefully shut down.")
 }

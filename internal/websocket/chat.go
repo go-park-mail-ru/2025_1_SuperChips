@@ -2,6 +2,7 @@ package websocket
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -23,32 +24,33 @@ type ChatRepository interface {
 	MarkRead(ctx context.Context, messageID, chatID int) error
 }
 
-
 type Hub struct {
-	connect       sync.Map
-	currentOffset time.Time
-	repo          ChatRepository
+	connect          sync.Map
+	currentOffset    time.Time
+	chatRepo         ChatRepository
+	notificationRepo NotificationRepository
 }
 
-func CreateHub(repo ChatRepository) *Hub {
+func CreateHub(chatRepo ChatRepository, notificationRepo NotificationRepository) *Hub {
 	return &Hub{
-		connect:       sync.Map{},
-		currentOffset: time.Now().UTC(),
-		repo:          repo,
+		connect:          sync.Map{},
+		currentOffset:    time.Now().UTC(),
+		chatRepo:         chatRepo,
+		notificationRepo: notificationRepo,
 	}
 }
 
 func (h *Hub) AddClient(username string, client *websocket.Conn) {
-    h.connect.Store(username, client)
+	h.connect.Store(username, client)
 
-    client.SetCloseHandler(func(code int, text string) error {
-        h.connect.Delete(username)
-        return nil
-    })
+	client.SetCloseHandler(func(code int, text string) error {
+		h.connect.Delete(username)
+		return nil
+	})
 }
 
 func (h *Hub) MarkRead(ctx context.Context, messageID, chatID int, targetUsername, senderUsername string) error {
-	if err := h.repo.MarkRead(ctx, messageID, chatID); err != nil {
+	if err := h.chatRepo.MarkRead(ctx, messageID, chatID); err != nil {
 		return fmt.Errorf("couldn't mark messages as read: %v", err)
 	}
 
@@ -93,14 +95,31 @@ func (h *Hub) MarkRead(ctx context.Context, messageID, chatID int, targetUsernam
 	return nil
 }
 
-func (h *Hub) Send(ctx context.Context, message domain.Message, targetUsername string) error {
+func (h *Hub) SendMessage(ctx context.Context, msg domain.WebMessage, senderUsername string) error {
 	found := false
 	var targetConn *websocket.Conn
+
+	var message domain.Message
+
+	byteData, err := json.Marshal(msg.Content)
+	if err != nil {
+		log.Println("notification: error marshalling message")
+		return fmt.Errorf("notification: error marshalling message")
+	}
+
+	if err := json.Unmarshal(byteData, &message); err != nil {
+		log.Println("notification: error unmarshalling message")
+		return fmt.Errorf("notification: error unmarshalling message")
+	}
+
+	message.Sender = senderUsername
+	message.Escape()
+	message.Sent = true
 
 	h.connect.Range(func(key, value any) bool {
 		username := key.(string)
 		conn := value.(*websocket.Conn)
-		if targetUsername == username {
+		if message.Recipient == username {
 			found = true
 			targetConn = conn
 			// range realization neat:
@@ -111,24 +130,26 @@ func (h *Hub) Send(ctx context.Context, message domain.Message, targetUsername s
 		return true
 	})
 
-	message.Recipient = targetUsername
-
-	if err := h.repo.AddMessage(ctx, message); err != nil {
+	if err := h.chatRepo.AddMessage(ctx, message); err != nil {
 		log.Printf("error while adding message to db: %v", err)
 		return err
 	}
 
 	// target user offline
 	if !found {
-		log.Println("user not online")
 		return ErrTargetNotFound
 	}
 
-	err := targetConn.WriteJSON(message)
+	msg = domain.WebMessage{
+		Type: "message",
+		Content: message,
+	}
+
+	err = targetConn.WriteJSON(msg)
 	if err != nil {
 		log.Printf("delivery failure: %v", err)
 		targetConn.Close()
-		h.connect.Delete(targetUsername)
+		h.connect.Delete(message.Recipient)
 		return ErrDeliveryFailure
 	}
 
@@ -145,12 +166,17 @@ func (h *Hub) Run(ctx context.Context) {
 			h.connect.Range(func(key, value any) bool {
 				username := key.(string)
 				conn := value.(*websocket.Conn)
-				messages, err := h.repo.GetNewMessages(ctx, username, h.currentOffset)
+				messages, err := h.chatRepo.GetNewMessages(ctx, username, h.currentOffset)
 				if err != nil {
 					log.Printf("error getting new messages: %v", err)
 				}
 				for _, message := range messages {
-					err := conn.WriteJSON(message)
+					webMsg := domain.WebMessage{
+						Type: "message",
+						Content: message,
+					}
+
+					err := conn.WriteJSON(webMsg)
 					if err != nil {
 						continue
 					}
@@ -163,4 +189,3 @@ func (h *Hub) Run(ctx context.Context) {
 		}
 	}
 }
-

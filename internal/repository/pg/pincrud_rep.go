@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
@@ -174,8 +173,6 @@ func (p *pgPinStorage) CreatePin(ctx context.Context, data domain.PinDataCreate,
 	if err != nil {
 		return 0, err
 	}
-
-	log.Println("db colors len: %v", len(data.Colors))
 
 	for i := range data.Colors {
 		_, err := tx.ExecContext(ctx, `
