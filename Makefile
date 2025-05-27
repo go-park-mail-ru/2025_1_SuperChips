@@ -42,7 +42,7 @@ test: mocks
 	go test $(TESTED_DIRS) -coverprofile=$(COVERAGE_FILE)
 	
 cover: mocks test
-	cat $(COVERAGE_FILE) | grep -v 'mock_' | grep -v 'docs' | grep -v 'test_utils' | grep -v 'gen' > cover.out
+	cat $(COVERAGE_FILE) | grep -v 'mock_' | grep -v 'docs' | grep -v 'test_utils' | grep -v 'gen' | grep -v 'easyjson' > cover.out
 	go tool cover -func=cover.out
 
 easyjson:

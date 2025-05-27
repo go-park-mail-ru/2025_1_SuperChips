@@ -14,6 +14,7 @@ require (
 	github.com/swaggo/http-swagger v1.3.4
 	github.com/swaggo/swag/v2 v2.0.0-rc4
 	golang.org/x/crypto v0.36.0
+	golang.org/x/image v0.27.0
 	google.golang.org/grpc v1.72.0
 	google.golang.org/protobuf v1.36.6
 )
@@ -28,10 +29,10 @@ require (
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.62.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/sv-tools/openapi v0.2.1 // indirect
 	github.com/swaggo/files v0.0.0-20220610200504-28940afbdbfe // indirect
 	github.com/swaggo/swag v1.16.4 // indirect
-	golang.org/x/image v0.27.0 // indirect
 	golang.org/x/net v0.37.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250218202821-56aae31c358a // indirect
@@ -51,7 +52,7 @@ require (
 	github.com/jackc/pgx v3.6.2+incompatible
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/lib/pq v1.10.9 // indirect
-	github.com/mailru/easyjson v0.9.0 // indirect
+	github.com/mailru/easyjson v0.9.0
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/mock v0.5.0
