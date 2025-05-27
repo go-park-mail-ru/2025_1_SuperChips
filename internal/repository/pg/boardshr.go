@@ -115,53 +115,11 @@ func (p *pgBoardShrStorage) CreateInvitation(ctx context.Context, boardID int, u
 
 	link := uuid.New().String()
 
-	var fields []string
-	var values []any
-	paramCounter := 1
-
-	fields = append(fields, "board_id")
-	values = append(values, boardID)
-	paramCounter++
-
-	fields = append(fields, "link")
-	values = append(values, link)
-	paramCounter++
-
-	if len(inviteeIDs) == 0 {
-		fields = append(fields, "is_personal")
-		values = append(values, true)
-		paramCounter++
-	}
-
-	if invitation.TimeLimit != nil {
-		fields = append(fields, "expiration")
-		values = append(values, invitation.TimeLimit)
-		paramCounter++
-	}
-
-	if invitation.UsageLimit != nil {
-		fields = append(fields, "usage_limit")
-		values = append(values, *invitation.UsageLimit)
-		paramCounter++
-
-		fields = append(fields, "usage_count")
-		values = append(values, 0)
-		paramCounter++
-	}
-
-	placeHoldersArr := make([]string, 0)
-	for i := 1; i < paramCounter; i++ {
-		placeHoldersArr = append(placeHoldersArr, "$"+strconv.Itoa(i))
-	}
-	placeHolders := strings.Join(placeHoldersArr, ", ")
-
-	sqlQuery := fmt.Sprintf(
-		"INSERT INTO board_invitation (%s) VALUES (%s) RETURNING id",
-		strings.Join(fields, ", "),
-		placeHolders)
-
 	var invitationID int
-	err = tx.QueryRowContext(ctx, sqlQuery, values...).Scan(&invitationID)
+	err = tx.QueryRowContext(ctx, `
+		INSERT INTO board_invitation (board_id, link, is_personal, expiration, usage_limit, usage_count) 
+		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id
+	`, boardID, link, len(inviteeIDs) == 0, invitation.TimeLimit, invitation.UsageLimit, 0).Scan(&invitationID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", domain.ErrConflict
 	}
@@ -178,9 +136,9 @@ func (p *pgBoardShrStorage) CreateInvitation(ctx context.Context, boardID int, u
 
 	// Следующий код выполняется только для персональных ссылок.
 
-	values = []any{}
-	paramCounter = 1
-	placeHoldersArr = make([]string, 0)
+	values := []any{}
+	paramCounter := 1
+	placeHoldersArr := make([]string, 0)
 
 	for _, inviteeID := range inviteeIDs {
 		values = append(values, invitationID, inviteeID)
@@ -188,7 +146,7 @@ func (p *pgBoardShrStorage) CreateInvitation(ctx context.Context, boardID int, u
 		paramCounter += 2
 	}
 
-	sqlQuery = fmt.Sprintf(
+	sqlQuery := fmt.Sprintf(
 		"INSERT INTO invitation_user (invitation_id, user_id) VALUES %s",
 		strings.Join(placeHoldersArr, ", "))
 
@@ -258,43 +216,43 @@ func (p *pgBoardShrStorage) GetInvitationLinks(ctx context.Context, boardID int)
 
 	for rows.Next() {
 		rowData := struct {
-			Link       string
-			IsPersonal bool
-			Expiration sql.NullTime
-			UsageLimit sql.NullInt64
-			UsageCount int64
-			Username   sql.NullString
+			link       string
+			isPersonal bool
+			expiration sql.NullTime
+			usageLimit sql.NullInt64
+			usageCount int64
+			username   sql.NullString
 		}{}
 
 		err := rows.Scan(
-			&rowData.Link,
-			&rowData.IsPersonal,
-			&rowData.Expiration,
-			&rowData.UsageLimit,
-			&rowData.UsageCount,
-			&rowData.Username)
+			&rowData.link,
+			&rowData.isPersonal,
+			&rowData.expiration,
+			&rowData.usageLimit,
+			&rowData.usageCount,
+			&rowData.username)
 		if err != nil {
 			return nil, err
 		}
 
 		// Ссылка встречается впервые.
-		if len(links) == 0 || links[len(links)-1].Link != rowData.Link {
+		if len(links) == 0 || links[len(links)-1].Link != rowData.link {
 			newLink := domain.LinkParams{
-				Link: rowData.Link,
+				Link: rowData.link,
 			}
 
-			if !rowData.IsPersonal && rowData.Username.Valid {
-				newLink.Names = &[]string{rowData.Username.String}
+			if !rowData.isPersonal && rowData.username.Valid {
+				newLink.Names = &[]string{rowData.username.String}
 			}
 
-			if rowData.Expiration.Valid {
-				newLink.TimeLimit = &rowData.Expiration.Time
+			if rowData.expiration.Valid {
+				newLink.TimeLimit = &rowData.expiration.Time
 			}
 
-			if rowData.UsageLimit.Valid {
-				newLink.UsageLimit = &rowData.UsageLimit.Int64
+			if rowData.usageLimit.Valid {
+				newLink.UsageLimit = &rowData.usageLimit.Int64
 			}
-			newLink.UsageCount = rowData.UsageCount
+			newLink.UsageCount = rowData.usageCount
 
 			links = append(links, newLink)
 			continue
@@ -303,13 +261,13 @@ func (p *pgBoardShrStorage) GetInvitationLinks(ctx context.Context, boardID int)
 		// Иначе ссылка уже встречалась -> ссылка НЕперсональная -> добавляется новое имя.
 
 		// Проверка согласованности данных.
-		if rowData.IsPersonal {
+		if rowData.isPersonal {
 			return nil, boardshrService.ErrInconsistentDataInDB
 		}
 
 		lastLink := links[len(links)-1]
-		if rowData.Username.Valid {
-			*lastLink.Names = append(*lastLink.Names, rowData.Username.String)
+		if rowData.username.Valid {
+			*lastLink.Names = append(*lastLink.Names, rowData.username.String)
 		}
 	}
 
@@ -381,53 +339,53 @@ func (p *pgBoardShrStorage) GetLinkParams(ctx context.Context, link string) (int
 
 	for rows.Next() {
 		rowData := struct {
-			Link       string
-			IsPersonal bool
-			Expiration sql.NullTime
-			UsageLimit sql.NullInt64
-			UsageCount int64
-			Username   sql.NullString
+			link       string
+			isPersonal bool
+			expiration sql.NullTime
+			usageLimit sql.NullInt64
+			usageCount int64
+			username   sql.NullString
 		}{}
 
 		err := rows.Scan(
 			&boardID,
-			&rowData.Link,
-			&rowData.IsPersonal,
-			&rowData.Expiration,
-			&rowData.UsageLimit,
-			&rowData.UsageCount,
-			&rowData.Username)
+			&rowData.link,
+			&rowData.isPersonal,
+			&rowData.expiration,
+			&rowData.usageLimit,
+			&rowData.usageCount,
+			&rowData.username)
 		if err != nil {
 			return 0, domain.LinkParams{}, err
 		}
 
 		if isFirstRow {
-			linkParams.Link = rowData.Link
+			linkParams.Link = rowData.link
 
-			if !rowData.IsPersonal && rowData.Username.Valid {
-				linkParams.Names = &[]string{rowData.Username.String}
+			if !rowData.isPersonal && rowData.username.Valid {
+				linkParams.Names = &[]string{rowData.username.String}
 			}
 
-			if rowData.Expiration.Valid {
-				linkParams.TimeLimit = &rowData.Expiration.Time
+			if rowData.expiration.Valid {
+				linkParams.TimeLimit = &rowData.expiration.Time
 			}
 
-			if rowData.UsageLimit.Valid {
-				linkParams.UsageLimit = &rowData.UsageLimit.Int64
+			if rowData.usageLimit.Valid {
+				linkParams.UsageLimit = &rowData.usageLimit.Int64
 			}
-			linkParams.UsageCount = rowData.UsageCount
+			linkParams.UsageCount = rowData.usageCount
 
 			isFirstRow = false
 			continue
 		}
 
 		// Публиная ссылка должна встречаться единожды, иначе данные несогласованны.
-		if rowData.IsPersonal {
+		if rowData.isPersonal {
 			return 0, domain.LinkParams{}, boardshrService.ErrInconsistentDataInDB
 		}
 
-		if rowData.Username.Valid {
-			*linkParams.Names = append(*linkParams.Names, rowData.Username.String)
+		if rowData.username.Valid {
+			*linkParams.Names = append(*linkParams.Names, rowData.username.String)
 		}
 	}
 

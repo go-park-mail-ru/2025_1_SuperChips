@@ -6,7 +6,7 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
 
-func (b *BoardShrServicer) RefuseCoauthoring(ctx context.Context, boardID int, userID int) error {
+func (b *BoardShrService) RefuseCoauthoring(ctx context.Context, boardID int, userID int) error {
 	// Проверка, что пользователь является автором или соавтором доски.
 	isEditor, err := b.repo.IsBoardEditor(ctx, boardID, userID)
 	if err != nil {

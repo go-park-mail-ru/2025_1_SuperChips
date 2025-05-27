@@ -2,7 +2,7 @@ package boardshr
 
 import "context"
 
-func (b *BoardShrServicer) GetCoauthors(ctx context.Context, boardID int, userID int) ([]string, error) {
+func (b *BoardShrService) GetCoauthors(ctx context.Context, boardID int, userID int) ([]string, error) {
 	// Проверка, что пользователь является автором доски.
 	isAuthor, err := b.repo.IsBoardAuthor(ctx, boardID, userID)
 	if err != nil {

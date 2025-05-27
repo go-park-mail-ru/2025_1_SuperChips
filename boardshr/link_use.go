@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func (b *BoardShrServicer) UseInvitationLink(ctx context.Context, userID int, link string) error {
+func (b *BoardShrService) UseInvitationLink(ctx context.Context, userID int, link string) error {
 	// Проверка, что ссылка действительная.
 	boardID, linkParams, err := b.repo.GetLinkParams(ctx, link)
 	if err != nil {

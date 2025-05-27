@@ -25,12 +25,12 @@ type BoardShrRepository interface {
 	GetLinkParams(ctx context.Context, link string) (int, domain.LinkParams, error)
 }
 
-type BoardShrServicer struct {
+type BoardShrService struct {
 	repo BoardShrRepository
 }
 
-func NewBoardShrService(b BoardShrRepository) *BoardShrServicer {
-	return &BoardShrServicer{
+func NewBoardShrService(b BoardShrRepository) *BoardShrService {
+	return &BoardShrService{
 		repo: b,
 	}
 }

@@ -2,7 +2,7 @@ package boardshr
 
 import "context"
 
-func (b *BoardShrServicer) DeleteCoauthor(ctx context.Context, boardID int, userID int, coauthorName string) error {
+func (b *BoardShrService) DeleteCoauthor(ctx context.Context, boardID int, userID int, coauthorName string) error {
 	// Проверка, что пользователь является автором доски.
 	isAuthor, err := b.repo.IsBoardAuthor(ctx, boardID, userID)
 	if err != nil {

@@ -11,7 +11,7 @@ type NameToID struct {
 	ID       *int
 }
 
-func (b *BoardShrServicer) CreateInvitation(ctx context.Context, boardID int, userID int, invitation domain.Invitaion) (string, []string, error) {
+func (b *BoardShrService) CreateInvitation(ctx context.Context, boardID int, userID int, invitation domain.Invitaion) (string, []string, error) {
 	// Проверка, что пользователь является автором доски.
 	isAuthor, err := b.repo.IsBoardAuthor(ctx, boardID, userID)
 	if !isAuthor || err != nil {
