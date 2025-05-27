@@ -48,7 +48,7 @@ jobs:
             cd /home/ubuntu/superchips/2025_1_SuperChips
             sudo git switch main
             sudo git pull
-            docker compose --env-file variables.env build
-            docker compose --env-file variables.env up -d --remove-orphans
+            sudo docker compose --env-file variables.env build
+            sudo docker compose --env-file variables.env up -d --remove-orphans
 
     
