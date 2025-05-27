@@ -18,6 +18,12 @@ jobs:
       - name: install dependencies
         run: go mod download && go install go.uber.org/mock/mockgen@latest
       
+      - name: install linter
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.1.6
+
+          golangci-lint --version
+
       - name: tests
         run: |
           make mocks
@@ -26,7 +32,7 @@ jobs:
       - name: run linter
         uses: golangci/golangci-lint-action@v3
         with:
-          version: v2.1.6
+          version: latest
       
   deploy:
     needs: test-and-lint
