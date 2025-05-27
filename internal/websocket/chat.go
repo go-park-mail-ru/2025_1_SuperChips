@@ -112,6 +112,7 @@ func (h *Hub) SendMessage(ctx context.Context, msg domain.WebMessage, senderUser
 		return fmt.Errorf("notification: error unmarshalling message")
 	}
 
+	message.Timestamp = time.Now()
 	message.Sender = senderUsername
 	message.Escape()
 	message.Sent = true
