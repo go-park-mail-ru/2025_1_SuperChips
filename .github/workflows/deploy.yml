@@ -1,0 +1,45 @@
+name: test, lint and deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test-and-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: go setup
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.24'
+      
+      - name: tests
+        run: |
+          make mocks
+          make test
+      
+      - name: run linter
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v2.1.6
+      
+  deploy:
+    needs: test-and-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: restart containers
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd /home/ubuntu/superchips/2025_1_SuperChips
+            sudo git switch main
+            sudo git pull
+            docker compose --env-file variables.env build
+            docker compose --env-file variables.env up -d --remove-orphans
