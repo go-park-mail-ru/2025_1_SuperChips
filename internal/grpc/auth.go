@@ -22,11 +22,6 @@ type GrpcAuthHandler struct {
 	usecase UserUsecase
 }
 
-// mustEmbedUnimplementedAuthServer implements gen.AuthServer.
-func (h *GrpcAuthHandler) mustEmbedUnimplementedAuthServer() {
-	panic("unimplemented")
-}
-
 func NewGrpcAuthHandler(usecase UserUsecase) *GrpcAuthHandler {
 	return &GrpcAuthHandler{
 		usecase: usecase,
