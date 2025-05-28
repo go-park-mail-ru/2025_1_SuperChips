@@ -196,21 +196,18 @@ func main() {
 	defer close(notificationChan)
 
 	go func() {
-		for {
-			select {
-			case domainMsg := <-notificationChan:
-				protoMsg, err := ToProtoWebMessage(domainMsg)
-				if err != nil {
-					log.Printf("conversion error: %v", err)
-					continue
-				}
-		
-				_, err = websocketClient.SendWebMessage(context.Background(), &genWebsocket.SendWebMessageRequest{
-					WebMessage: protoMsg,
-				})
-				if err != nil {
-					log.Printf("gRPC send error: %v", err)
-				}
+		for domainMsg := range notificationChan {
+			protoMsg, err := ToProtoWebMessage(domainMsg)
+			if err != nil {
+				log.Printf("conversion error: %v", err)
+				continue
+			}
+	
+			_, err = websocketClient.SendWebMessage(context.Background(), &genWebsocket.SendWebMessageRequest{
+				WebMessage: protoMsg,
+			})
+			if err != nil {
+				log.Printf("gRPC send error: %v", err)
 			}
 		}
 	}()
