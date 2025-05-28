@@ -24,9 +24,9 @@ func (pg *pgLikeStorage) LikeFlow(ctx context.Context, pinID, userID int) (strin
 
     err := pg.db.QueryRowContext(ctx, `
 	WITH deleted AS (
-		DELETE FROM flow_like
-		WHERE user_id = $1 AND flow_id = $2
-		RETURNING 'delete' AS action
+    DELETE FROM flow_like
+    WHERE user_id = $1 AND flow_id = $2
+    RETURNING 'delete' AS action
 	),
 	inserted AS (
 		INSERT INTO flow_like (user_id, flow_id)
@@ -44,8 +44,11 @@ func (pg *pgLikeStorage) LikeFlow(ctx context.Context, pinID, userID int) (strin
 		WHERE id = $2
 	)
 	SELECT 
-		author_username, 
-		COALESCE((SELECT action FROM inserted), (SELECT action FROM deleted)) AS action`,
+		fu.username AS author_username, 
+		COALESCE((SELECT action FROM inserted), (SELECT action FROM deleted)) AS action
+	FROM flow f
+	JOIN flow_user fu ON f.author_id = fu.id
+	WHERE f.id = $2`,
 		userID, pinID).Scan(&author, &action)
     if errors.Is(err, sql.ErrNoRows) {
         return "", "", domain.ErrForbidden

@@ -211,7 +211,6 @@ func main() {
 			}
 		}
 	}()
-	
 
 	authHandler := rest.AuthHandler{
 		Config:      config,
