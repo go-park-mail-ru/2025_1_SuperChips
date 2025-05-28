@@ -363,57 +363,74 @@ func createFakeFlowRows() *sqlmock.Rows {
 }
 
 func TestGetBoard_Success(t *testing.T) {
-	storage, mock, closeFn := setupMockDB(t)
-	defer closeFn()
+    storage, mock, closeFn := setupMockDB(t)
+    defer closeFn()
 
-	boardID := 42
-	userID := 99
-	previewNum := 2
-	previewStart := 0
+    boardID := 42
+    userID := 99
+    previewNum := 2
+    previewStart := 0
 
-	boardQuery := regexp.QuoteMeta(`
-	SELECT 
-		board.id, 
-		board.author_id, 
-		board.board_name, 
-		board.created_at, 
-		board.is_private, 
-		board.flow_count,
-		flow_user.username
-	FROM
-		board
-	INNER JOIN 
-		flow_user
-	ON 
-		board.author_id = flow_user.id
-	WHERE 
+    boardQuery := regexp.QuoteMeta(`
+    SELECT 
+        board.id, 
+        board.author_id, 
+        board.board_name, 
+        board.created_at, 
+        board.is_private, 
+        board.flow_count,
+        flow_user.username
+    FROM
+        board
+    INNER JOIN 
+        flow_user
+    ON 
+        board.author_id = flow_user.id
+    WHERE 
     board.id = $1`)
-	now := time.Now()
-	mock.ExpectQuery(boardQuery).
-		WithArgs(boardID).
-		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "author_id", "board_name", "created_at", "is_private", "flow_count", "username",
-		}).AddRow(boardID, 55, "Test Board", now, false, 10, "author_user"))
+    now := time.Now()
+    mock.ExpectQuery(boardQuery).
+        WithArgs(boardID).
+        WillReturnRows(sqlmock.NewRows([]string{
+            "id", "author_id", "board_name", "created_at", "is_private", "flow_count", "username",
+        }).AddRow(boardID, 55, "Test Board", now, false, 10, "author_user"))
 
-	flowsQuery := regexp.QuoteMeta(`
-	SELECT f.id, f.title, f.description, f.author_id, f.created_at, f.updated_at, f.is_private, f.media_url, f.like_count, f.width, f.height 
-	FROM flow f 
-	JOIN board_post bp ON
-	f.id = bp.flow_id 
-	WHERE bp.board_id = $1 
-	AND (f.is_private = false OR f.author_id = $2) ORDER BY bp.saved_at DESC LIMIT $3 OFFSET $4
+    flowsQuery := regexp.QuoteMeta(`
+    SELECT f.id, f.title, f.description, f.author_id, f.created_at, f.updated_at, f.is_private, f.media_url, f.like_count, f.width, f.height 
+    FROM flow f 
+    JOIN board_post bp ON
+    f.id = bp.flow_id 
+    WHERE bp.board_id = $1 
+    AND (f.is_private = false OR f.author_id = $2) ORDER BY bp.saved_at DESC LIMIT $3 OFFSET $4
     `)
-	mock.ExpectQuery(flowsQuery).
-		WithArgs(boardID, userID, previewNum, previewStart).
-		WillReturnRows(createFakeFlowRows())
+    mock.ExpectQuery(flowsQuery).
+        WithArgs(boardID, userID, previewNum, previewStart).
+        WillReturnRows(createFakeFlowRows())
 
-	board, _, err := storage.GetBoard(context.Background(), boardID, userID, previewNum, previewStart)
-	assert.NoError(t, err)
-	assert.Equal(t, boardID, board.ID)
-	assert.Equal(t, "Test Board", board.Name)
-	assert.Len(t, board.Preview, 2)
+    colorQuery := regexp.QuoteMeta(`
+    SELECT c.color_hex
+    FROM color c
+    JOIN flow f ON c.flow_id = f.id
+    JOIN board_post bp ON f.id = bp.flow_id
+    WHERE bp.board_id = $1
+        AND (f.is_private = false OR f.author_id = $2)
+    ORDER BY bp.saved_at DESC
+    LIMIT $3
+    `)
+    mock.ExpectQuery(colorQuery).
+        WithArgs(boardID, userID, countColorLimit).
+        WillReturnRows(sqlmock.NewRows([]string{"color_hex"}).
+            AddRow("#FF0000").
+            AddRow("#00FF00"))
 
-	assert.NoError(t, mock.ExpectationsWereMet())
+    board, colors, err := storage.GetBoard(context.Background(), boardID, userID, previewNum, previewStart)
+    assert.NoError(t, err)
+    assert.Equal(t, boardID, board.ID)
+    assert.Equal(t, "Test Board", board.Name)
+    assert.Len(t, board.Preview, 2)
+    assert.Len(t, colors, 2)
+
+    assert.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestGetBoard_BoardNotFound(t *testing.T) {

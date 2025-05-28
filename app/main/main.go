@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/board"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/comment"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	_ "github.com/go-park-mail-ru/2025_1_SuperChips/docs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
@@ -133,6 +134,7 @@ func main() {
 	boardStorage := pgStorage.NewBoardStorage(db)
 	searchStorage := pgStorage.NewSearchRepository(db)
 	chatStorage := pgStorage.NewChatRepository(db)
+	commentStorage := pgStorage.NewCommentRepository(db)
 	notificationStorage := pgStorage.NewNotificationRepository(db)
 
 	jwtManager := auth.NewJWTManager(config)
@@ -143,6 +145,7 @@ func main() {
 	boardService := board.NewBoardService(boardStorage, config.BaseUrl, config.ImageBaseDir)
 	likeService := like.NewLikeService(likeStorage, pinStorage)
 	searchService := search.NewSearchService(searchStorage, config.BaseUrl, config.ImageBaseDir, config.StaticBaseDir, config.AvatarDir)
+	commentService := comment.NewCommentService(commentStorage, pinStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
 	notificationService := notification.NewNotificationService(notificationStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
 
 	metricsService := metrics.NewMetricsService()
@@ -270,6 +273,11 @@ func main() {
 	
 	notificationHandler := rest.NotificationHandler{
 		NotificationService: notificationService,
+		ContextExpiration: config.ContextExpiration,
+	}
+
+	commentHandler := rest.CommentHandler{
+		Service: commentService,
 		ContextExpiration: config.ContextExpiration,
 	}
 
@@ -616,6 +624,45 @@ func main() {
 		middleware.CorsMiddleware(config, allowedPostOptions),
 		middleware.Log()))
 
+	// comments
+	mux.HandleFunc("/api/v1/flows/{flow_id}/comments", middleware.ChainMiddleware(commentHandler.GetComments,
+		middleware.AuthMiddleware(jwtManager, false),
+		middleware.CorsMiddleware(config, allowedGetOptions),
+		middleware.Log()))
+
+	mux.HandleFunc("POST /api/v1/flows/{flow_id}/comments", middleware.ChainMiddleware(commentHandler.AddComment,
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CSRFMiddleware(),
+		middleware.CorsMiddleware(config, allowedPostOptions),
+		middleware.Log()))
+
+	mux.HandleFunc("OPTIONS /api/v1/flows/{flow_id}/comments", middleware.ChainMiddleware(commentHandler.GetComments,
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CSRFMiddleware(),
+		middleware.CorsMiddleware(config, allowedGetOptions),
+		middleware.Log()))
+
+	mux.HandleFunc("DELETE /api/v1/flows/{flow_id}/comments/{comment_id}", middleware.ChainMiddleware(commentHandler.DeleteComment,
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CSRFMiddleware(),
+		middleware.CorsMiddleware(config, allowedDeleteOptions),
+		middleware.Log()))
+
+	mux.HandleFunc("OPTIONS /api/v1/flows/{flow_id}/comments/{comment_id}", middleware.ChainMiddleware(commentHandler.DeleteComment,
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CSRFMiddleware(),
+		middleware.CorsMiddleware(config, allowedGetOptions),
+		middleware.Log()))
+
+	mux.HandleFunc("POST /api/v1/flows/{flow_id}/comments/{comment_id}/like", middleware.ChainMiddleware(commentHandler.LikeComment,
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CSRFMiddleware(),
+		middleware.CorsMiddleware(config, allowedPostOptions),
+		middleware.Log()))
+	
+	mux.HandleFunc("OPTIONS /api/v1/flows/{flow_id}/comments/{comment_id}/like", middleware.ChainMiddleware(commentHandler.LikeComment,
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.CSRFMiddleware(),
 	// notifications
 	mux.HandleFunc("/api/v1/notifications", middleware.ChainMiddleware(notificationHandler.GetNotifications,
 		middleware.AuthMiddleware(jwtManager, true),

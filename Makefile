@@ -7,7 +7,7 @@ DOMAIN_FLDR := domain
 REST_FLDR := internal/rest
 TESTED_DIRS := ./$(REST_FLDR)/... ./$(DOMAIN_FLDR)/... ./internal/repository/...
 
-.PHONY : test mocks
+.PHONY : test mocks easyjson
 
 mocks:
 	@mkdir -p $(MOCK_DST)/pin $(MOCK_DST)/user
@@ -43,7 +43,7 @@ test: mocks
 	go test $(TESTED_DIRS) -coverprofile=$(COVERAGE_FILE)
 	
 cover: mocks test
-	cat $(COVERAGE_FILE) | grep -v 'mock_' | grep -v 'docs' | grep -v 'test_utils' | grep -v 'gen' > cover.out
+	cat $(COVERAGE_FILE) | grep -v 'mock_' | grep -v 'docs' | grep -v 'test_utils' | grep -v 'gen' | grep -v 'easyjson' > cover.out
 	go tool cover -func=cover.out
 
 easyjson:
@@ -54,6 +54,7 @@ easyjson:
 	$(DOMAIN_FLDR)/like.go \
 	$(DOMAIN_FLDR)/user.go \
 	$(DOMAIN_FLDR)/pincrud.go \
+	$(DOMAIN_FLDR)/comment.go \
 	$(REST_FLDR)/helper.go \
 	$(REST_FLDR)/board.go \
 	$(REST_FLDR)/chat.go \
