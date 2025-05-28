@@ -1,4 +1,4 @@
-name: test, lint and deplot
+name: test, lint and deploy
 
 on:
   push:
@@ -15,15 +15,22 @@ jobs:
         with:
           go-version: '1.24'
       
+      - name: install dependencies
+        run: go mod download && go install go.uber.org/mock/mockgen@latest
+      
+      - name: install linter
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.1.6
+
+          golangci-lint --version
+
       - name: tests
         run: |
           make mocks
           make test
       
       - name: run linter
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.1.6
-          golangci-lint run --timeout 5m
+        run: golangci-lint run --timeout=5m --verbose
       
   deploy:
     needs: test-and-lint
@@ -41,5 +48,8 @@ jobs:
             cd /home/ubuntu/superchips/2025_1_SuperChips
             sudo git switch main
             sudo git pull
-            docker compose --env-file variables.env build
-            docker compose --env-file variables.env up -d --remove-orphans
+            
+            sudo docker compose --env-file variables.env build
+            sudo docker compose --env-file variables.env up -d --remove-orphans
+
+    
