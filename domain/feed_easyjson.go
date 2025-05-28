@@ -56,6 +56,8 @@ func easyjsonD77e0694DecodeGithubComGoParkMailRu20251SuperChipsDomain(in *jlexer
 			out.UpdatedAt = string(in.String())
 		case "is_liked":
 			out.IsLiked = bool(in.Bool())
+		case "is_nsfw":
+			out.IsNSFW = bool(in.Bool())
 		case "like_count":
 			out.LikeCount = int(in.Int())
 		case "width":
@@ -141,6 +143,11 @@ func easyjsonD77e0694EncodeGithubComGoParkMailRu20251SuperChipsDomain(out *jwrit
 		const prefix string = ",\"is_liked\":"
 		out.RawString(prefix)
 		out.Bool(bool(in.IsLiked))
+	}
+	{
+		const prefix string = ",\"is_nsfw\":"
+		out.RawString(prefix)
+		out.Bool(bool(in.IsNSFW))
 	}
 	{
 		const prefix string = ",\"like_count\":"

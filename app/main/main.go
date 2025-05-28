@@ -624,6 +624,10 @@ func main() {
 		middleware.CorsMiddleware(config, allowedPostOptions),
 		middleware.Log()))
 
+	// notifications
+	mux.HandleFunc("/api/v1/notifications", middleware.ChainMiddleware(notificationHandler.GetNotifications,
+		middleware.AuthMiddleware(jwtManager, true),
+		middleware.Log()))
 	// comments
 	mux.HandleFunc("/api/v1/flows/{flow_id}/comments", middleware.ChainMiddleware(commentHandler.GetComments,
 		middleware.AuthMiddleware(jwtManager, false),
@@ -663,9 +667,6 @@ func main() {
 	mux.HandleFunc("OPTIONS /api/v1/flows/{flow_id}/comments/{comment_id}/like", middleware.ChainMiddleware(commentHandler.LikeComment,
 		middleware.AuthMiddleware(jwtManager, true),
 		middleware.CSRFMiddleware(),
-	// notifications
-	mux.HandleFunc("/api/v1/notifications", middleware.ChainMiddleware(notificationHandler.GetNotifications,
-		middleware.AuthMiddleware(jwtManager, true),
 		middleware.CorsMiddleware(config, allowedGetOptions),
 		middleware.Log()))
 

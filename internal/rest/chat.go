@@ -2,6 +2,7 @@ package rest
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -265,7 +266,15 @@ func (h *ChatWebsocketHandler) WebSocketUpgrader(w http.ResponseWriter, r *http.
 	h.Hub.AddClient(claims.Username, conn)
 
 	for {
-		err := conn.ReadJSON(&msg)
+		msgType, buf, err := conn.ReadMessage()
+		if err != nil {
+			log.Println("Error reading message buf:", err)
+			break
+		}
+
+		log.Printf("message type: %d, message: %s", msgType, string(buf))
+
+		err = json.Unmarshal(buf, &msg)
 		if err != nil {
 			log.Println("Error reading message:", err)
 			break

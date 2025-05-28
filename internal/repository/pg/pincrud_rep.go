@@ -24,6 +24,7 @@ func (p *pgPinStorage) GetPin(ctx context.Context, pinID, userID uint64) (domain
             f.like_count,
 			f.width,
 			f.height,
+			f.is_nsfw,
             CASE 
                 WHEN fl.user_id IS NOT NULL THEN true
                 ELSE false
@@ -38,7 +39,7 @@ func (p *pgPinStorage) GetPin(ctx context.Context, pinID, userID uint64) (domain
 	var flowDBRow flowDBSchema
 	err := row.Scan(&flowDBRow.ID, &flowDBRow.Title, &flowDBRow.Description,
 		&flowDBRow.AuthorId, &flowDBRow.IsPrivate, &flowDBRow.MediaURL,
-		&flowDBRow.AuthorUsername, &flowDBRow.LikeCount, &flowDBRow.Width, &flowDBRow.Height, &isLiked)
+		&flowDBRow.AuthorUsername, &flowDBRow.LikeCount, &flowDBRow.Width, &flowDBRow.Height, &flowDBRow.IsNSFW, &isLiked)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.PinData{}, 0, pincrudService.ErrPinNotFound
 	}
@@ -57,6 +58,7 @@ func (p *pgPinStorage) GetPin(ctx context.Context, pinID, userID uint64) (domain
 		IsLiked:        isLiked,
 		Width:          int(flowDBRow.Width.Int64),
 		Height:         int(flowDBRow.Height.Int64),
+		IsNSFW:         flowDBRow.IsNSFW,
 	}
 
 	return pin, flowDBRow.AuthorId, nil

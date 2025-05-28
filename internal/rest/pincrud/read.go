@@ -81,7 +81,7 @@ func (app PinCRUDHandler) ReadHandler(w http.ResponseWriter, r *http.Request) {
 	<meta charset="UTF-8" /><title></title>
 	<meta property="og:title" content="Flow" />
 	<meta property="og:type" content="website" />
-	<meta property="og:image" content="https://yourflow.ru/static/img/%s" />
+	<meta property="og:image" content="%s" />
 	<meta property="og:url" content="https://yourflow.ru/flow/%d" />
 </head></html>`, data.MediaURL, pinID)
 		w.Write([]byte(html))
