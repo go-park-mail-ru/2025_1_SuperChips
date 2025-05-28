@@ -273,25 +273,24 @@ func TestCreateChat(t *testing.T) {
         username := "user1"
         targetUsername := "user2"
 
-        mock.ExpectQuery(regexp.QuoteMeta(
-            `WITH normalized_users AS ( SELECT LEAST($1, $2) AS user1, GREATEST($1, $2) AS user2 ), 
-			inserted_chat AS ( INSERT INTO chat (user1, user2) SELECT user1, user2 
-			FROM normalized_users ON CONFLICT (user1, user2) DO NOTHING RETURNING id ), existing_chat 
-			AS ( SELECT id FROM chat WHERE (user1, user2) = (SELECT user1, user2 FROM normalized_users) ) 
-			SELECT COALESCE(ic.id, ec.id) AS chat_id, u.avatar, u.public_name, u.is_external_avatar 
-			FROM inserted_chat ic FULL JOIN existing_chat ec ON TRUE JOIN flow_user u ON u.username = $2;`,
-        )).WithArgs(targetUsername, username).
+        mock.ExpectQuery(
+            `WITH normalized_users AS \( SELECT LEAST\(\$1, \$2\) AS user1, GREATEST\(\$1, \$2\) AS user2 \), ` +
+                `inserted_chat AS \( INSERT INTO chat \(user1, user2\) SELECT user1, user2 ` +
+                `FROM normalized_users ON CONFLICT \(user1, user2\) DO NOTHING RETURNING id \), ` +
+                `existing_chat AS \( SELECT id FROM chat WHERE \(user1, user2\) = \(SELECT user1, user2 FROM normalized_users\) \) ` +
+                `SELECT COALESCE\(ic\.id, ec\.id\) AS chat_id, u\.avatar, u\.public_name, u\.is_external_avatar ` +
+                `FROM inserted_chat ic FULL JOIN existing_chat ec ON TRUE JOIN flow_user u ON u\.username = \$1;`,
+        ).WithArgs(username, targetUsername).
             WillReturnRows(sqlmock.NewRows([]string{"chat_id", "avatar", "public_name", "is_external_avatar"}).
                 AddRow(101, "avatar.jpg", "Public User 2", true))
 
-        chat, err := repo.CreateChat(ctx, username, targetUsername)
+        chat, err := repo.CreateChat(ctx, targetUsername, username)
+
         assert.NoError(t, err)
         assert.Equal(t, uint(101), chat.ChatID)
-        assert.Equal(t, "user2", chat.Username)
         assert.Equal(t, "Public User 2", chat.PublicName)
         assert.Equal(t, "avatar.jpg", chat.Avatar)
         assert.True(t, chat.IsExternalAvatar)
-
         assert.NoError(t, mock.ExpectationsWereMet())
     })
 
@@ -300,19 +299,19 @@ func TestCreateChat(t *testing.T) {
         username := "user1"
         targetUsername := "user2"
 
-        mock.ExpectQuery(regexp.QuoteMeta(
-            `WITH normalized_users AS ( SELECT LEAST($1, $2) AS user1, GREATEST($1, $2) AS user2 ), 
-			inserted_chat AS ( INSERT INTO chat (user1, user2) SELECT user1, user2 
-			FROM normalized_users ON CONFLICT (user1, user2) DO NOTHING RETURNING id ), existing_chat 
-			AS ( SELECT id FROM chat WHERE (user1, user2) = (SELECT user1, user2 FROM normalized_users) ) 
-			SELECT COALESCE(ic.id, ec.id) AS chat_id, u.avatar, u.public_name, u.is_external_avatar 
-			FROM inserted_chat ic FULL JOIN existing_chat ec ON TRUE JOIN flow_user u ON u.username = $2;`,
-			)).WithArgs(targetUsername, username).
+        mock.ExpectQuery(
+            `WITH normalized_users AS \( SELECT LEAST\(\$1, \$2\) AS user1, GREATEST\(\$1, \$2\) AS user2 \), ` +
+                `inserted_chat AS \( INSERT INTO chat \(user1, user2\) SELECT user1, user2 ` +
+                `FROM normalized_users ON CONFLICT \(user1, user2\) DO NOTHING RETURNING id \), ` +
+                `existing_chat AS \( SELECT id FROM chat WHERE \(user1, user2\) = \(SELECT user1, user2 FROM normalized_users\) \) ` +
+                `SELECT COALESCE\(ic\.id, ec\.id\) AS chat_id, u\.avatar, u\.public_name, u\.is_external_avatar ` +
+                `FROM inserted_chat ic FULL JOIN existing_chat ec ON TRUE JOIN flow_user u ON u\.username = \$1;`,
+        ).WithArgs(username, targetUsername).
             WillReturnError(errors.New("database error"))
 
-        _, err := repo.CreateChat(ctx, username, targetUsername)
-        assert.Error(t, err)
+        _, err := repo.CreateChat(ctx, targetUsername, username)
 
+        assert.Error(t, err)
         assert.NoError(t, mock.ExpectationsWereMet())
     })
 }

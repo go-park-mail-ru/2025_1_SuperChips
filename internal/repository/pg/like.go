@@ -26,14 +26,12 @@ func (pg *pgLikeStorage) LikeFlow(ctx context.Context, pinID, userID int) (strin
 	WITH deleted AS (
 		DELETE FROM flow_like
 		WHERE user_id = $1 AND flow_id = $2
-		AND (SELECT has_access FROM access_check) = true
 		RETURNING 'delete' AS action
 	),
 	inserted AS (
 		INSERT INTO flow_like (user_id, flow_id)
 		SELECT $1, $2
 		WHERE NOT EXISTS (SELECT 1 FROM deleted)
-		AND (SELECT has_access FROM access_check) = true
 		RETURNING 'insert' AS action
 	),
 	update_like_count AS (
