@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"log/slog"
@@ -16,6 +17,7 @@ import (
 	"github.com/go-park-mail-ru/2025_1_SuperChips/comment"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	_ "github.com/go-park-mail-ru/2025_1_SuperChips/docs"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/pg"
 	osStorage "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/os/pincrud"
 	pgStorage "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
@@ -25,11 +27,13 @@ import (
 	pincrudDelivery "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/pincrud"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/like"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/metrics"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/notification"
 	pincrudService "github.com/go-park-mail-ru/2025_1_SuperChips/pincrud"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/profile"
 	genAuth "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/auth"
 	genChat "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/chat"
 	genFeed "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/feed"
+	genWebsocket "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/websocket"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/search"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/subscription"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -37,6 +41,7 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 var (
@@ -48,6 +53,34 @@ var (
 	allowedOptions        = []string{http.MethodOptions}
 	allowedGetOptionsHead = []string{http.MethodGet, http.MethodOptions, http.MethodHead}
 )
+
+func ToProtoWebMessage(msg domain.WebMessage) (*genWebsocket.WebMessage, error) {
+    var contentMap map[string]interface{}
+
+    switch content := msg.Content.(type) {
+    case map[string]interface{}:
+        contentMap = content
+    default:
+        jsonData, err := json.Marshal(content)
+        if err != nil {
+            return nil, fmt.Errorf("failed to marshal content: %w", err)
+        }
+        
+        if err := json.Unmarshal(jsonData, &contentMap); err != nil {
+            return nil, fmt.Errorf("failed to convert content to map: %w", err)
+        }
+    }
+
+    structContent, err := structpb.NewStruct(contentMap)
+    if err != nil {
+        return nil, err
+    }
+
+    return &genWebsocket.WebMessage{
+        Type:    msg.Type,
+        Content: structContent,
+    }, nil
+}
 
 // @title flow API
 // @version 1.0
@@ -102,6 +135,7 @@ func main() {
 	searchStorage := pgStorage.NewSearchRepository(db)
 	chatStorage := pgStorage.NewChatRepository(db)
 	commentStorage := pgStorage.NewCommentRepository(db)
+	notificationStorage := pgStorage.NewNotificationRepository(db)
 
 	jwtManager := auth.NewJWTManager(config)
 
@@ -109,9 +143,10 @@ func main() {
 	pinCRUDService := pincrudService.NewPinCRUDService(pinStorage, boardStorage, imageStorage)
 	profileService := profile.NewProfileService(profileStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
 	boardService := board.NewBoardService(boardStorage, config.BaseUrl, config.ImageBaseDir)
-	likeService := like.NewLikeService(likeStorage)
+	likeService := like.NewLikeService(likeStorage, pinStorage)
 	searchService := search.NewSearchService(searchStorage, config.BaseUrl, config.ImageBaseDir, config.StaticBaseDir, config.AvatarDir)
 	commentService := comment.NewCommentService(commentStorage, pinStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
+	notificationService := notification.NewNotificationService(notificationStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
 
 	metricsService := metrics.NewMetricsService()
 	metricsService.RegisterMetrics()
@@ -143,9 +178,43 @@ func main() {
 	}
 	defer grpcConnChat.Close()
 
+	grpcConnWebsocket, err := grpc.NewClient(
+		"websocket:8020",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer grpcConnWebsocket.Close()
+
 	authClient := genAuth.NewAuthClient(grpcConnAuth)
 	feedClient := genFeed.NewFeedClient(grpcConnFeed)
 	chatClient := genChat.NewChatServiceClient(grpcConnChat)
+	websocketClient := genWebsocket.NewWebsocketClient(grpcConnWebsocket)
+
+	notificationChan := make(chan domain.WebMessage)
+	defer close(notificationChan)
+
+	go func() {
+		for {
+			select {
+			case domainMsg := <-notificationChan:
+				protoMsg, err := ToProtoWebMessage(domainMsg)
+				if err != nil {
+					log.Printf("conversion error: %v", err)
+					continue
+				}
+		
+				_, err = websocketClient.SendWebMessage(context.Background(), &genWebsocket.SendWebMessageRequest{
+					WebMessage: protoMsg,
+				})
+				if err != nil {
+					log.Printf("gRPC send error: %v", err)
+				}
+			}
+		}
+	}()
+	
 
 	authHandler := rest.AuthHandler{
 		Config:      config,
@@ -157,6 +226,7 @@ func main() {
 	subscriptionHandler := rest.SubscriptionHandler{
 		ContextExpiration: config.ContextExpiration,
 		SubscriptionService: subscriptionService,
+		NotificationChan: notificationChan,
 	}
 
 	chatHandler := rest.ChatHandler{
@@ -188,6 +258,7 @@ func main() {
 	likeHandler := rest.LikeHandler{
 		LikeService: likeService,
 		ContextTimeout: config.ContextExpiration,
+		NotificationChan: notificationChan,
 	}
 
 	boardHandler := rest.BoardHandler{
@@ -198,6 +269,11 @@ func main() {
 	searchHander := rest.SearchHandler{
 		Service: searchService,
 		ContextTimeout: config.ContextExpiration,
+	}
+	
+	notificationHandler := rest.NotificationHandler{
+		NotificationService: notificationService,
+		ContextExpiration: config.ContextExpiration,
 	}
 
 	commentHandler := rest.CommentHandler{
@@ -587,6 +663,9 @@ func main() {
 	mux.HandleFunc("OPTIONS /api/v1/flows/{flow_id}/comments/{comment_id}/like", middleware.ChainMiddleware(commentHandler.LikeComment,
 		middleware.AuthMiddleware(jwtManager, true),
 		middleware.CSRFMiddleware(),
+	// notifications
+	mux.HandleFunc("/api/v1/notifications", middleware.ChainMiddleware(notificationHandler.GetNotifications,
+		middleware.AuthMiddleware(jwtManager, true),
 		middleware.CorsMiddleware(config, allowedGetOptions),
 		middleware.Log()))
 

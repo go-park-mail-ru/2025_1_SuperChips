@@ -83,10 +83,10 @@ services:
   websocket_chat:
     networks:
       - flow_network
-    container_name: websocket_chat
+    container_name: websocket
     build:
       context: .
-      dockerfile: app/websocket_chat/Dockerfile
+      dockerfile: app/websocket/Dockerfile
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}

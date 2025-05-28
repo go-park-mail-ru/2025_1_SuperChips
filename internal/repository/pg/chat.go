@@ -247,8 +247,9 @@ func (repo *ChatRepository) CreateChat(ctx context.Context, username, targetUser
         u.is_external_avatar
     FROM inserted_chat ic
     FULL JOIN existing_chat ec ON TRUE
-    JOIN flow_user u ON u.username = $2;
-	`, targetUsername, username).Scan(&chat.ChatID, &chat.Avatar, &chat.PublicName, &isExternalAvatar)
+    JOIN flow_user u ON u.username = $1;
+	`, targetUsername, username).
+	Scan(&chat.ChatID, &chat.Avatar, &chat.PublicName, &isExternalAvatar)
     if err != nil {
         return domain.Chat{}, err
     }

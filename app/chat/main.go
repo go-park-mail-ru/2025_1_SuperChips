@@ -6,7 +6,6 @@ import (
 	"log"
 	"log/slog"
 	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -17,9 +16,6 @@ import (
 	microserviceGrpc "github.com/go-park-mail-ru/2025_1_SuperChips/internal/grpc"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/pg"
 	repository "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/middleware"
-	chatWebsocket "github.com/go-park-mail-ru/2025_1_SuperChips/internal/websocket"
 	gen "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/chat"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"google.golang.org/grpc"
@@ -63,18 +59,6 @@ func main() {
 
 	// hubCtx, cancel := context.WithCancel(context.Background())
 	// defer cancel()
-
-	hub := chatWebsocket.CreateHub(chatRepo)
-	
-	chatWebsocketHandler := rest.ChatWebsocketHandler{
-		Hub: hub,
-		ContextExpiration: time.Second * 5,
-	}
-
-	// go hub.Run(hubCtx)
-
-	http.HandleFunc("/ws", middleware.ChainMiddleware(chatWebsocketHandler.WebSocketUpgrader, 
-		middleware.Log()))
 
 	chatServer := microserviceGrpc.NewGrpcChatHandler(chatService)
 	gen.RegisterChatServiceServer(server, chatServer)
