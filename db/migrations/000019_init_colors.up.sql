@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS color (
+    id INT GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1) PRIMARY KEY,
+    flow_id INT,
+    color_hex TEXT,
+    FOREIGN KEY (flow_id) REFERENCES flow(id)
+);

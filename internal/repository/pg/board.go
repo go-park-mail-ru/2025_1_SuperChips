@@ -14,6 +14,10 @@ var (
 	ErrForbidden = errors.New("forbidden")
 )
 
+const (
+	countColorLimit = 20
+)
+
 type pgBoardStorage struct {
 	db       *sql.DB
 }
@@ -248,7 +252,7 @@ func (p *pgBoardStorage) UpdateBoard(ctx context.Context, boardID, userID int, n
 	return nil
 }
 
-func (p *pgBoardStorage) GetBoard(ctx context.Context, boardID, userID, previewNum, previewStart int) (domain.Board, error) {
+func (p *pgBoardStorage) GetBoard(ctx context.Context, boardID, userID, previewNum, previewStart int) (domain.Board, []string, error) {
 	var board domain.Board
 	err := p.db.QueryRowContext(ctx, `
 	SELECT 
@@ -276,19 +280,19 @@ func (p *pgBoardStorage) GetBoard(ctx context.Context, boardID, userID, previewN
 		&board.AuthorUsername,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
-		return domain.Board{}, ErrNotFound
+		return domain.Board{}, nil, ErrNotFound
 	}
 	if err != nil {
-		return domain.Board{}, err
+		return domain.Board{}, nil, err
 	}
 
-	flows, err := p.fetchFirstNFlowsForBoard(ctx, board.ID, userID, previewNum, previewStart)
+	flows, colors, err := p.fetchFlowsAndColors(ctx, board.ID, userID, previewNum, previewStart, board.FlowCount)
 	if err != nil {
-		return domain.Board{}, err
+		return domain.Board{}, nil, err
 	}
 	board.Preview = flows
 
-	return board, nil
+	return board, colors, nil
 }
 
 func (p *pgBoardStorage) GetUserPublicBoards(ctx context.Context, username string, previewNum, previewStart int) ([]domain.Board, error) {
@@ -395,7 +399,7 @@ func (p *pgBoardStorage) GetBoardFlow(ctx context.Context, boardID, userID, page
 func (p *pgBoardStorage) fetchFirstNFlowsForBoard(ctx context.Context, boardID, userID, pageSize, offset int) ([]domain.PinData, error) {
 	rows, err := p.db.QueryContext(ctx, `
         SELECT f.id, f.title, f.description, f.author_id, f.created_at, 
-               f.updated_at, f.is_private, f.media_url, f.like_count, f.width, f.height
+               f.updated_at, f.is_private, f.media_url, f.like_count, f.width, f.height, f.is_nsfw
         FROM flow f
         JOIN board_post bp ON f.id = bp.flow_id
         WHERE bp.board_id = $1
@@ -430,6 +434,7 @@ func (p *pgBoardStorage) fetchFirstNFlowsForBoard(ctx context.Context, boardID, 
 			&flow.LikeCount,
 			&flow.Width,
 			&flow.Height,
+			&flow.IsNSFW,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan flow: %w", err)
@@ -448,4 +453,109 @@ func (p *pgBoardStorage) fetchFirstNFlowsForBoard(ctx context.Context, boardID, 
 	return flows, nil
 }
 
+// this function fetches first N flows with starting with offset
+// also fetches colors of the first 20 flows, if possible.
+func (p *pgBoardStorage) fetchFlowsAndColors(ctx context.Context, boardID, userID, pageSize, offset, pinCount int) ([]domain.PinData, []string, error) {
+	rows, err := p.db.QueryContext(ctx, `
+        SELECT f.id, f.title, f.description, f.author_id, f.created_at, 
+               f.updated_at, f.is_private, f.media_url, f.like_count, f.width, f.height, f.is_nsfw
+        FROM flow f
+        JOIN board_post bp ON f.id = bp.flow_id
+        WHERE bp.board_id = $1
+          AND (f.is_private = false OR f.author_id = $2)
+        ORDER BY bp.saved_at DESC
+        LIMIT $3 OFFSET $4
+    `, boardID, userID, pageSize, offset)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to fetch flows: %w", err)
+	}
+	defer rows.Close()
+
+	type middlePinData struct {
+		Header      sql.NullString
+		Description sql.NullString
+	}
+
+	middlePin := middlePinData{}
+
+	var flows []domain.PinData
+	for rows.Next() {
+		var flow domain.PinData
+		err := rows.Scan(
+			&flow.FlowID,
+			&middlePin.Header,
+			&middlePin.Description,
+			&flow.AuthorID,
+			&flow.CreatedAt,
+			&flow.UpdatedAt,
+			&flow.IsPrivate,
+			&flow.MediaURL,
+			&flow.LikeCount,
+			&flow.Width,
+			&flow.Height,
+			&flow.IsNSFW,
+		)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to scan flow: %w", err)
+		}
+
+		flow.Header = middlePin.Header.String
+		flow.Description = middlePin.Description.String
+
+		flows = append(flows, flow)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, nil, fmt.Errorf("error during flow iteration: %w", err)
+	}
+
+	var colors []string
+
+	// if flow count is >= 1
+	// get the colors
+	if pinCount >= 1 {
+		colors, err = p.fetchColors(ctx, boardID, userID)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	return flows, colors, nil
+}
+
+func (p *pgBoardStorage) fetchColors(ctx context.Context, boardID, userID int) ([]string, error) {
+    query := `
+    SELECT c.color_hex
+    FROM color c
+    JOIN flow f ON c.flow_id = f.id
+    JOIN board_post bp ON f.id = bp.flow_id
+    WHERE bp.board_id = $1
+        AND (f.is_private = false OR f.author_id = $2)
+    ORDER BY bp.saved_at DESC
+    LIMIT $3
+    `
+
+    rows, err := p.db.QueryContext(ctx, query, boardID, userID, countColorLimit)
+    if err != nil {
+        return nil, fmt.Errorf("failed to query colors: %w", err)
+    }
+    defer rows.Close()
+
+    var colors []string
+    for rows.Next() {
+        var color sql.NullString
+        if err := rows.Scan(&color); err != nil {
+            return nil, fmt.Errorf("failed to scan color: %w", err)
+        }
+		if color.String != "" {
+			colors = append(colors, color.String)
+		}
+    }
+
+    if err := rows.Err(); err != nil {
+        return nil, fmt.Errorf("rows error: %w", err)
+    }
+
+    return colors, nil
+}
 

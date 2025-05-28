@@ -4,6 +4,7 @@ import (
 	"html"
 )
 
+//easyjson:json
 type PinData struct {
 	FlowID         uint64 `json:"flow_id,omitempty"`
 	Header         string `json:"header,omitempty"`
@@ -15,6 +16,7 @@ type PinData struct {
 	CreatedAt      string `json:"created_at,omitempty"`
 	UpdatedAt      string `json:"updated_at,omitempty"`
 	IsLiked        bool   `json:"is_liked"`
+	IsNSFW         bool   `json:"is_nsfw"`
 	LikeCount      int    `json:"like_count"`
 	Width          int    `json:"width,omitempty"`
 	Height         int    `json:"height,omitempty"`

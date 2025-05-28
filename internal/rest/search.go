@@ -2,6 +2,7 @@ package rest
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -67,6 +68,7 @@ func (s *SearchHandler) SearchPins(w http.ResponseWriter, r *http.Request) {
 
 	pins, err := s.Service.SearchPins(ctx, query, pageInt, pageSizeInt)
 	if err != nil {
+		log.Printf("search pin error: %v", err)
 		handleSearchError(w, err)
 		return
 	}
@@ -129,6 +131,7 @@ func (s *SearchHandler) SearchBoards(w http.ResponseWriter, r *http.Request) {
 
 	boards, err := s.Service.SearchBoards(ctx, query, pageInt, pageSizeInt)
 	if err != nil {
+		log.Printf("search boards error: %v", err)
 		handleSearchError(w, err)
 		return
 	}
@@ -191,6 +194,7 @@ func (s *SearchHandler) SearchUsers(w http.ResponseWriter, r *http.Request) {
 
 	users, err := s.Service.SearchUsers(ctx, query, pageInt, pageSizeInt)
 	if err != nil {
+		log.Printf("search users error: %v", err)
 		handleSearchError(w, err)
 		return
 	}

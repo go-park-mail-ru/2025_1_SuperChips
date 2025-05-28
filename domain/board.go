@@ -6,6 +6,14 @@ import (
 	"time"
 )
 
+type Gradient struct {
+	First  string `json:"first_color"`
+	Second string `json:"second_color"`
+	Third  string `json:"third_color"`
+	Fourth string `json:"fourth_color"`
+}
+
+//easyjson:json
 type Board struct {
 	ID             int       `json:"id"`
 	AuthorID       int       `json:"author_id"`
@@ -15,6 +23,18 @@ type Board struct {
 	IsPrivate      bool      `json:"is_private"`
 	FlowCount      int       `json:"flow_count"`
 	Preview        []PinData `json:"preview,omitempty"`
+	Gradient       []string  `json:"gradient,omitempty"`
+}
+
+//easyjson:json
+type BoardRequest struct {
+	FlowID int `json:"flow_id,omitempty"`
+}
+
+//easyjson:json
+type UpdateData struct {
+	Name      string `json:"name"`
+	IsPrivate bool   `json:"is_private"`
 }
 
 func (b *Board) Escape() {
@@ -28,12 +48,6 @@ func EscapeBoards(boards []Board) {
 			boards[i].Preview[j].Escape()
 		}
 	}
-}
-
-type BoardPost struct {
-	BoardID int
-	FlowID  int
-	SavedAt time.Time
 }
 
 var (

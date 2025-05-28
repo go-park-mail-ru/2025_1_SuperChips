@@ -28,22 +28,20 @@ func TestSearchPins(t *testing.T) {
         offset := (page - 1) * pageSize
 
         mock.ExpectQuery(regexp.QuoteMeta(
-            `SELECT f.id, f.title, f.description, f.author_id, f.is_private, f.media_url, f.width, f.height, fu.username
-			FROM flow f JOIN flow_user fu 
-			ON
-			f.author_id = fu.id 
-			WHERE f.is_private = false 
-			AND (to_tsvector(f.title || ' ' || f.description) @@ plainto_tsquery($1) OR f.title ILIKE '%' || $1 || '%' OR f.description ILIKE '%' || $1 || '%')
-			ORDER BY f.like_count DESC LIMIT $2 OFFSET $3`,
+            `SELECT f.id, f.title, f.description, f.author_id, f.is_private, f.media_url, f.width, f.height, f.is_nsfw, fu.username 
+            FROM flow f JOIN flow_user fu ON f.author_id = fu.id 
+            WHERE f.is_private = false AND 
+            (to_tsvector(f.title || ' ' || f.description) @@ plainto_tsquery($1) OR f.title ILIKE '%' || $1 || '%' OR f.description ILIKE '%' || $1 || '%') 
+            ORDER BY f.like_count DESC LIMIT $2 OFFSET $3`,
         )).WithArgs(query, pageSize, offset).
-            WillReturnRows(sqlmock.NewRows([]string{"id", "title", "description", "author_id", "is_private", "media_url", "width", "height", "username"}).
-                AddRow(1, "Pin 1", "Description 1", 101, false, "http://example.com/image1.jpg", 800, 600, "user1").
-                AddRow(2, "Pin 2", "Description 2", 102, false, "http://example.com/image2.jpg", 1024, 768, "user2"))
+            WillReturnRows(sqlmock.NewRows([]string{"id", "title", "description", "author_id", "is_private", "media_url", "width", "height", "is_nsfw", "username"}).
+                AddRow(1, "Pin 1", "Description 1", 101, false, "http://example.com/image1.jpg", 800, 600, false, "user1").
+                AddRow(2, "Pin 2", "Description 2", 102, false, "http://example.com/image2.jpg", 1024, 768, true, "user2"))
 
         pins, err := repo.SearchPins(ctx, query, page, pageSize)
+
         assert.NoError(t, err)
         assert.Len(t, pins, 2)
-
         assert.Equal(t, uint64(1), pins[0].FlowID)
         assert.Equal(t, "Pin 1", pins[0].Header)
         assert.Equal(t, "Description 1", pins[0].Description)
@@ -52,8 +50,8 @@ func TestSearchPins(t *testing.T) {
         assert.Equal(t, "http://example.com/image1.jpg", pins[0].MediaURL)
         assert.Equal(t, 800, pins[0].Width)
         assert.Equal(t, 600, pins[0].Height)
+        assert.False(t, pins[0].IsNSFW)
         assert.Equal(t, "user1", pins[0].AuthorUsername)
-
         assert.NoError(t, mock.ExpectationsWereMet())
     })
 
@@ -65,17 +63,18 @@ func TestSearchPins(t *testing.T) {
         offset := (page - 1) * pageSize
 
         mock.ExpectQuery(regexp.QuoteMeta(
-            `SELECT f.id, f.title, f.description, f.author_id, f.is_private, f.media_url, f.width, f.height, fu.username 
-			FROM flow f JOIN flow_user fu ON f.author_id = fu.id WHERE f.is_private = false AND 
-			(to_tsvector(f.title || ' ' || f.description) @@ plainto_tsquery($1) OR f.title ILIKE '%' || $1 || '%' 
-			OR f.description ILIKE '%' || $1 || '%') ORDER BY f.like_count DESC LIMIT $2 OFFSET $3`,
+            `SELECT f.id, f.title, f.description, f.author_id, f.is_private, f.media_url, f.width, f.height, f.is_nsfw, fu.username 
+            FROM flow f JOIN flow_user fu ON f.author_id = fu.id 
+            WHERE f.is_private = false AND 
+            (to_tsvector(f.title || ' ' || f.description) @@ plainto_tsquery($1) OR f.title ILIKE '%' || $1 || '%' OR f.description ILIKE '%' || $1 || '%') 
+            ORDER BY f.like_count DESC LIMIT $2 OFFSET $3`,
         )).WithArgs(query, pageSize, offset).
-            WillReturnRows(sqlmock.NewRows([]string{"id", "title", "description", "author_id", "is_private", "media_url", "width", "height", "username"}))
+            WillReturnRows(sqlmock.NewRows([]string{"id", "title", "description", "author_id", "is_private", "media_url", "width", "height", "is_nsfw", "username"}))
 
         pins, err := repo.SearchPins(ctx, query, page, pageSize)
+
         assert.NoError(t, err)
         assert.Empty(t, pins)
-
         assert.NoError(t, mock.ExpectationsWereMet())
     })
 
@@ -87,16 +86,18 @@ func TestSearchPins(t *testing.T) {
         offset := (page - 1) * pageSize
 
         mock.ExpectQuery(regexp.QuoteMeta(
-            `SELECT f.id, f.title, f.description, f.author_id, f.is_private, f.media_url, f.width, f.height, fu.username 
-			FROM flow f JOIN flow_user fu ON f.author_id = fu.id WHERE f.is_private = false AND 
-			(to_tsvector(f.title || ' ' || f.description) @@ plainto_tsquery($1) OR f.title ILIKE '%' || $1 || '%' 
-			OR f.description ILIKE '%' || $1 || '%') ORDER BY f.like_count DESC LIMIT $2 OFFSET $3`)).WithArgs(query, pageSize, offset).
+            `SELECT f.id, f.title, f.description, f.author_id, f.is_private, f.media_url, f.width, f.height, f.is_nsfw, fu.username 
+            FROM flow f JOIN flow_user fu ON f.author_id = fu.id 
+            WHERE f.is_private = false AND 
+            (to_tsvector(f.title || ' ' || f.description) @@ plainto_tsquery($1) OR f.title ILIKE '%' || $1 || '%' OR f.description ILIKE '%' || $1 || '%') 
+            ORDER BY f.like_count DESC LIMIT $2 OFFSET $3`,
+        )).WithArgs(query, pageSize, offset).
             WillReturnError(errors.New("database error"))
 
         pins, err := repo.SearchPins(ctx, query, page, pageSize)
+
         assert.Error(t, err)
         assert.Empty(t, pins)
-
         assert.NoError(t, mock.ExpectationsWereMet())
     })
 }
@@ -118,13 +119,13 @@ func TestSearchUsers(t *testing.T) {
         offset := (page - 1) * pageSize
 
         mock.ExpectQuery(regexp.QuoteMeta(
-            `SELECT username, email, avatar, birthday, about, public_name, is_external_avatar 
-			FROM flow_user 
-			WHERE to_tsvector(username) @@ plainto_tsquery($1) OR username ILIKE '%' || $1 || '%' LIMIT $2 OFFSET $3`,
-		)).WithArgs(query, pageSize, offset).
-            WillReturnRows(sqlmock.NewRows([]string{"username", "email", "avatar", "birthday", "about", "public_name", "is_external_avatar"}).
-                AddRow("user1", "user1@example.com", "http://example.com/avatar1.jpg", time.Now(), "About user 1", "Public User 1", true).
-                AddRow("user2", "user2@example.com", "http://example.com/avatar2.jpg", time.Now(), "About user 2", "Public User 2", false))
+            `SELECT username, email, avatar, birthday, about, public_name, is_external_avatar, subscriber_count 
+            FROM flow_user 
+            WHERE to_tsvector(username) @@ plainto_tsquery($1) OR username ILIKE '%' || $1 || '%' LIMIT $2 OFFSET $3`,
+        )).WithArgs(query, pageSize, offset).
+            WillReturnRows(sqlmock.NewRows([]string{"username", "email", "avatar", "birthday", "about", "public_name", "is_external_avatar", "subscriber_count"}).
+                AddRow("user1", "user1@example.com", "http://example.com/avatar1.jpg", time.Now(), "About user 1", "Public User 1", true, 100).
+                AddRow("user2", "user2@example.com", "http://example.com/avatar2.jpg", time.Now(), "About user 2", "Public User 2", false, 50))
 
         users, err := repo.SearchUsers(ctx, query, page, pageSize)
         assert.NoError(t, err)
@@ -136,6 +137,7 @@ func TestSearchUsers(t *testing.T) {
         assert.Equal(t, "About user 1", users[0].About)
         assert.Equal(t, "Public User 1", users[0].PublicName)
         assert.True(t, users[0].IsExternalAvatar)
+        assert.Equal(t, 100, users[0].SubscriberCount)
 
         assert.NoError(t, mock.ExpectationsWereMet())
     })
@@ -148,11 +150,11 @@ func TestSearchUsers(t *testing.T) {
         offset := (page - 1) * pageSize
 
         mock.ExpectQuery(regexp.QuoteMeta(
-            `SELECT username, email, avatar, birthday, about, public_name, is_external_avatar 
-			FROM flow_user 
-			WHERE to_tsvector(username) @@ plainto_tsquery($1) OR username ILIKE '%' || $1 || '%' LIMIT $2 OFFSET $3`,
-		)).WithArgs(query, pageSize, offset).
-            WillReturnRows(sqlmock.NewRows([]string{"username", "email", "avatar", "birthday", "about", "public_name", "is_external_avatar"}))
+            `SELECT username, email, avatar, birthday, about, public_name, is_external_avatar, subscriber_count 
+            FROM flow_user 
+            WHERE to_tsvector(username) @@ plainto_tsquery($1) OR username ILIKE '%' || $1 || '%' LIMIT $2 OFFSET $3`,
+        )).WithArgs(query, pageSize, offset).
+            WillReturnRows(sqlmock.NewRows([]string{"username", "email", "avatar", "birthday", "about", "public_name", "is_external_avatar", "subscriber_count"}))
 
         users, err := repo.SearchUsers(ctx, query, page, pageSize)
         assert.NoError(t, err)
@@ -169,11 +171,11 @@ func TestSearchUsers(t *testing.T) {
         offset := (page - 1) * pageSize
 
         mock.ExpectQuery(regexp.QuoteMeta(
-            `SELECT username, email, avatar, birthday, about, public_name, is_external_avatar 
-			FROM flow_user 
-			WHERE to_tsvector(username) @@ plainto_tsquery($1) 
-			OR username ILIKE '%' || $1 || '%' LIMIT $2 OFFSET $3`,
-		)).WithArgs(query, pageSize, offset).
+            `SELECT username, email, avatar, birthday, about, public_name, is_external_avatar, subscriber_count 
+            FROM flow_user 
+            WHERE to_tsvector(username) @@ plainto_tsquery($1) 
+            OR username ILIKE '%' || $1 || '%' LIMIT $2 OFFSET $3`,
+        )).WithArgs(query, pageSize, offset).
             WillReturnError(errors.New("database error"))
 
         users, err := repo.SearchUsers(ctx, query, page, pageSize)

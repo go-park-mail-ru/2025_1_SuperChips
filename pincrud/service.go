@@ -2,10 +2,12 @@ package pincrud
 
 import (
 	"context"
+	"image"
+	"log"
 	"mime/multipart"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/utils/image"
+	imageUtil "github.com/go-park-mail-ru/2025_1_SuperChips/utils/image"
 )
 
 const UnauthorizedID = 0
@@ -98,28 +100,43 @@ func (s *PinCRUDService) UpdatePin(ctx context.Context, patch domain.PinDataUpda
 	return nil
 }
 
-func (s *PinCRUDService) CreatePin(ctx context.Context, data domain.PinDataCreate, file multipart.File, header *multipart.FileHeader, userID uint64) (uint64, error) {
+func (s *PinCRUDService) CreatePin(ctx context.Context, data domain.PinDataCreate, file multipart.File, header *multipart.FileHeader, extension string, userID uint64) (uint64, string, error) {
 	imgName, err := s.imgStrg.Save(file, header)
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
 
-	width, height, err := image.GetImageDimensions(file)
+	if _, err := file.Seek(0, 0); err != nil {
+        return 0, "", err
+    }
+
+	img, _, err := image.Decode(file)
 	if err != nil {
-		return 0, err
+		return 0, "", err
+	}
+
+	width, height, err := imageUtil.GetImageDimensions(img)
+	if err != nil {
+		return 0, "", err
 	}
 
 	data.Width = width
 	data.Height = height
 
+	colors := imageUtil.GetImageMainColors(img)
+
+	log.Printf("usecase colors len: %v", len(colors))
+
+	data.Colors = colors
+
 	pinID, err := s.pinRepo.CreatePin(ctx, data, imgName, userID)
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
 
 	if err := s.boardRepo.AddToSavedBoard(ctx, int(userID), int(pinID)); err != nil {
-		return 0, err
+		return 0, "", err
 	}
 
-	return pinID, nil
+	return pinID, imgName, nil
 }

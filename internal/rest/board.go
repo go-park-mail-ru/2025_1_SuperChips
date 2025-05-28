@@ -3,6 +3,7 @@ package rest
 import (
 	"context"
 	"errors"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -29,10 +30,6 @@ type BoardService interface {
 type BoardHandler struct {
 	BoardService    BoardService
 	ContextDeadline time.Duration
-}
-
-type BoardRequest struct {
-	FlowID int `json:"flow_id,omitempty"`
 }
 
 // CreateBoard godoc
@@ -181,7 +178,7 @@ func (b *BoardHandler) AddToBoard(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(ctx, b.ContextDeadline)
 	defer cancel()
 
-	var request BoardRequest
+	var request domain.BoardRequest
 	if err := DecodeData(w, r.Body, &request); err != nil {
 		return
 	}
@@ -287,10 +284,7 @@ func (b *BoardHandler) UpdateBoard(w http.ResponseWriter, r *http.Request) {
 
 	claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
 
-	var updateData struct {
-		Name      string `json:"name"`
-		IsPrivate bool   `json:"is_private"`
-	}
+	var updateData domain.UpdateData
 
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, b.ContextDeadline)
@@ -376,6 +370,7 @@ func (b *BoardHandler) GetBoard(w http.ResponseWriter, r *http.Request) {
 
 	board, err := b.BoardService.GetBoard(ctx, boardID, userID, authorized)
 	if err != nil {
+		log.Printf("get board err: %v", err)
 		handleBoardError(w, err)
 		return
 	}

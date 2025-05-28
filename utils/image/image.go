@@ -1,10 +1,8 @@
 package image
 
 import (
-	"fmt"
 	"image"
 	"io"
-	"mime/multipart"
 	"os"
 	"path/filepath"
 	"strings"
@@ -58,17 +56,7 @@ func UploadImage(imageFilename, staticDir, imageDir, baseUrl string, file io.Rea
 	return filename, url, nil
 }
 
-func GetImageDimensions(file multipart.File) (int, int, error) {
-	_ , err := file.Seek(0, 0)
-	if err != nil {
-		return 0, 0, fmt.Errorf("failed to reset file pointer: %w", err)
-	}
-
-	img, _, err := image.Decode(file)
-	if err != nil {
-		return 0, 0, fmt.Errorf("failed to decode image: %w", err)
-	}
-
+func GetImageDimensions(img image.Image) (int, int, error) {
 	bounds := img.Bounds()
 	width := bounds.Max.X - bounds.Min.X
 	height := bounds.Max.Y - bounds.Min.Y

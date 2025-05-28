@@ -16,7 +16,7 @@ func (p *pgPinStorage) GetPin(ctx context.Context, pinID, userID uint64) (domain
         SELECT 
             f.id, 
             f.title, 
-            f.description, 
+            f.description,
             f.author_id, 
             f.is_private, 
             f.media_url,
@@ -24,6 +24,7 @@ func (p *pgPinStorage) GetPin(ctx context.Context, pinID, userID uint64) (domain
             f.like_count,
 			f.width,
 			f.height,
+			f.is_nsfw,
             CASE 
                 WHEN fl.user_id IS NOT NULL THEN true
                 ELSE false
@@ -38,7 +39,7 @@ func (p *pgPinStorage) GetPin(ctx context.Context, pinID, userID uint64) (domain
 	var flowDBRow flowDBSchema
 	err := row.Scan(&flowDBRow.ID, &flowDBRow.Title, &flowDBRow.Description,
 		&flowDBRow.AuthorId, &flowDBRow.IsPrivate, &flowDBRow.MediaURL,
-		&flowDBRow.AuthorUsername, &flowDBRow.LikeCount, &flowDBRow.Width, &flowDBRow.Height, &isLiked)
+		&flowDBRow.AuthorUsername, &flowDBRow.LikeCount, &flowDBRow.Width, &flowDBRow.Height, &flowDBRow.IsNSFW, &isLiked)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.PinData{}, 0, pincrudService.ErrPinNotFound
 	}
@@ -57,6 +58,7 @@ func (p *pgPinStorage) GetPin(ctx context.Context, pinID, userID uint64) (domain
 		IsLiked:        isLiked,
 		Width:          int(flowDBRow.Width.Int64),
 		Height:         int(flowDBRow.Height.Int64),
+		IsNSFW:         flowDBRow.IsNSFW,
 	}
 
 	return pin, flowDBRow.AuthorId, nil
@@ -156,16 +158,37 @@ func (p *pgPinStorage) UpdatePin(ctx context.Context, patch domain.PinDataUpdate
 }
 
 func (p *pgPinStorage) CreatePin(ctx context.Context, data domain.PinDataCreate, imgName string, userID uint64) (uint64, error) {
-	row := p.db.QueryRowContext(ctx, `
+	tx, err := p.db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	row := tx.QueryRowContext(ctx, `
         INSERT INTO flow (title, description, author_id, is_private, media_url, width, height)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id
     `, data.Header, data.Description, userID, data.IsPrivate, imgName, data.Width, data.Height)
 
 	var pinID uint64
-	err := row.Scan(&pinID)
+	err = row.Scan(&pinID)
 	if err != nil {
-		return 0, pincrudService.ErrUntracked
+		return 0, err
+	}
+
+	for i := range data.Colors {
+		_, err := tx.ExecContext(ctx, `
+		INSERT INTO color
+		(flow_id, color_hex)
+		VALUES ($1, $2)
+		`, pinID, data.Colors[i])
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, err
 	}
 
 	return pinID, nil

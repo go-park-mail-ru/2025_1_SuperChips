@@ -25,28 +25,30 @@ func setupPinMock(t *testing.T) (sqlmock.Sqlmock, *pgPinStorage) {
 }
 
 func TestGetPin_Success(t *testing.T) {
-	mock, storage := setupPinMock(t)
-	defer mock.ExpectClose()
+    mock, storage := setupPinMock(t)
+    defer mock.ExpectClose()
 
-	ctx := context.Background()
-	pinID := uint64(1)
-	userID := uint64(2)
+    ctx := context.Background()
+    pinID := uint64(1)
+    userID := uint64(2)
 
-	rows := sqlmock.NewRows([]string{
-		"id", "title", "description", "author_id", "is_private", "media_url",
-		"username", "like_count", "width", "height", "is_liked",
-	}).AddRow(1, "Test Title", "Test Description", 2, false, "media.jpg", "user1", 10, 400, 400, true)
+    mock.ExpectQuery(
+        `SELECT f\.id, f\.title, f\.description, f\.author_id, f\.is_private, f\.media_url, fu\.username, f\.like_count, f\.width, f\.height, f\.is_nsfw, CASE WHEN fl\.user_id IS NOT NULL THEN true ELSE false END AS is_liked ` +
+            `FROM flow f JOIN flow_user fu ON f\.author_id = fu\.id LEFT JOIN flow_like fl ON fl\.flow_id = f\.id AND fl\.user_id = \$2 WHERE f\.id = \$1;`,
+    ).WithArgs(pinID, userID).
+        WillReturnRows(sqlmock.NewRows([]string{
+            "id", "title", "description", "author_id", "is_private", "media_url",
+            "username", "like_count", "width", "height", "is_nsfw", "is_liked",
+        }).AddRow(1, "Test Title", "Test Description", 2, false, "media.jpg", "user1", 10, 400, 400, false, true))
 
-	mock.ExpectQuery("SELECT .* FROM flow f").
-		WithArgs(pinID, userID).
-		WillReturnRows(rows)
+    pin, authorID, err := storage.GetPin(ctx, pinID, userID)
 
-	pin, authorID, err := storage.GetPin(ctx, pinID, userID)
-	assert.NoError(t, err)
-	assert.Equal(t, uint64(2), authorID)
-	assert.Equal(t, "Test Title", pin.Header)
-	assert.Equal(t, "user1", pin.AuthorUsername)
-	assert.True(t, pin.IsLiked)
+    assert.NoError(t, err)
+    assert.Equal(t, uint64(2), authorID)
+    assert.Equal(t, "Test Title", pin.Header)
+    assert.Equal(t, "user1", pin.AuthorUsername)
+    assert.True(t, pin.IsLiked)
+    assert.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestGetPin_NotFound(t *testing.T) {
@@ -158,27 +160,40 @@ func TestUpdatePin_NoFields(t *testing.T) {
 }
 
 func TestCreatePin_Success(t *testing.T) {
-	mock, storage := setupPinMock(t)
-	defer mock.ExpectClose()
+    mock, storage := setupPinMock(t)
+    defer mock.ExpectClose()
 
-	ctx := context.Background()
-	data := domain.PinDataCreate{
-		Header:      "Test Pin",
-		Description: "Test Description",
-		IsPrivate:   false,
-		Width:       400,
-		Height:      400,
-	}
-	imgName := "test.jpg"
-	userID := uint64(2)
+    ctx := context.Background()
+    data := domain.PinDataCreate{
+        Header:      "Test Pin",
+        Description: "Test Description",
+        IsPrivate:   false,
+        Width:       400,
+        Height:      400,
+        Colors:      []string{"#FF0000", "#00FF00"},
+    }
+    imgName := "test.jpg"
+    userID := uint64(2)
 
-	mock.ExpectQuery("INSERT INTO flow").
-		WithArgs("Test Pin", "Test Description", userID, false, imgName, 400, 400).
-		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
+    mock.ExpectBegin()
 
-	pinID, err := storage.CreatePin(ctx, data, imgName, userID)
-	assert.NoError(t, err)
-	assert.Equal(t, uint64(1), pinID)
+    mock.ExpectQuery("INSERT INTO flow").
+        WithArgs("Test Pin", "Test Description", userID, false, imgName, 400, 400).
+        WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
+
+    for _, color := range data.Colors {
+        mock.ExpectExec("INSERT INTO color").
+            WithArgs(1, color).
+            WillReturnResult(sqlmock.NewResult(1, 1))
+    }
+
+    mock.ExpectCommit()
+
+    pinID, err := storage.CreatePin(ctx, data, imgName, userID)
+    assert.NoError(t, err)
+    assert.Equal(t, uint64(1), pinID)
+
+    assert.NoError(t, mock.ExpectationsWereMet())
 }
 
 func ptrString(s string) *string {

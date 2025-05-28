@@ -46,9 +46,19 @@ message AddExternalUserResponse {
     int64 ID = 1;
 }
 
+message CheckImgPermissionRequest {
+    int64 ID = 1;
+    string ImageName = 2;
+}
+
+message CheckImgPermissionResponse {
+    bool HasAccess = 1;
+}
+
 service Auth {
     rpc AddUser(AddUserRequest) returns (AddUserResponse) {}
     rpc LoginUser(LoginUserRequest) returns (LoginUserResponse) {}
     rpc LoginExternalUser(LoginExternalUserRequest) returns (LoginExternalUserResponse) {}
     rpc AddExternalUser(AddExternalUserRequest) returns (AddExternalUserResponse) {}
+    rpc CheckImgPermission(CheckImgPermissionRequest) returns (CheckImgPermissionResponse) {}
 }

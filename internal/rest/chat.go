@@ -2,6 +2,7 @@ package rest
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -27,6 +28,7 @@ type ChatWebsocketHandler struct {
 	ContextExpiration time.Duration
 }
 
+//easyjson:json
 type Username struct {
 	Username string `json:"username"`
 }
@@ -202,7 +204,7 @@ func (h *ChatHandler) GetChat(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	grpcResp, err := h.ChatService.GetChat(ctx, &gen.GetChatRequest{
-		ChatID: uint64(ID),
+		ChatID:   uint64(ID),
 		Username: claims.Username,
 	})
 	if err != nil {
@@ -229,25 +231,18 @@ func (h *ChatHandler) GetChat(w http.ResponseWriter, r *http.Request) {
 	ServerGenerateJSONResponse(w, resp, http.StatusOK)
 }
 
-type MessageHandler func(ctx context.Context, conn *websocket.Conn, msg CommonWebsocket, claims *auth.Claims, hub *chatWebsocket.Hub) error
+type MessageHandler func(ctx context.Context, conn *websocket.Conn, msg domain.WebMessage, claims *auth.Claims, hub *chatWebsocket.Hub) error
 
 var handlers = map[string]MessageHandler{
-	"message":   handleMessage,
-	"mark_read": handleMarkRead,
-	"connect":   handleConnect,
-}
-
-type CommonWebsocket struct {
-	Description    string `json:"description"`
-	Message        string `json:"message"`
-	ChatID         int    `json:"chat_id"`
-	MessageID      int    `json:"message_id"`
-	Username       string `json:"username"`
-	TargetUsername string `json:"target_username"`
+	"message":             handleMessage,
+	"mark_read":           handleMarkRead,
+	"connect":             handleConnect,
+	"notification":        handleNotification,
+	"delete_notification": handleDeleteNotification,
 }
 
 func (h *ChatWebsocketHandler) WebSocketUpgrader(w http.ResponseWriter, r *http.Request) {
-	var msg CommonWebsocket
+	var msg domain.WebMessage
 
 	upgrader := websocket.Upgrader{
 		HandshakeTimeout: time.Minute,
@@ -271,21 +266,28 @@ func (h *ChatWebsocketHandler) WebSocketUpgrader(w http.ResponseWriter, r *http.
 	h.Hub.AddClient(claims.Username, conn)
 
 	for {
-		err := conn.ReadJSON(&msg)
+		msgType, buf, err := conn.ReadMessage()
+		if err != nil {
+			log.Println("Error reading message buf:", err)
+			break
+		}
+
+		log.Printf("message type: %d, message: %s", msgType, string(buf))
+
+		err = json.Unmarshal(buf, &msg)
 		if err != nil {
 			log.Println("Error reading message:", err)
 			break
 		}
 
-		description := msg.Description
-		if description == "" {
+		if msg.Type == "" {
 			if err := conn.WriteJSON("bad request"); err != nil {
 				log.Println("Failed to write error response:", err)
 			}
 			continue
 		}
 
-		handler, exists := handlers[description]
+		handler, exists := handlers[msg.Type]
 		if !exists {
 			if err := conn.WriteJSON("unknown message type"); err != nil {
 				log.Println("Failed to write error response:", err)
@@ -295,32 +297,22 @@ func (h *ChatWebsocketHandler) WebSocketUpgrader(w http.ResponseWriter, r *http.
 
 		log.Println("about to process socket")
 		if err := handler(ctx, conn, msg, claims, h.Hub); err != nil {
-			log.Printf("Error handling message type '%s': %v", description, err)
-			if err := conn.WriteJSON(fmt.Sprintf("error processing %s", description)); err != nil {
+			log.Printf("Error handling web message type '%s': %v", msg.Type, err)
+			if err := conn.WriteJSON(fmt.Sprintf("error processing %s", msg.Type)); err != nil {
 				log.Println("Failed to write error response:", err)
 			}
 		}
 	}
 }
 
-func handleConnect(ctx context.Context, conn *websocket.Conn, msg CommonWebsocket, claims *auth.Claims, hub *chatWebsocket.Hub) error {
+func handleConnect(ctx context.Context, conn *websocket.Conn, msg domain.WebMessage, claims *auth.Claims, hub *chatWebsocket.Hub) error {
 	return nil
 }
 
-func handleMessage(ctx context.Context, conn *websocket.Conn, msg CommonWebsocket, claims *auth.Claims, hub *chatWebsocket.Hub) error {
-	message := domain.Message{
-		Content:   msg.Message,
-		ChatID:    uint64(msg.ChatID),
-		Sender:    claims.Username,
-		Timestamp: time.Now(),
-		Sent:      true,
-	}
+func handleMessage(ctx context.Context, conn *websocket.Conn, webMsg domain.WebMessage, claims *auth.Claims, hub *chatWebsocket.Hub) error {
+	log.Println("handling message")
 
-	log.Printf("sending a message to chat: %d", msg.ChatID)
-
-	message.Escape()
-
-	if err := hub.Send(ctx, message, msg.Username); err != nil {
+	if err := hub.SendMessage(ctx, webMsg, claims.Username); err != nil {
 		log.Printf("error sending message: %v", err)
 	} else {
 		log.Printf("message successfully sent.")
@@ -329,8 +321,15 @@ func handleMessage(ctx context.Context, conn *websocket.Conn, msg CommonWebsocke
 	return nil
 }
 
-func handleMarkRead(ctx context.Context, conn *websocket.Conn, msg CommonWebsocket, claims *auth.Claims, hub *chatWebsocket.Hub) error {
-	hub.MarkRead(ctx, msg.MessageID, msg.ChatID, msg.TargetUsername, claims.Username)
+func handleMarkRead(ctx context.Context, conn *websocket.Conn, webMsg domain.WebMessage, claims *auth.Claims, hub *chatWebsocket.Hub) error {
+	msg, ok := webMsg.Content.(domain.Message)
+	if !ok {
+		log.Println("error casting message content")
+		return fmt.Errorf("error casting message content")
+	}
+
+	hub.MarkRead(ctx, int(msg.MessageID), int(msg.ChatID), msg.Recipient, claims.Username)
+
 	return nil
 }
 
@@ -396,7 +395,7 @@ func messagesToNormal(grpcNormal []*gen.Message) []domain.Message {
 }
 
 func handleGRPCChatError(w http.ResponseWriter, err error) {
-	st  := status.Convert(err)
+	st := status.Convert(err)
 	switch st.Code() {
 	case codes.PermissionDenied:
 		HttpErrorToJson(w, st.Message(), http.StatusForbidden)

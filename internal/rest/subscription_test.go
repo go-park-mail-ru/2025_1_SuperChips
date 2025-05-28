@@ -24,6 +24,7 @@ func TestGetUserFollowers(t *testing.T) {
 	mockSubscriptionService := mocks.NewMockSubscriptionService(ctrl)
 
 	handler := SubscriptionHandler{
+		NotificationChan: make(chan<- domain.WebMessage, 5),
 		ContextExpiration:   time.Second,
 		SubscriptionService: mockSubscriptionService,
 	}
@@ -106,6 +107,7 @@ func TestGetUserFollowing(t *testing.T) {
 	mockSubscriptionService := mocks.NewMockSubscriptionService(ctrl)
 
 	handler := SubscriptionHandler{
+		NotificationChan: make(chan<- domain.WebMessage, 5),
 		ContextExpiration:   time.Second,
 		SubscriptionService: mockSubscriptionService,
 	}
@@ -188,6 +190,7 @@ func TestCreateSubscription(t *testing.T) {
 	mockSubscriptionService := mocks.NewMockSubscriptionService(ctrl)
 
 	handler := SubscriptionHandler{
+		NotificationChan: make(chan<- domain.WebMessage, 5),
 		ContextExpiration:   time.Second,
 		SubscriptionService: mockSubscriptionService,
 	}
@@ -255,6 +258,7 @@ func TestDeleteSubscription(t *testing.T) {
 	mockSubscriptionService := mocks.NewMockSubscriptionService(ctrl)
 
 	handler := SubscriptionHandler{
+		NotificationChan: make(chan<- domain.WebMessage, 5),
 		ContextExpiration:   time.Second,
 		SubscriptionService: mockSubscriptionService,
 	}

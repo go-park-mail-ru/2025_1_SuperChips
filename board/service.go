@@ -3,10 +3,12 @@ package board
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
+	imageUtil "github.com/go-park-mail-ru/2025_1_SuperChips/utils/image"
 )
 
 type BoardRepository interface {
@@ -16,7 +18,7 @@ type BoardRepository interface {
 	AddToBoard(ctx context.Context, boardID, userID, flowID int) error                                              // добавление пина в доску
 	DeleteFromBoard(ctx context.Context, boardID, userID, flowID int) error                                         // удаление пина из доски
 	UpdateBoard(ctx context.Context, boardID, userID int, newName string, isPrivate bool) error                     // обновление данных доски
-	GetBoard(ctx context.Context, boardID, userID, previewNum, previewStart int) (domain.Board, error)              // получить доску
+	GetBoard(ctx context.Context, boardID, userID, previewNum, previewStart int) (domain.Board, []string, error)    // получить доску
 	GetUserPublicBoards(ctx context.Context, username string, previewNum, previewStart int) ([]domain.Board, error) // получить публичные доски пользователя
 	GetUserAllBoards(ctx context.Context, userID, previewNum, previewStart int) ([]domain.Board, error)             // получтиь все доски пользователя
 	GetBoardFlow(ctx context.Context, boardID, userID, page, pageSize int) ([]domain.PinData, error)                // получить пины доски (с пагинацией)
@@ -97,7 +99,7 @@ func (b *BoardService) DeleteFromBoard(ctx context.Context, boardID, userID, flo
 }
 
 func (b *BoardService) GetBoard(ctx context.Context, boardID, userID int, authorized bool) (domain.Board, error) {
-	board, err := b.repo.GetBoard(ctx, boardID, userID, previewNum, previewStart)
+	board, colors, err := b.repo.GetBoard(ctx, boardID, userID, previewNum, previewStart)
 	if err != nil {
 		return domain.Board{}, err
 	}
@@ -114,6 +116,30 @@ func (b *BoardService) GetBoard(ctx context.Context, boardID, userID int, author
 
 	for i := range board.Preview {
 		board.Preview[i].MediaURL = b.generateImageURL(board.Preview[i].MediaURL)
+	}
+
+	if len(colors) > 0 && len(colors)%4 == 0 {
+		sortedColors, err := imageUtil.SortColorsByLuminance(colors)
+		if err != nil {
+			return domain.Board{}, fmt.Errorf("failed to sort colors: %w", err)
+		}
+
+		sectionSize := len(sortedColors) / 4
+		avgColors := make([]string, 4)
+
+		for i := range 4 {
+			start := i * sectionSize
+			end := start + sectionSize
+			section := sortedColors[start:end]
+
+			avgHex, err := imageUtil.AverageHexColors(section)
+			if err != nil {
+				return domain.Board{}, fmt.Errorf("failed to average colors: %w", err)
+			}
+			avgColors[i] = avgHex
+		}
+
+		board.Gradient = avgColors
 	}
 
 	return board, nil
