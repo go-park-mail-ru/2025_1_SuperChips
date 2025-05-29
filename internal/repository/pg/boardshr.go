@@ -389,6 +389,11 @@ func (p *pgBoardShrStorage) GetLinkParams(ctx context.Context, link string) (int
 		}
 	}
 
+	// Проверка, что ссылка содержалась в БД.
+	if isFirstRow {
+		return 0, domain.LinkParams{}, boardshrService.ErrLinkNotFound
+	}
+
 	return boardID, *linkParams, nil
 }
 
@@ -484,4 +489,30 @@ func (p *pgBoardShrStorage) GetCoauthors(ctx context.Context, boardID int) ([]st
 	}
 
 	return names, nil
+}
+
+func (p *pgBoardShrStorage) GetCoauthorsIDs(ctx context.Context, boardID int) ([]int, error) {
+	rows, err := p.db.QueryContext(ctx, `
+		SELECT coauthor_id
+		FROM board_coauthor
+		WHERE board_id = $1
+	`, boardID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ID int
+	IDs := []int{}
+
+	for rows.Next() {
+		err := rows.Scan(&ID)
+		if err != nil {
+			return nil, err
+		}
+
+		IDs = append(IDs, ID)
+	}
+
+	return IDs, nil
 }

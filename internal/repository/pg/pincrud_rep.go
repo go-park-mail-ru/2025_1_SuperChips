@@ -85,6 +85,75 @@ func (p *pgPinStorage) GetPinCleanMediaURL(ctx context.Context, pinID uint64) (s
 	return mediaURL, authorID, nil
 }
 
+func (p *pgPinStorage) GetFromBoard(ctx context.Context, boardID, userID, flowID int) (domain.PinData, int, error) {
+	row := p.db.QueryRowContext(ctx, `
+		SELECT 
+            f.id, 
+            f.title, 
+            f.description, 
+            f.author_id, 
+            f.is_private, 
+            f.media_url,
+            fu.username,
+            f.like_count,
+			f.width,
+			f.height,
+            CASE 
+                WHEN fl.user_id IS NOT NULL THEN true
+                ELSE false
+            END AS is_liked
+        FROM flow AS f
+		JOIN board_post AS bp 
+			ON f.id = bp.flow_id
+		LEFT JOIN board_coauthor AS bc 
+			ON bp.board_id = bc.board_id
+		LEFT JOIN flow_user AS fu 
+			ON f.author_id = fu.id
+		LEFT JOIN flow_like AS fl 
+			ON fl.flow_id = f.id AND fl.user_id = $2
+		WHERE 
+			f.id = $3
+			AND bp.board_id = $1
+        	AND (f.is_private = false OR f.author_id = $2 OR bc.coauthor_id = $2)
+    `, boardID, userID, flowID)
+	
+	var isLiked bool
+	var flowDBRow flowDBSchema
+	err := row.Scan(
+		&flowDBRow.ID,
+		&flowDBRow.Title,
+		&flowDBRow.Description,
+		&flowDBRow.AuthorId,
+		&flowDBRow.IsPrivate,
+		&flowDBRow.MediaURL,
+		&flowDBRow.AuthorUsername,
+		&flowDBRow.LikeCount,
+		&flowDBRow.Width,
+		&flowDBRow.Height,
+		&isLiked)
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.PinData{}, 0, pincrudService.ErrPinNotFound
+	}
+	if err != nil {
+		return domain.PinData{}, 0, pincrudService.ErrUntracked
+	}
+
+	pin := domain.PinData{
+		FlowID:         flowDBRow.ID,
+		Header:         flowDBRow.Title.String,
+		AuthorUsername: flowDBRow.AuthorUsername,
+		Description:    flowDBRow.Description.String,
+		MediaURL:       p.assembleMediaURL(flowDBRow.MediaURL),
+		IsPrivate:      flowDBRow.IsPrivate,
+		LikeCount:      flowDBRow.LikeCount,
+		IsLiked:        isLiked,
+		Width:          int(flowDBRow.Width.Int64),
+		Height:         int(flowDBRow.Height.Int64),
+	}
+
+	return pin, int(flowDBRow.AuthorId), nil
+}
+
 func (p *pgPinStorage) DeletePin(ctx context.Context, pinID uint64, userID uint64) error {
 	res, err := p.db.ExecContext(ctx, `
 		DELETE 

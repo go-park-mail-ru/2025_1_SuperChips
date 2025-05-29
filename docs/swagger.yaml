@@ -548,6 +548,51 @@ paths:
       summary: Remove flow from board
       tags:
       - boards
+    get:
+      description: Get flow from a board for authenticated user
+      parameters:
+      - description: Board ID
+        in: path
+        name: board_id
+        required: true
+        type: integer
+      - description: Flow ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Flow has been obtained successfully
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "400":
+          description: Invalid request data
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "403":
+          description: Forbidden - not board owner
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "404":
+          description: Board or flow not found
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Get flow from board
+      tags:
+      - boards
   /api/v1/boards/{board_id}/invites:
     get:
       description: Get invitation links to the board with ID with parameters (user
@@ -562,8 +607,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: Link list has been successfully fetched; null value indicates
-            no limit is applied
+          description: Link list has been successfully fetched
           schema:
             allOf:
             - $ref: '#/definitions/rest.ServerResponse'
@@ -589,7 +633,7 @@ paths:
           schema:
             $ref: '#/definitions/rest.ServerResponse'
         "404":
-          description: Board not found
+          description: Board or links not found
           schema:
             $ref: '#/definitions/rest.ServerResponse'
         "500":
@@ -1028,10 +1072,22 @@ paths:
           description: Forbidden - access denied
           schema:
             $ref: '#/definitions/rest.ServerResponse'
+        "404":
+          description: Link not found
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
         "409":
           description: User is already coauthor
           schema:
-            $ref: '#/definitions/rest.ServerResponse'
+            allOf:
+            - $ref: '#/definitions/rest.ServerResponse'
+            - properties:
+                data:
+                  properties:
+                    board_id:
+                      type: integer
+                  type: object
+              type: object
         "410":
           description: Link's time or usage limit has expired
           schema:

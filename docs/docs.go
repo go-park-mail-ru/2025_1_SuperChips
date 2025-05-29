@@ -680,6 +680,75 @@ const docTemplate = `{
             }
         },
         "/api/v1/boards/{board_id}/flows/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "jwt_auth": []
+                    }
+                ],
+                "description": "Get flow from a board for authenticated user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "boards"
+                ],
+                "summary": "Get flow from board",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Board ID",
+                        "name": "board_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Flow ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Flow has been obtained successfully",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request data",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - not board owner",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Board or flow not found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    }
+                }
+            },
             "delete": {
                 "security": [
                     {
@@ -776,7 +845,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Link list has been successfully fetched; null value indicates no limit is applied",
+                        "description": "Link list has been successfully fetched",
                         "schema": {
                             "allOf": [
                                 {
@@ -820,7 +889,7 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "Board not found",
+                        "description": "Board or links not found",
                         "schema": {
                             "$ref": "#/definitions/rest.ServerResponse"
                         }
@@ -1499,10 +1568,33 @@ const docTemplate = `{
                             "$ref": "#/definitions/rest.ServerResponse"
                         }
                     },
+                    "404": {
+                        "description": "Link not found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
                     "409": {
                         "description": "User is already coauthor",
                         "schema": {
-                            "$ref": "#/definitions/rest.ServerResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/rest.ServerResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "board_id": {
+                                                    "type": "integer"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "410": {

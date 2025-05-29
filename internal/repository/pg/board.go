@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
 	boardService "github.com/go-park-mail-ru/2025_1_SuperChips/board"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
@@ -88,11 +89,30 @@ func (p *pgBoardStorage) AddToBoard(ctx context.Context, boardID, userID, flowID
 	}
 	defer tx.Rollback()
 
+	row := tx.QueryRowContext(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM board
+				WHERE id = $1 AND author_id = $2
+			UNION
+			SELECT 1 FROM board_coauthor
+				WHERE board_id = $1 AND coauthor_id = $2
+		) AS is_editor
+	`, boardID, userID)
+
+	var isEditor bool
+	err = row.Scan(&isEditor)
+	if err != nil {
+		return err
+	}
+	if !isEditor {
+		return boardService.ErrForbidden
+	}
+
 	result, err := tx.ExecContext(ctx, `
         UPDATE board
         SET flow_count = flow_count + 1
-        WHERE id = $1 AND author_id = $2
-    `, boardID, userID)
+        WHERE id = $1
+    `, boardID)
 	if err != nil {
 		return err
 	}
@@ -193,8 +213,10 @@ func (p *pgBoardStorage) DeleteFromBoard(ctx context.Context, boardID, userID, f
         AND flow_id = $3
         AND EXISTS (
             SELECT 1 FROM board
+			LEFT JOIN board_coauthor
+				ON board.id = board_coauthor.board_id
             WHERE board.id = $1
-            AND board.author_id = $2
+            	AND (board.author_id = $2 OR board_coauthor.coauthor_id = $2)
 			FOR UPDATE
         )
     `, boardID, userID, flowID)
@@ -255,22 +277,23 @@ func (p *pgBoardStorage) UpdateBoard(ctx context.Context, boardID, userID int, n
 func (p *pgBoardStorage) GetBoard(ctx context.Context, boardID, userID, previewNum, previewStart int) (domain.Board, []string, error) {
 	var board domain.Board
 	err := p.db.QueryRowContext(ctx, `
-	SELECT 
-		board.id, 
-		board.author_id, 
-		board.board_name, 
-		board.created_at, 
-		board.is_private, 
-		board.flow_count,
-		flow_user.username
-	FROM
-		board
-	INNER JOIN 
-		flow_user
-	ON 
-		board.author_id = flow_user.id
-	WHERE 
-    board.id = $1`, boardID).Scan(
+		SELECT 
+			board.id, 
+			board.author_id, 
+			board.board_name, 
+			board.created_at, 
+			board.is_private, 
+			board.flow_count,
+			flow_user.username
+		FROM
+			board
+		INNER JOIN 
+			flow_user
+		ON 
+			board.author_id = flow_user.id
+		WHERE 
+    		board.id = $1
+	`, boardID).Scan(
 		&board.ID,
 		&board.AuthorID,
 		&board.Name,
@@ -298,11 +321,16 @@ func (p *pgBoardStorage) GetBoard(ctx context.Context, boardID, userID, previewN
 func (p *pgBoardStorage) GetUserPublicBoards(ctx context.Context, username string, previewNum, previewStart int) ([]domain.Board, error) {
 	var userID int
 	rows, err := p.db.QueryContext(ctx, `
-    SELECT b.id, b.author_id, b.board_name, b.created_at, b.is_private, b.flow_count
-    FROM flow_user u
-    JOIN board b ON u.id = b.author_id
-    WHERE u.username = $1 
-    AND b.is_private = false
+		SELECT b.id, b.author_id, b.board_name, b.created_at, b.is_private, b.flow_count
+    	FROM board AS b
+		LEFT JOIN board_coauthor AS bc
+			ON b.id = bc.board_id
+    	LEFT JOIN flow_user AS bu
+			ON bu.id = b.author_id
+		LEFT JOIN flow_user AS bcu
+			ON bcu.id = bc.coauthor_id
+    	WHERE b.is_private = false
+    		AND (bu.username = $1 OR bcu.username = $1)
 	`, username)
 	if err != nil {
 		return nil, err
@@ -337,9 +365,11 @@ func (p *pgBoardStorage) GetUserPublicBoards(ctx context.Context, username strin
 
 func (p *pgBoardStorage) GetUserAllBoards(ctx context.Context, userID, previewNum, previewStart int) ([]domain.Board, error) {
 	rows, err := p.db.QueryContext(ctx, `
-        SELECT id, author_id, board_name, created_at, is_private, flow_count 
-        FROM board 
-        WHERE author_id = $1
+        SELECT b.id, b.author_id, b.board_name, b.created_at, b.is_private, b.flow_count 
+        FROM board AS b
+		LEFT JOIN board_coauthor AS bc
+			ON b.id = bc.board_id
+        WHERE b.author_id = $1 OR bc.coauthor_id = $1 
     `, userID)
 	if err != nil {
 		return nil, err
@@ -382,10 +412,12 @@ func (p *pgBoardStorage) GetBoardFlow(ctx context.Context, boardID, userID, page
 	var scanID int
 
 	err := p.db.QueryRowContext(ctx, `
-	SELECT id
-	FROM board
-	WHERE id = $1 AND (is_private = false
-	OR author_id = $2)`, boardID, userID).Scan(&scanID)
+		SELECT b.id
+		FROM board AS b
+		LEFT JOIN board_coauthor AS bc
+			ON b.id = bc.board_id
+		WHERE b.id = $1 AND (b.is_private = false OR b.author_id = $2 OR bc.coauthor_id = $2)
+	`, boardID, userID).Scan(&scanID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, boardService.ErrForbidden
 	}
@@ -402,8 +434,9 @@ func (p *pgBoardStorage) fetchFirstNFlowsForBoard(ctx context.Context, boardID, 
                f.updated_at, f.is_private, f.media_url, f.like_count, f.width, f.height
         FROM flow f
         JOIN board_post bp ON f.id = bp.flow_id
+		LEFT JOIN board_coauthor bc ON bp.board_id = bc.board_id
         WHERE bp.board_id = $1
-          AND (f.is_private = false OR f.author_id = $2)
+        	AND (f.is_private = false OR f.author_id = $2 OR bc.coauthor_id = $2)
         ORDER BY bp.saved_at DESC
         LIMIT $3 OFFSET $4
     `, boardID, userID, pageSize, offset)
@@ -460,8 +493,9 @@ func (p *pgBoardStorage) fetchFlowsAndColors(ctx context.Context, boardID, userI
                f.updated_at, f.is_private, f.media_url, f.like_count, f.width, f.height
         FROM flow f
         JOIN board_post bp ON f.id = bp.flow_id
+		LEFT JOIN board_coauthor bc ON bp.board_id = bc.board_id
         WHERE bp.board_id = $1
-          AND (f.is_private = false OR f.author_id = $2)
+			AND (f.is_private = false OR f.author_id = $2 OR bc.coauthor_id = $2)
         ORDER BY bp.saved_at DESC
         LIMIT $3 OFFSET $4
     `, boardID, userID, pageSize, offset)
@@ -527,8 +561,9 @@ func (p *pgBoardStorage) fetchColors(ctx context.Context, boardID, userID int) (
     FROM color c
     JOIN flow f ON c.flow_id = f.id
     JOIN board_post bp ON f.id = bp.flow_id
+	LEFT JOIN board_coauthor bc ON bc.board_id = bp.board_id
     WHERE bp.board_id = $1
-        AND (f.is_private = false OR f.author_id = $2)
+        AND (f.is_private = false OR f.author_id = $2 OR bc.coauthor_id = $2)
     ORDER BY bp.saved_at DESC
     LIMIT $3
     `

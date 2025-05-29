@@ -109,7 +109,7 @@ func main() {
 	subscriptionService := subscription.NewSubscriptionUsecase(subscriptionStorage, chatStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
 	pinCRUDService := pincrudService.NewPinCRUDService(pinStorage, boardStorage, imageStorage)
 	profileService := profile.NewProfileService(profileStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
-	boardService := board.NewBoardService(boardStorage, config.BaseUrl, config.ImageBaseDir)
+	boardService := board.NewBoardService(boardStorage, pinStorage, boardShrStorage, config.BaseUrl, config.ImageBaseDir)
 	boardShrService := boardshrService.NewBoardShrService(boardShrStorage)
 	likeService := like.NewLikeService(likeStorage)
 	searchService := search.NewSearchService(searchStorage, config.BaseUrl, config.ImageBaseDir, config.StaticBaseDir, config.AvatarDir)
@@ -375,7 +375,15 @@ func main() {
 		middleware.MetricsMiddleware(metricsService),
 		middleware.Log()))
 
-	mux.HandleFunc("/api/v1/boards/{board_id}/flows/{id}",
+	mux.HandleFunc("GET /api/v1/boards/{board_id}/flows/{id}",
+		middleware.ChainMiddleware(boardHandler.GetFromBoard,
+			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CSRFMiddleware(),
+			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.MetricsMiddleware(metricsService),
+			middleware.Log()))
+
+	mux.HandleFunc("DELETE /api/v1/boards/{board_id}/flows/{id}",
 		middleware.ChainMiddleware(boardHandler.DeleteFromBoard,
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),

@@ -13,17 +13,19 @@ import (
 	repository "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/validator"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/pincrud"
 )
 
 type BoardService interface {
-	CreateBoard(ctx context.Context, board domain.Board, username string, userID int) (int, error)          // создание доски
-	DeleteBoard(ctx context.Context, boardID, userID int) error                                             // удаление доски
-	UpdateBoard(ctx context.Context, boardID, userID int, newName string, isPrivate bool) error             // обновление доски
-	AddToBoard(ctx context.Context, boardID, userID, flowID int) error                                      // добавить пин в доску
-	DeleteFromBoard(ctx context.Context, boardID, userID, flowID int) error                                 // удалить пин из доски
-	GetBoard(ctx context.Context, boardID, userID int, authorized bool) (domain.Board, error)               // получить доску
-	GetUserPublicBoards(ctx context.Context, username string) ([]domain.Board, error)                       // получить публичные доски пользователя
-	GetUserAllBoards(ctx context.Context, userID int) ([]domain.Board, error)                               // получить все доски пользователя
+	CreateBoard(ctx context.Context, board domain.Board, username string, userID int) (int, error)                    // создание доски
+	DeleteBoard(ctx context.Context, boardID, userID int) error                                                       // удаление доски
+	UpdateBoard(ctx context.Context, boardID, userID int, newName string, isPrivate bool) error                       // обновление доски
+	AddToBoard(ctx context.Context, boardID, userID, flowID int) error                                                // добавить пин в доску
+	GetFromBoard(ctx context.Context, boardID, userID, flowID int) (domain.PinData, error)                                              // получить пин из доски
+	DeleteFromBoard(ctx context.Context, boardID, userID, flowID int) error                                           // удалить пин из доски
+	GetBoard(ctx context.Context, boardID, userID int, authorized bool) (domain.Board, error)                         // получить доску
+	GetUserPublicBoards(ctx context.Context, username string) ([]domain.Board, error)                                 // получить публичные доски пользователя
+	GetUserAllBoards(ctx context.Context, userID int) ([]domain.Board, error)                                         // получить все доски пользователя
 	GetBoardFlow(ctx context.Context, boardID, userID, page, pageSize int, authorized bool) ([]domain.PinData, error) // получить пины доски
 }
 
@@ -33,6 +35,7 @@ type BoardHandler struct {
 }
 
 // CreateBoard godoc
+//
 //	@Summary		Create a new board
 //	@Description	Creates a new board for the specified user
 //	@Tags			boards
@@ -79,7 +82,6 @@ func (b *BoardHandler) CreateBoard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
 	id, err := b.BoardService.CreateBoard(ctx, board, username, claims.UserID)
 	if err != nil {
 		handleBoardError(w, err)
@@ -101,6 +103,7 @@ func (b *BoardHandler) CreateBoard(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteBoard godoc
+//
 //	@Summary		Delete a board
 //	@Description	Deletes a board by ID for authenticated user
 //	@Tags			boards
@@ -149,6 +152,7 @@ func (b *BoardHandler) DeleteBoard(w http.ResponseWriter, r *http.Request) {
 }
 
 // AddToBoard godoc
+//
 //	@Summary		Add flow to board
 //	@Description	Adds a flow to a board for authenticated user
 //	@Tags			boards
@@ -156,7 +160,9 @@ func (b *BoardHandler) DeleteBoard(w http.ResponseWriter, r *http.Request) {
 //	@Produce		json
 //	@Security		jwt_auth
 //	@Param			id	path		int				true	"Board ID"
+//
 // //	@Param			flow	body		BoardRequest	true	"Flow ID to add"
+//
 //	@Success		200	{object}	ServerResponse	"Flow added successfully"
 //	@Failure		400	{object}	ServerResponse	"Invalid request data"
 //	@Failure		401	{object}	ServerResponse	"Unauthorized"
@@ -203,7 +209,74 @@ func (b *BoardHandler) AddToBoard(w http.ResponseWriter, r *http.Request) {
 	ServerGenerateJSONResponse(w, resp, http.StatusOK)
 }
 
+// GetFromBoard godoc
+//
+//	@Summary		Get flow from board
+//	@Description	Get flow from a board for authenticated user
+//	@Tags			boards
+//	@Produce		json
+//	@Security		jwt_auth
+//	@Param			board_id	path		int				true	"Board ID"
+//	@Param			id			path		int				true	"Flow ID"
+//	@Success		200			{object}	ServerResponse	"Flow has been obtained successfully"
+//	@Failure		400			{object}	ServerResponse	"Invalid request data"
+//	@Failure		401			{object}	ServerResponse	"Unauthorized"
+//	@Failure		403			{object}	ServerResponse	"Forbidden - not board owner"
+//	@Failure		404			{object}	ServerResponse	"Board or flow not found"
+//	@Failure		500			{object}	ServerResponse	"Internal server error"
+//	@Router			/api/v1/boards/{board_id}/flows/{id} [get]
+func (b *BoardHandler) GetFromBoard(w http.ResponseWriter, r *http.Request) {
+	boardIDStr := r.PathValue("board_id")
+	boardID, err := strconv.Atoi(boardIDStr)
+	if err != nil {
+		HttpErrorToJson(w, "Invalid board ID", http.StatusBadRequest)
+		return
+	}
+
+	flowIDStr := r.PathValue("id")
+	flowID, err := strconv.Atoi(flowIDStr)
+	if err != nil {
+		HttpErrorToJson(w, "Invalid flow ID", http.StatusBadRequest)
+		return
+	}
+
+	claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
+
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, b.ContextDeadline)
+	defer cancel()
+
+	v := validator.New()
+
+	if !v.Check(flowID > 0 && boardID > 0 && claims.UserID > 0, "id", "cannot be less or equal to zero") {
+		HttpErrorToJson(w, v.GetError("id").Error(), http.StatusBadRequest)
+		return
+	}
+
+	data, err := b.BoardService.GetFromBoard(ctx, boardID, claims.UserID, flowID)
+	if errors.Is(err, pincrud.ErrForbidden) {
+		HttpErrorToJson(w, "access to private pin is forbidden", http.StatusForbidden)
+		return
+	}
+	if errors.Is(err, pincrud.ErrPinNotFound) {
+		HttpErrorToJson(w, "no pin with given id", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		handleBoardError(w, err)
+		return
+	}
+
+	response := ServerResponse{
+		Description: "OK",
+		Data:        data,
+	}
+	
+	ServerGenerateJSONResponse(w, response, http.StatusOK)
+}
+
 // DeleteFromBoard godoc
+//
 //	@Summary		Remove flow from board
 //	@Description	Removes a flow from a board for authenticated user
 //	@Tags			boards
@@ -259,6 +332,7 @@ func (b *BoardHandler) DeleteFromBoard(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateBoard godoc
+//
 //	@Summary		Update board details
 //	@Description	Updates board name and privacy settings
 //	@Tags			boards
@@ -326,6 +400,7 @@ func (b *BoardHandler) UpdateBoard(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetBoard godoc
+//
 //	@Summary		Get board details
 //	@Description	Retrieves board information with access control
 //	@Tags			boards
@@ -386,6 +461,7 @@ func (b *BoardHandler) GetBoard(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetUserPublic godoc
+//
 //	@Summary		Get user's public boards
 //	@Description	Retrieves public boards for a specific user
 //	@Tags			boards
@@ -424,6 +500,7 @@ func (b *BoardHandler) GetUserPublic(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetUserAllBoards godoc
+//
 //	@Summary		Get all user boards
 //	@Description	Retrieves all boards (public and private) for authenticated user
 //	@Tags			boards
@@ -461,6 +538,7 @@ func (b *BoardHandler) GetUserAllBoards(w http.ResponseWriter, r *http.Request) 
 }
 
 // GetBoardFlows godoc
+//
 //	@Summary		Get board flows with pagination
 //	@Description	Retrieves flows in a board with pagination for authenticated users
 //	@Tags			boards

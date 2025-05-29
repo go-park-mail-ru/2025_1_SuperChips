@@ -20,11 +20,11 @@ import (
 //
 //	@Param			board_id	path		int														true	"ID of the board"
 //
-//	@Success		200			{object}	ServerResponse{data=object{links=[]domain.LinkParams}}	"Link list has been successfully fetched; null value indicates no limit is applied"
+//	@Success		200			{object}	ServerResponse{data=object{links=[]domain.LinkParams}}	"Link list has been successfully fetched"
 //	@Failure		400			{object}	ServerResponse											"Invalid request parameters"
 //	@Failure		401			{object}	ServerResponse											"Unauthorized"
 //	@Failure		403			{object}	ServerResponse											"Forbidden - access denied"
-//	@Failure		404			{object}	ServerResponse											"Board not found"
+//	@Failure		404			{object}	ServerResponse											"Board or links not found"
 //	@Failure		500			{object}	ServerResponse											"Internal server error"
 //
 //	@Router			/api/v1/boards/{board_id}/invites [get]
@@ -53,6 +53,15 @@ func (b *BoardShrHandler) GetInvitationLinks(w http.ResponseWriter, r *http.Requ
 	links, err := b.BoardShrService.GetInvitationLinks(ctx, boardID, userID)
 	if err != nil {
 		handleBoardShrError(w, err)
+		return
+	}
+	
+	// Сценарий: ссылок нет.
+	if len(links) == 0 {
+		resp := rest.ServerResponse{
+			Description: http.StatusText(http.StatusNotFound),
+		}
+		rest.ServerGenerateJSONResponse(w, resp, http.StatusNotFound)
 		return
 	}
 
