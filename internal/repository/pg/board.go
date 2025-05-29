@@ -210,15 +210,14 @@ func (p *pgBoardStorage) DeleteFromBoard(ctx context.Context, boardID, userID, f
     result, err := tx.ExecContext(ctx, `
         DELETE FROM board_post
         WHERE board_id = $1
-        AND flow_id = $3
-        AND EXISTS (
-            SELECT 1 FROM board
-			LEFT JOIN board_coauthor
-				ON board.id = board_coauthor.board_id
-            WHERE board.id = $1
-            	AND (board.author_id = $2 OR board_coauthor.coauthor_id = $2)
-			FOR UPDATE
-        )
+			AND flow_id = $3
+			AND EXISTS (
+				SELECT 1 FROM board
+				WHERE id = $1 AND author_id = $2
+				UNION
+				SELECT 1 FROM board_coauthor
+				WHERE board_id = $1 AND coauthor_id = $2
+			)
     `, boardID, userID, flowID)
     if err != nil {
         return err
@@ -366,10 +365,12 @@ func (p *pgBoardStorage) GetUserPublicBoards(ctx context.Context, username strin
 func (p *pgBoardStorage) GetUserAllBoards(ctx context.Context, userID, previewNum, previewStart int) ([]domain.Board, error) {
 	rows, err := p.db.QueryContext(ctx, `
         SELECT b.id, b.author_id, b.board_name, b.created_at, b.is_private, b.flow_count 
-        FROM board AS b
-		LEFT JOIN board_coauthor AS bc
-			ON b.id = bc.board_id
-        WHERE b.author_id = $1 OR bc.coauthor_id = $1 
+		FROM board AS b
+		WHERE b.author_id = $1 
+			OR EXISTS (
+				SELECT 1 FROM board_coauthor AS bc 
+				WHERE bc.board_id = b.id AND bc.coauthor_id = $1
+			)
     `, userID)
 	if err != nil {
 		return nil, err
