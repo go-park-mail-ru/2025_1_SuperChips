@@ -48,10 +48,7 @@ func (s *PinCRUDService) GetPublicPin(ctx context.Context, pinID uint64) (domain
 	if err != nil {
 		return domain.PinData{}, err
 	}
-	if data.IsPrivate {
-		return domain.PinData{}, ErrForbidden
-	}
-
+	
 	return data, nil
 }
 
