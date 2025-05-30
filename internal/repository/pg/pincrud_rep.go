@@ -39,12 +39,11 @@ func (p *pgPinStorage) GetPin(ctx context.Context, pinID, userID uint64) (domain
 		OR EXISTS (
 			SELECT 1 FROM board_post bp
 			JOIN board b ON bp.board_id = b.id
-			WHERE bp.flow_id = f.id AND b.author_id = $2
-		)
-		OR EXISTS (
-			SELECT 1 FROM board_post bp
-			JOIN board_coauthor bc ON bp.board_id = bc.board_id
-			WHERE bp.flow_id = f.id AND bc.coauthor_id = $2
+			WHERE bp.flow_id = f.id 
+			AND (b.author_id = $2 OR EXISTS (
+				SELECT 1 FROM board_coauthor bc 
+				WHERE bc.board_id = b.id AND bc.coauthor_id = $2
+			))
 		)
 	)
     `, pinID, userID)
