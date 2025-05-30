@@ -387,7 +387,6 @@ func main() {
 	mux.HandleFunc("GET /api/v1/boards/{board_id}/flows/{id}",
 		middleware.ChainMiddleware(boardHandler.GetFromBoard,
 			middleware.AuthMiddleware(jwtManager, true),
-			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedGetOptions),
 			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
@@ -472,6 +471,7 @@ func main() {
 	mux.HandleFunc("POST /api/v1/boards/{board_id}/invites",
 		middleware.ChainMiddleware(boardShrHandler.CreateInvitation,
 			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedPostOptions),
 			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
@@ -479,6 +479,7 @@ func main() {
 	mux.HandleFunc("DELETE /api/v1/boards/{board_id}/invites/{link}",
 		middleware.ChainMiddleware(boardShrHandler.DeleteInvitation,
 			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedDeleteOptions),
 			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
@@ -493,6 +494,7 @@ func main() {
 	mux.HandleFunc("DELETE /api/v1/boards/{board_id}/coauthors",
 		middleware.ChainMiddleware(boardShrHandler.DeleteCoauthor,
 			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedDeleteOptions),
 			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
@@ -502,6 +504,7 @@ func main() {
 	mux.HandleFunc("POST /api/v1/join/{link}",
 		middleware.ChainMiddleware(boardShrHandler.UseInvitationLink,
 			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedPostOptions),
 			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
@@ -509,6 +512,7 @@ func main() {
 	mux.HandleFunc("DELETE /api/v1/boards/{board_id}/coauthoring",
 		middleware.ChainMiddleware(boardShrHandler.RefuseCoauthoring,
 			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedDeleteOptions),
 			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
