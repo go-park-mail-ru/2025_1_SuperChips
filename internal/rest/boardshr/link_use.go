@@ -21,7 +21,7 @@ import (
 //
 //	@Param			link	path		string										true	"Link"
 //
-//	@Success		200		{object}	ServerResponse								"User has successfully become a coauthor of the board"
+//	@Success		200		{object}	ServerResponse{data=object{board_id=int}}	"User has successfully become a coauthor of the board"
 //	@Failure		400		{object}	ServerResponse								"Invalid request parameters"
 //	@Failure		401		{object}	ServerResponse								"Unauthorized"
 //	@Failure		403		{object}	ServerResponse								"Forbidden - access denied"
@@ -58,23 +58,22 @@ func (b *BoardShrHandler) UseInvitationLink(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	// Сценарий: пользователь успешно стал соавтором доски.
+	status, description := http.StatusOK, "OK"
+
 	// Сценарий: пользователь уже является соавтором доски.
 	if errors.Is(err, service.ErrAlreadyEditor) {
-		type DataReturn struct {
-			BoardID int `json:"board_id"`
-		}
+		status, description = http.StatusConflict, http.StatusText(http.StatusConflict)
+	}
 
-		resp := rest.ServerResponse{
-			Description: http.StatusText(http.StatusConflict),
-			Data:        DataReturn{BoardID: boardID},
-		}
-		rest.ServerGenerateJSONResponse(w, resp, http.StatusConflict)
-		return
+	type DataReturn struct {
+		BoardID int `json:"board_id"`
 	}
 
 	resp := rest.ServerResponse{
-		Description: "OK",
+		Description: description,
+		Data:        DataReturn{BoardID: boardID},
 	}
 
-	rest.ServerGenerateJSONResponse(w, resp, http.StatusOK)
+	rest.ServerGenerateJSONResponse(w, resp, status)
 }

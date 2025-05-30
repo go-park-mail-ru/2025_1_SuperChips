@@ -2,6 +2,7 @@ package boardshr
 
 import (
 	"context"
+	"path/filepath"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
@@ -13,7 +14,8 @@ type BoardShrRepository interface {
 
 	AddBoardCoauthorByLink(ctx context.Context, boardID int, userID int, link string) error
 	DeleteCoauthor(ctx context.Context, boardID int, userID int) error
-	GetCoauthors(ctx context.Context, boardID int) ([]string, error)
+	GetAuthor(ctx context.Context, boardID int) (domain.Contact, error)
+	GetCoauthors(ctx context.Context, boardID int) ([]domain.Contact, error)
 
 	IsBoardAuthor(ctx context.Context, boardID int, userID int) (bool, error)
 	IsBoardEditor(ctx context.Context, boardID int, userID int) (bool, error)
@@ -27,10 +29,24 @@ type BoardShrRepository interface {
 
 type BoardShrService struct {
 	repo BoardShrRepository
+	baseURL   string
+	staticDir string
+	avatarDir string
 }
 
-func NewBoardShrService(b BoardShrRepository) *BoardShrService {
+func NewBoardShrService(b BoardShrRepository, baseURL, staticDir, avatarDir string) *BoardShrService {
 	return &BoardShrService{
 		repo: b,
+		baseURL: baseURL,
+		staticDir: staticDir,
+		avatarDir: avatarDir,
 	}
+}
+
+func (b *BoardShrService) generateAvatarURL(filename string) string {
+	if filename == "" {
+		return ""
+	}
+
+	return b.baseURL + filepath.Join(b.staticDir, b.avatarDir, filename)
 }

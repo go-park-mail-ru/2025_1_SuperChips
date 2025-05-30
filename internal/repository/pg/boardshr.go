@@ -462,33 +462,77 @@ func (p *pgBoardShrStorage) DeleteCoauthor(ctx context.Context, boardID int, use
 	return nil
 }
 
-func (p *pgBoardShrStorage) GetCoauthors(ctx context.Context, boardID int) ([]string, error) {
+func (p *pgBoardShrStorage) GetCoauthors(ctx context.Context, boardID int) ([]domain.Contact, error) {
 	rows, err := p.db.QueryContext(ctx, `
-		SELECT
-			fu.username
-		FROM board_coauthor bc
-		JOIN flow_user fu
+		SELECT 
+			fu.username, 
+			fu.public_name, 
+			fu.avatar, 
+			fu.is_external_avatar
+		FROM board_coauthor AS bc
+		LEFT JOIN flow_user AS fu
 			ON bc.coauthor_id = fu.id
 		WHERE bc.board_id = $1
 	`, boardID)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	name := ""
-	names := []string{}
+	var coauthors []domain.Contact
+	var isExternalAvatar sql.NullBool
 
 	for rows.Next() {
-		err := rows.Scan(&name)
-		if err != nil {
+		var coauthor domain.Contact
+		if err := rows.Scan(
+			&coauthor.Username,
+			&coauthor.PublicName,
+			&coauthor.Avatar,
+			&isExternalAvatar,
+		); err != nil {
 			return nil, err
 		}
 
-		names = append(names, name)
+		coauthor.IsExternalAvatar = isExternalAvatar.Bool
+
+		coauthors = append(coauthors, coauthor)
 	}
 
-	return names, nil
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return coauthors, nil
+}
+
+func (p *pgBoardShrStorage) GetAuthor(ctx context.Context, boardID int) (domain.Contact, error) {
+	rows := p.db.QueryRowContext(ctx, `
+		SELECT 
+			fu.username, 
+			fu.public_name, 
+			fu.avatar, 
+			fu.is_external_avatar
+		FROM board AS b
+		LEFT JOIN flow_user AS fu
+			ON b.author_id = fu.id
+		WHERE b.id = $1
+	`, boardID)
+
+	var isExternalAvatar sql.NullBool
+	var author domain.Contact
+
+	err := rows.Scan(
+		&author.Username,
+		&author.PublicName,
+		&author.Avatar,
+		&isExternalAvatar,
+	)
+	if err != nil {
+		return domain.Contact{}, err
+	}
+
+	author.IsExternalAvatar = isExternalAvatar.Bool
+
+	return author, nil
 }
 
 func (p *pgBoardShrStorage) GetCoauthorsIDs(ctx context.Context, boardID int) ([]int, error) {

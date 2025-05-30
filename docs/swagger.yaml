@@ -419,9 +419,14 @@ paths:
             - $ref: '#/definitions/rest.ServerResponse'
             - properties:
                 data:
-                  items:
-                    type: string
-                  type: array
+                  properties:
+                    author:
+                      type: string
+                    coauthors:
+                      items:
+                        type: string
+                      type: array
+                  type: object
               type: object
         "400":
           description: Invalid request parameters
@@ -1059,7 +1064,15 @@ paths:
         "200":
           description: User has successfully become a coauthor of the board
           schema:
-            $ref: '#/definitions/rest.ServerResponse'
+            allOf:
+            - $ref: '#/definitions/rest.ServerResponse'
+            - properties:
+                data:
+                  properties:
+                    board_id:
+                      type: integer
+                  type: object
+              type: object
         "400":
           description: Invalid request parameters
           schema:

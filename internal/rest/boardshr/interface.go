@@ -12,6 +12,6 @@ type BoardShrServicer interface {
 	GetInvitationLinks(ctx context.Context, boardID int, userID int) ([]domain.LinkParams, error)
 	UseInvitationLink(ctx context.Context, userID int, link string) (int, error)
 	RefuseCoauthoring(ctx context.Context, boardID int, userID int) error
-	GetCoauthors(ctx context.Context, boardID int, userID int) ([]string, error)
+	GetCoauthors(ctx context.Context, boardID int, userID int) (domain.Contact, []domain.Contact, error)
 	DeleteCoauthor(ctx context.Context, boardID int, userID int, coauthorName string) error
 }

@@ -478,9 +478,17 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "string"
+                                            "type": "object",
+                                            "properties": {
+                                                "author": {
+                                                    "type": "string"
+                                                },
+                                                "coauthors": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -1547,7 +1555,24 @@ const docTemplate = `{
                     "200": {
                         "description": "User has successfully become a coauthor of the board",
                         "schema": {
-                            "$ref": "#/definitions/rest.ServerResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/rest.ServerResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "board_id": {
+                                                    "type": "integer"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
