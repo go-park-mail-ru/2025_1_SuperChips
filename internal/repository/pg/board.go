@@ -472,15 +472,18 @@ func (p *pgBoardStorage) fetchFirstNFlowsForBoard(ctx context.Context, boardID, 
 	FROM flow f
 	JOIN board_post bp ON f.id = bp.flow_id
 	WHERE bp.board_id = $1
-		AND (
-			f.is_private = false 
-			OR f.author_id = $2 
-			OR EXISTS (
-				SELECT 1 FROM board_coauthor 
-				WHERE board_id = bp.board_id 
-				AND coauthor_id = $2
-			)
-		)
+    AND (
+        f.is_private = false 
+        OR f.author_id = $2 
+        OR EXISTS (
+            SELECT 1 FROM board 
+            WHERE id = bp.board_id AND author_id = $2
+        )
+        OR EXISTS (
+            SELECT 1 FROM board_coauthor 
+            WHERE board_id = bp.board_id AND coauthor_id = $2
+        )
+    )
 	ORDER BY bp.saved_at DESC
 	LIMIT $3 OFFSET $4
     `, boardID, userID, pageSize, offset)
@@ -555,8 +558,19 @@ func (p *pgBoardStorage) fetchFlowsAndColors(ctx context.Context, boardID, userI
 			ON f.id = bp.flow_id
 		LEFT JOIN board_coauthor bc
 			ON bp.board_id = bc.board_id
-        WHERE bp.board_id = $1
-			AND (f.is_private = false OR f.author_id = $2 OR bc.coauthor_id = $2)
+		WHERE bp.board_id = $1
+			AND (
+				f.is_private = false 
+				OR f.author_id = $2 
+				OR EXISTS (
+					SELECT 1 FROM board 
+					WHERE id = bp.board_id AND author_id = $2
+				)
+				OR EXISTS (
+					SELECT 1 FROM board_coauthor 
+					WHERE board_id = bp.board_id AND coauthor_id = $2
+				)
+			)
         ORDER BY bp.saved_at DESC
         LIMIT $3 OFFSET $4
     `, boardID, userID, pageSize, offset)
@@ -632,7 +646,17 @@ func (p *pgBoardStorage) fetchColors(ctx context.Context, boardID, userID int) (
 		LEFT JOIN board_coauthor bc 
 			ON bc.board_id = bp.board_id
 		WHERE bp.board_id = $1
-			AND (f.is_private = false OR f.author_id = $2 OR bc.coauthor_id = $2)
+			AND (f.is_private = false 
+				OR f.author_id = $2 
+				OR EXISTS (
+					SELECT 1 FROM board 
+					WHERE id = bp.board_id AND author_id = $2
+				)
+				OR EXISTS (
+					SELECT 1 FROM board_coauthor 
+					WHERE board_id = bp.board_id AND coauthor_id = $2
+				)
+			)
 		ORDER BY bp.saved_at DESC
 		LIMIT $3
     `
