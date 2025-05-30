@@ -244,8 +244,6 @@ func (p *pgPinStorage) CreatePin(ctx context.Context, data domain.PinDataCreate,
 		return 0, err
 	}
 
-	log.Println("db colors len: %v", len(data.Colors))
-
 	for i := range data.Colors {
 		_, err := tx.ExecContext(ctx, `
 		INSERT INTO color
