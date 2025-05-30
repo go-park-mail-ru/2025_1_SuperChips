@@ -147,7 +147,7 @@ func main() {
 	profileService := profile.NewProfileService(profileStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
 	boardService := board.NewBoardService(boardStorage, pinStorage, boardShrStorage, config.BaseUrl, config.ImageBaseDir)
 	boardShrService := boardshrService.NewBoardShrService(boardShrStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
-	likeService := like.NewLikeService(likeStorage)
+	likeService := like.NewLikeService(likeStorage, pinStorage)
 	searchService := search.NewSearchService(searchStorage, config.BaseUrl, config.ImageBaseDir, config.StaticBaseDir, config.AvatarDir)
 	commentService := comment.NewCommentService(commentStorage, pinStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
 	notificationService := notification.NewNotificationService(notificationStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
