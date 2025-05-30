@@ -24,6 +24,10 @@ type AuthHandler struct {
 	ContextDuration time.Duration
 }
 
+var (
+	ErrNoEmail = errors.New("no vk email")
+)
+
 // LoginHandler godoc
 //	@Summary		Log in user
 //	@Description	Tries to log the user in
@@ -177,10 +181,16 @@ func (app AuthHandler) ExternalLogin(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), app.ContextDuration)
 	defer cancel()
 
+	noEmail := false
+
 	vkData, err := vkGetData(data.AccessToken, app.Config.VKClientID)
 	if err != nil {
-		handleAuthError(w, err)
-		return
+		if errors.Is(err, ErrNoEmail) {
+			noEmail = true
+		} else {
+			handleGRPCAuthError(w, err)
+			return
+		}
 	}
 
 	grpcResp, err := app.UserService.LoginExternalUser(ctx, &gen.LoginExternalUserRequest{
@@ -188,6 +198,11 @@ func (app AuthHandler) ExternalLogin(w http.ResponseWriter, r *http.Request) {
 		ExternalID: vkData.UserID,
 	})
 	if err != nil {
+		grpcErr := status.Convert(err)
+		if grpcErr.Code() == codes.NotFound && noEmail {
+			handleNoVKEmail(w)
+			return
+		}
 		handleGRPCAuthError(w, err)
 		return
 	}
@@ -233,8 +248,13 @@ func (app AuthHandler) ExternalRegister(w http.ResponseWriter, r *http.Request) 
 	ctx, cancel := context.WithTimeout(context.Background(), app.ContextDuration)
 	defer cancel()
 
+	currEmail := vkData.Email
+	if data.Email != "" {
+		currEmail = data.Email
+	}
+
 	grpcResp, err := app.UserService.AddExternalUser(ctx, &gen.AddExternalUserRequest{
-		Email: vkData.Email,
+		Email: currEmail,
 		Username: data.Username,
 		Avatar: vkData.Avatar,
 		ExternalID: vkData.UserID,
@@ -269,6 +289,14 @@ func (app AuthHandler) ExternalRegister(w http.ResponseWriter, r *http.Request) 
 	ServerGenerateJSONResponse(w, resp, http.StatusOK)
 }
 
+func handleNoVKEmail(w http.ResponseWriter) {
+	resp := ServerResponse{
+		Description: "I'm a teapot",
+	}
+
+	ServerGenerateJSONResponse(w, resp, http.StatusTeapot)
+}
+
 func vkGetData(accessToken string, clientID string) (domain.VKUser, error) {
 	postURL := "https://id.vk.com/oauth2/user_info"
 
@@ -293,6 +321,10 @@ func vkGetData(accessToken string, clientID string) (domain.VKUser, error) {
 	var data domain.VKUserTop
 	if err := DecodeData(nil, resp.Body, &data); err != nil {
 		return domain.VKUser{}, err
+	}
+
+	if data.User.Email == "" {
+		return data.User, ErrNoEmail
 	}
 
 	return data.User, nil
