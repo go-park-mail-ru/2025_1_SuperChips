@@ -443,23 +443,58 @@ func (p *pgBoardShrStorage) AddBoardCoauthorByLink(ctx context.Context, boardID 
 }
 
 func (p *pgBoardShrStorage) DeleteCoauthor(ctx context.Context, boardID int, userID int) error {
-	result, err := p.db.ExecContext(ctx, `
-		DELETE FROM board_coauthor
-		WHERE board_id = $1 AND coauthor_id = $2
-	`, boardID, userID)
-	if err != nil {
-		return err
-	}
+    tx, err := p.db.BeginTx(ctx, nil)
+    if err != nil {
+        return err
+    }
+    defer tx.Rollback()
 
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rowsAffected == 0 {
-		return boardshrService.ErrFailCoauthorDelete
-	}
+    _, err = tx.ExecContext(ctx, `
+        DELETE FROM board_post
+        WHERE board_id = $1
+        AND flow_id IN (
+            SELECT f.id FROM flow f
+            WHERE f.author_id = $2
+            AND f.is_private = true
+        )
+    `, boardID, userID)
+    if err != nil {
+        return fmt.Errorf("failed to delete private pins: %w", err)
+    }
 
-	return nil
+    result, err := tx.ExecContext(ctx, `
+        DELETE FROM board_coauthor
+        WHERE board_id = $1 AND coauthor_id = $2
+    `, boardID, userID)
+    if err != nil {
+        return err
+    }
+
+    rowsAffected, err := result.RowsAffected()
+    if err != nil {
+        return err
+    }
+    if rowsAffected == 0 {
+        return boardshrService.ErrFailCoauthorDelete
+    }
+
+    _, err = tx.ExecContext(ctx, `
+        UPDATE board
+        SET flow_count = (
+            SELECT COUNT(*) FROM board_post
+            WHERE board_id = $1
+        )
+        WHERE id = $1
+    `, boardID)
+    if err != nil {
+        return fmt.Errorf("failed to update flow count: %w", err)
+    }
+
+    if err := tx.Commit(); err != nil {
+        return err
+    }
+
+    return nil
 }
 
 func (p *pgBoardShrStorage) GetCoauthors(ctx context.Context, boardID int) ([]domain.Contact, error) {
