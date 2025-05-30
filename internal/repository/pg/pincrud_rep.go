@@ -87,7 +87,7 @@ func (p *pgPinStorage) GetPinCleanMediaURL(ctx context.Context, pinID uint64) (s
 
 func (p *pgPinStorage) GetFromBoard(ctx context.Context, boardID, userID, flowID int) (domain.PinData, int, error) {
 	row := p.db.QueryRowContext(ctx, `
-		SELECT 
+		SELECT DISTINCT
             f.id, 
             f.title, 
             f.description, 

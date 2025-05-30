@@ -121,17 +121,22 @@ func (p *pgUserStorage) GetUserId(ctx context.Context, email string) (uint64, er
 func (p *pgUserStorage) CheckImgPermission(ctx context.Context, imageName string, userID int) (bool, error) {
 	var exists bool
 
-
     err := p.db.QueryRowContext(ctx, `
-    SELECT EXISTS (
-        SELECT 1
-        FROM flow
-        WHERE media_url = $1
-        AND (
-            is_private = false
-            OR (is_private = true AND author_id = $2)
-        )
-    )`, imageName, userID).Scan(&exists)
+		SELECT EXISTS (
+			SELECT 1
+			FROM flow AS f
+			LEFT JOIN board_post AS bp
+				ON f.id = bp.flow_id
+			LEFT JOIN board_coauthor AS bc
+				ON bp.board_id = bc.board_id
+			WHERE f.media_url = $1
+				AND (
+					f.is_private = false 
+					OR 
+					f.is_private = true AND (f.author_id = $2 OR bc.coauthor_id = $2)
+				)
+    	)
+	`, imageName, userID).Scan(&exists)
 	if err != nil {
 		return false, err
 	}

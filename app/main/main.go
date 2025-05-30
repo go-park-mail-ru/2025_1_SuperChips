@@ -353,6 +353,14 @@ func main() {
 	
 	
 	// boards
+	mux.HandleFunc("OPTIONS /api/v1/boards/{board_id}/flows",
+		middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+			}, 
+			middleware.CorsMiddleware(config, allowedOptions),
+			middleware.MetricsMiddleware(metricsService),
+			middleware.Log()))
+
 	mux.HandleFunc("POST /api/v1/boards/{id}/flows",
 		middleware.ChainMiddleware(boardHandler.AddToBoard,
 			middleware.AuthMiddleware(jwtManager, true),
@@ -368,13 +376,14 @@ func main() {
 			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 
-	mux.HandleFunc("OPTIONS /api/v1/boards/{board_id}/flows",
+	mux.HandleFunc("OPTIONS /api/v1/boards/{board_id}/flows/{id}",
 		middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
-		}, middleware.CorsMiddleware(config, allowedOptions),
-		middleware.MetricsMiddleware(metricsService),
-		middleware.Log()))
-
+			},
+			middleware.CorsMiddleware(config, allowedOptions),
+			middleware.MetricsMiddleware(metricsService),
+			middleware.Log()))
+	
 	mux.HandleFunc("GET /api/v1/boards/{board_id}/flows/{id}",
 		middleware.ChainMiddleware(boardHandler.GetFromBoard,
 			middleware.AuthMiddleware(jwtManager, true),
@@ -388,6 +397,14 @@ func main() {
 			middleware.AuthMiddleware(jwtManager, true),
 			middleware.CSRFMiddleware(),
 			middleware.CorsMiddleware(config, allowedDeleteOptions),
+			middleware.MetricsMiddleware(metricsService),
+			middleware.Log()))
+	
+	mux.HandleFunc("OPTIONS /api/v1/boards/{board_id}",
+		middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusNoContent)
+			}, 
+			middleware.CorsMiddleware(config, allowedOptions),
 			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
 
@@ -406,21 +423,22 @@ func main() {
 			middleware.CorsMiddleware(config, allowedPutOptions),
 			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
-
+		
 	mux.HandleFunc("GET /api/v1/boards/{board_id}",
 		middleware.ChainMiddleware(boardHandler.GetBoard,
 			middleware.AuthMiddleware(jwtManager, false),
 			middleware.CorsMiddleware(config, allowedGetOptions),
 			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
-
-	mux.HandleFunc("OPTIONS /api/v1/boards/{board_id}",
+	
+	mux.HandleFunc("OPTIONS /api/v1/users/{username}/boards",
 		middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusNoContent)
-		}, middleware.CorsMiddleware(config, allowedOptions),
-		middleware.MetricsMiddleware(metricsService),
-		middleware.Log()))
-
+				w.WriteHeader(http.StatusNoContent)
+			}, 
+			middleware.CorsMiddleware(config, allowedOptions),
+			middleware.MetricsMiddleware(metricsService),
+			middleware.Log()))
+				
 	mux.HandleFunc("GET /api/v1/users/{username}/boards",
 		middleware.ChainMiddleware(boardHandler.GetUserPublic,
 			middleware.CorsMiddleware(config, allowedGetOptions),
@@ -434,13 +452,6 @@ func main() {
 			middleware.CorsMiddleware(config, allowedPostOptions),
 			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
-
-	mux.HandleFunc("OPTIONS /api/v1/users/{username}/boards",
-		middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusNoContent)
-		}, middleware.CorsMiddleware(config, allowedOptions),
-		middleware.MetricsMiddleware(metricsService),
-		middleware.Log()))
 
 	mux.HandleFunc("/api/v1/profile/boards",
 		middleware.ChainMiddleware(boardHandler.GetUserAllBoards,
