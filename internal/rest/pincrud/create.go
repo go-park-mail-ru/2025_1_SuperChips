@@ -31,21 +31,21 @@ const (
 )
 
 // CreateHandler godoc
-// @Summary Create pin if user if user is authorized
-// @Description Returns JSON with result description
-// @Produce json
-// @Param image formData file true "pin image"
-// @Param header formData string false "text header"
-// @Param description formData string false "text description"
-// @Param is_private formData bool false "privacy setting"
-// @Success 201 string serverResponse.Data "OK"
-// @Failure 400 string serverResponse.Description "failed to parse the request body"
-// @Failure 400 string serverResponse.Description "image not present in the request body"
-// @Failure 400 string serverResponse.Description "failed to parse the form-data field [is_private]"
-// @Failure 400 string serverResponse.Description "invalid image extension"
-// @Failure 401 string serverResponse.Description "user is not authorized"
-// @Failure 500 string serverResponse.Description "untracked error: ${error}"
-// @Router /api/v1/flows [post]
+//	@Summary		Create pin if user if user is authorized
+//	@Description	Returns JSON with result description
+//	@Produce		json
+//	@Param			image		formData	file						true	"pin image"
+//	@Param			header		formData	string						false	"text header"
+//	@Param			description	formData	string						false	"text description"
+//	@Param			is_private	formData	bool						false	"privacy setting"
+//	@Success		201			string		serverResponse.Data			"OK"
+//	@Failure		400			string		serverResponse.Description	"failed to parse the request body"
+//	@Failure		400			string		serverResponse.Description	"image not present in the request body"
+//	@Failure		400			string		serverResponse.Description	"failed to parse the form-data field [is_private]"
+//	@Failure		400			string		serverResponse.Description	"invalid image extension"
+//	@Failure		401			string		serverResponse.Description	"user is not authorized"
+//	@Failure		500			string		serverResponse.Description	"untracked error: ${error}"
+//	@Router			/api/v1/flows [post]
 func (app PinCRUDHandler) CreateHandler(w http.ResponseWriter, r *http.Request) {
 	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
 	if !ok {

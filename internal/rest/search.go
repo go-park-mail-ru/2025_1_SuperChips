@@ -23,17 +23,17 @@ type SearchHandler struct {
 }
 
 // SearchPins godoc
-// @Summary Searches for pins
-// @Description Returns a pageSized number of pins searched for
-// @Produce json
-// @Param page path int true "requested page" example("?page=3")
-// @Param size path int true "requested page size" example("?size=15")
-// @Param query path string true "search query" example("?query=kittens")
-// @Success 200 string serverResponse.Data "OK"
-// @Failure 400 string serverResponse.Description "bad request"
-// @Failure 404 string serverResponse.Description "page not found"
-// @Failure 500 string serverResponse.Description "internal server error"
-// @Router /api/v1/search/pins [get]
+//	@Summary		Searches for pins
+//	@Description	Returns a pageSized number of pins searched for
+//	@Produce		json
+//	@Param			page	path	int							true	"requested page"		example("?page=3")
+//	@Param			size	path	int							true	"requested page size"	example("?size=15")
+//	@Param			query	path	string						true	"search query"			example("?query=kittens")
+//	@Success		200		string	serverResponse.Data			"OK"
+//	@Failure		400		string	serverResponse.Description	"bad request"
+//	@Failure		404		string	serverResponse.Description	"page not found"
+//	@Failure		500		string	serverResponse.Description	"internal server error"
+//	@Router			/api/v1/search/pins [get]
 func (s *SearchHandler) SearchPins(w http.ResponseWriter, r *http.Request) {
 	v := validator.New()
 
@@ -87,17 +87,17 @@ func (s *SearchHandler) SearchPins(w http.ResponseWriter, r *http.Request) {
 }
 
 // SearchBoards godoc
-// @Summary Searches for boards
-// @Description Returns a pageSized number of boards searched for
-// @Produce json
-// @Param page path int true "requested page" example("?page=3")
-// @Param size path int true "requested page size" example("?size=15")
-// @Param query path string true "search query" example("?query=kittens")
-// @Success 200 string serverResponse.Data "OK"
-// @Failure 400 string serverResponse.Description "bad request"
-// @Failure 404 string serverResponse.Description "page not found"
-// @Failure 500 string serverResponse.Description "internal server error"
-// @Router /api/v1/search/boards [get]
+//	@Summary		Searches for boards
+//	@Description	Returns a pageSized number of boards searched for
+//	@Produce		json
+//	@Param			page	path	int							true	"requested page"		example("?page=3")
+//	@Param			size	path	int							true	"requested page size"	example("?size=15")
+//	@Param			query	path	string						true	"search query"			example("?query=kittens")
+//	@Success		200		string	serverResponse.Data			"OK"
+//	@Failure		400		string	serverResponse.Description	"bad request"
+//	@Failure		404		string	serverResponse.Description	"page not found"
+//	@Failure		500		string	serverResponse.Description	"internal server error"
+//	@Router			/api/v1/search/boards [get]
 func (s *SearchHandler) SearchBoards(w http.ResponseWriter, r *http.Request) {
 	v := validator.New()
 
@@ -150,17 +150,17 @@ func (s *SearchHandler) SearchBoards(w http.ResponseWriter, r *http.Request) {
 }
 
 // SearchUsers godoc
-// @Summary Searches for users
-// @Description Returns a pageSized number of users searched for
-// @Produce json
-// @Param page path int true "requested page" example("?page=3")
-// @Param size path int true "requested page size" example("?size=15")
-// @Param query path string true "search query" example("?query=kittens")
-// @Success 200 string serverResponse.Data "OK"
-// @Failure 400 string serverResponse.Description "bad request"
-// @Failure 404 string serverResponse.Description "page not found"
-// @Failure 500 string serverResponse.Description "internal server error"
-// @Router /api/v1/search/users [get]
+//	@Summary		Searches for users
+//	@Description	Returns a pageSized number of users searched for
+//	@Produce		json
+//	@Param			page	path	int							true	"requested page"		example("?page=3")
+//	@Param			size	path	int							true	"requested page size"	example("?size=15")
+//	@Param			query	path	string						true	"search query"			example("?query=kittens")
+//	@Success		200		string	serverResponse.Data			"OK"
+//	@Failure		400		string	serverResponse.Description	"bad request"
+//	@Failure		404		string	serverResponse.Description	"page not found"
+//	@Failure		500		string	serverResponse.Description	"internal server error"
+//	@Router			/api/v1/search/users [get]
 func (s *SearchHandler) SearchUsers(w http.ResponseWriter, r *http.Request) {
 	v := validator.New()
 

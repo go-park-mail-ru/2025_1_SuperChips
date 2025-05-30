@@ -7,8 +7,14 @@ definitions:
         type: string
       flow_count:
         type: integer
+      gradient:
+        items:
+          type: string
+        type: array
       id:
         type: integer
+      is_editable:
+        type: boolean
       is_private:
         type: boolean
       name:
@@ -17,6 +23,21 @@ definitions:
         items:
           $ref: '#/definitions/domain.PinData'
         type: array
+    type: object
+  domain.LinkParams:
+    properties:
+      link:
+        type: string
+      names:
+        items:
+          type: string
+        type: array
+      time_limit:
+        type: string
+      usage_count:
+        type: integer
+      usage_limit:
+        type: integer
     type: object
   domain.PinData:
     properties:
@@ -32,6 +53,8 @@ definitions:
         type: integer
       header:
         type: string
+      height:
+        type: integer
       is_liked:
         type: boolean
       is_private:
@@ -42,10 +65,7 @@ definitions:
         type: string
       updated_at:
         type: string
-    type: object
-  rest.BoardRequest:
-    properties:
-      flow_id:
+      width:
         type: integer
     type: object
   rest.ServerResponse:
@@ -299,6 +319,138 @@ paths:
       summary: Update board details
       tags:
       - boards
+  /api/v1/boards/{board_id}/coauthoring:
+    delete:
+      description: Refuse coauthoring of the board (user must be coauthor of the board)
+      parameters:
+      - description: ID of the board
+        in: path
+        name: board_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User has stopped being a coauthor
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "403":
+          description: Forbidden - access denied
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Refuse coauthoring
+      tags:
+      - Board sharing [coauthor]
+  /api/v1/boards/{board_id}/coauthors:
+    delete:
+      description: Remove coauthor from the board (user must be author of the board)
+      parameters:
+      - description: ID of the board
+        in: path
+        name: board_id
+        required: true
+        type: integer
+      - description: Username of coauthor
+        in: body
+        name: name
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Coauthor has been successfully deleted
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "403":
+          description: Forbidden - access denied
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "404":
+          description: Username doesn't exist
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Remove coauthor
+      tags:
+      - Board sharing [author]
+    get:
+      description: Get coauthors of the board (user must be author of the board)
+      parameters:
+      - description: ID of the board
+        in: path
+        name: board_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: The list of coauthors has been successfully received
+          schema:
+            allOf:
+            - $ref: '#/definitions/rest.ServerResponse'
+            - properties:
+                data:
+                  properties:
+                    author:
+                      type: string
+                    coauthors:
+                      items:
+                        type: string
+                      type: array
+                  type: object
+              type: object
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "403":
+          description: Forbidden - access denied
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Get coauthors
+      tags:
+      - Board sharing [author]
   /api/v1/boards/{board_id}/flows:
     get:
       description: Retrieves flows in a board with pagination for authenticated users
@@ -403,6 +555,229 @@ paths:
       summary: Remove flow from board
       tags:
       - boards
+    get:
+      description: Get flow from a board (if permissions allow)
+      parameters:
+      - description: Board ID
+        in: path
+        name: board_id
+        required: true
+        type: integer
+      - description: Flow ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Flow has been obtained successfully
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "400":
+          description: Invalid request data
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "403":
+          description: Forbidden - not editor of private board
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "404":
+          description: Board or flow not found
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Get flow from board
+      tags:
+      - boards
+  /api/v1/boards/{board_id}/invites:
+    get:
+      description: Get invitation links to the board with ID with parameters (user
+        must be author of the board)
+      parameters:
+      - description: ID of the board
+        in: path
+        name: board_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Link list has been successfully fetched
+          schema:
+            allOf:
+            - $ref: '#/definitions/rest.ServerResponse'
+            - properties:
+                data:
+                  properties:
+                    links:
+                      items:
+                        $ref: '#/definitions/domain.LinkParams'
+                      type: array
+                  type: object
+              type: object
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "403":
+          description: Forbidden - access denied
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "404":
+          description: Board or links not found
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Get links
+      tags:
+      - Board sharing [author]
+    post:
+      description: Create invitation link to the board with parameters (person, time
+        limit, usage limit) (user must be author of the board)
+      parameters:
+      - description: ID of the board
+        in: path
+        name: board_id
+        required: true
+        type: integer
+      - description: Usernames for personal invitation
+        in: body
+        name: names
+        schema:
+          items:
+            type: string
+          type: array
+      - description: Time limit for link activity
+        in: body
+        name: time_limit
+        schema:
+          type: string
+      - description: Usage limit
+        in: body
+        name: usage_limit
+        schema:
+          type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Link has been successfully created
+          schema:
+            allOf:
+            - $ref: '#/definitions/rest.ServerResponse'
+            - properties:
+                data:
+                  properties:
+                    link:
+                      type: string
+                  type: object
+              type: object
+        "207":
+          description: Link has been successfully created for valid names; Invalid
+            usernames are returned
+          schema:
+            allOf:
+            - $ref: '#/definitions/rest.ServerResponse'
+            - properties:
+                data:
+                  properties:
+                    invalid:
+                      items:
+                        type: string
+                      type: array
+                    link:
+                      type: string
+                  type: object
+              type: object
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "403":
+          description: Forbidden - access denied
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "404":
+          description: Link not found
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Create link
+      tags:
+      - Board sharing [author]
+  /api/v1/boards/{board_id}/invites/{link}:
+    delete:
+      description: Delete invitation link to the board (user must be author of the
+        board)
+      parameters:
+      - description: ID of the board
+        in: path
+        name: board_id
+        required: true
+        type: integer
+      - description: Invitation link
+        in: path
+        name: link
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Link has been successfully deleted
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "403":
+          description: Forbidden - access denied
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Delete link
+      tags:
+      - Board sharing [author]
   /api/v1/boards/{id}/flows:
     post:
       consumes:
@@ -414,12 +789,6 @@ paths:
         name: id
         required: true
         type: integer
-      - description: Flow ID to add
-        in: body
-        name: flow
-        required: true
-        schema:
-          $ref: '#/definitions/rest.BoardRequest'
       produces:
       - application/json
       responses:
@@ -681,6 +1050,72 @@ paths:
           schema:
             type: string
       summary: Update certain pin's fields by ID if user is its author
+  /api/v1/join/{link}:
+    post:
+      description: Join the board via invitation link as co-author; link mustn't be
+        expired and, if link is private, user must be in group
+      parameters:
+      - description: Link
+        in: path
+        name: link
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User has successfully become a coauthor of the board
+          schema:
+            allOf:
+            - $ref: '#/definitions/rest.ServerResponse'
+            - properties:
+                data:
+                  properties:
+                    board_id:
+                      type: integer
+                  type: object
+              type: object
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "403":
+          description: Forbidden - access denied
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "404":
+          description: Link not found
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "409":
+          description: User is already coauthor
+          schema:
+            allOf:
+            - $ref: '#/definitions/rest.ServerResponse'
+            - properties:
+                data:
+                  properties:
+                    board_id:
+                      type: integer
+                  type: object
+              type: object
+        "410":
+          description: Link's time or usage limit has expired
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Join via link
+      tags:
+      - Board sharing [coauthor]
   /api/v1/like:
     post:
       consumes:
@@ -744,6 +1179,251 @@ paths:
       summary: Get all user boards
       tags:
       - boards
+  /api/v1/profile/followers:
+    get:
+      description: Returns a pageSized number of user's followers
+      parameters:
+      - description: requested page
+        in: path
+        name: page
+        required: true
+        type: integer
+      - description: requested size
+        in: path
+        name: page
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: bad request
+          schema:
+            type: string
+        "404":
+          description: page not found
+          schema:
+            type: string
+      summary: Get user's followers
+  /api/v1/profile/following:
+    get:
+      description: Returns a pageSized number of user's subscriptions
+      parameters:
+      - description: requested page
+        in: path
+        name: page
+        required: true
+        type: integer
+      - description: requested size
+        in: path
+        name: page
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: bad request
+          schema:
+            type: string
+        "404":
+          description: page not found
+          schema:
+            type: string
+      summary: Get user's subscriptions (or who they follow, in other words)
+  /api/v1/search/boards:
+    get:
+      description: Returns a pageSized number of boards searched for
+      parameters:
+      - description: requested page
+        in: path
+        name: page
+        required: true
+        type: integer
+      - description: requested page size
+        in: path
+        name: size
+        required: true
+        type: integer
+      - description: search query
+        example: '"?query=kittens"'
+        in: path
+        name: query
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: bad request
+          schema:
+            type: string
+        "404":
+          description: page not found
+          schema:
+            type: string
+        "500":
+          description: internal server error
+          schema:
+            type: string
+      summary: Searches for boards
+  /api/v1/search/pins:
+    get:
+      description: Returns a pageSized number of pins searched for
+      parameters:
+      - description: requested page
+        in: path
+        name: page
+        required: true
+        type: integer
+      - description: requested page size
+        in: path
+        name: size
+        required: true
+        type: integer
+      - description: search query
+        example: '"?query=kittens"'
+        in: path
+        name: query
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: bad request
+          schema:
+            type: string
+        "404":
+          description: page not found
+          schema:
+            type: string
+        "500":
+          description: internal server error
+          schema:
+            type: string
+      summary: Searches for pins
+  /api/v1/search/users:
+    get:
+      description: Returns a pageSized number of users searched for
+      parameters:
+      - description: requested page
+        in: path
+        name: page
+        required: true
+        type: integer
+      - description: requested page size
+        in: path
+        name: size
+        required: true
+        type: integer
+      - description: search query
+        example: '"?query=kittens"'
+        in: path
+        name: query
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: bad request
+          schema:
+            type: string
+        "404":
+          description: page not found
+          schema:
+            type: string
+        "500":
+          description: internal server error
+          schema:
+            type: string
+      summary: Searches for users
+  /api/v1/subscription:
+    delete:
+      consumes:
+      - application/json
+      description: Tries to unsubscribe the user from the target user
+      parameters:
+      - description: target user's username
+        example: '"cool_guy"'
+        in: body
+        name: target_user
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "403":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Unsubscribe from target user
+    post:
+      consumes:
+      - application/json
+      description: Tries to subscribe the user to the target user
+      parameters:
+      - description: target user's username
+        example: '"cool_guy"'
+        in: body
+        name: target_user
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "403":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Subscribe to target user
   /api/v1/user/{username}/boards:
     get:
       description: Retrieves public boards for a specific user

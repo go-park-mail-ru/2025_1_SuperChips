@@ -19,6 +19,7 @@ type Board struct {
 	AuthorID       int       `json:"author_id"`
 	AuthorUsername string    `json:"author_username,omitempty"`
 	Name           string    `json:"name"`
+	IsEditable     bool      `json:"is_editable"`
 	CreatedAt      time.Time `json:"-"`
 	IsPrivate      bool      `json:"is_private"`
 	FlowCount      int       `json:"flow_count"`

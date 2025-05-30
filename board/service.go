@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
@@ -24,8 +25,18 @@ type BoardRepository interface {
 	GetBoardFlow(ctx context.Context, boardID, userID, page, pageSize int) ([]domain.PinData, error)                // получить пины доски (с пагинацией)
 }
 
+type PinRepository interface {
+	GetFromBoard(ctx context.Context, boardID, userID, flowID int) (domain.PinData, int, error)
+}
+
+type BoardSharingRepository interface {
+	GetCoauthorsIDs(ctx context.Context, boardID int) ([]int, error)
+}
+
 type BoardService struct {
 	repo     BoardRepository
+	repoPin  PinRepository
+	repoShr  BoardSharingRepository
 	baseURL  string
 	imageDir string
 }
@@ -39,9 +50,11 @@ const (
 	previewStart = 0
 )
 
-func NewBoardService(repo BoardRepository, baseURL, imageDir string) *BoardService {
+func NewBoardService(repo BoardRepository, repoPin PinRepository, repoShr BoardSharingRepository, baseURL, imageDir string) *BoardService {
 	return &BoardService{
 		repo:     repo,
+		repoPin:  repoPin,
+		repoShr:  repoShr,
 		baseURL:  baseURL,
 		imageDir: imageDir,
 	}
@@ -90,6 +103,36 @@ func (b *BoardService) UpdateBoard(ctx context.Context, boardID, userID int, new
 	return nil
 }
 
+func (b *BoardService) GetFromBoard(ctx context.Context, boardID, userID, flowID int, authorized bool) (domain.PinData, error) {
+	data, authorID, err := b.repoPin.GetFromBoard(ctx, boardID, userID, flowID)
+	if err != nil {
+		return domain.PinData{}, err
+	}
+
+	// Это обращение можно упразднить и делать проверку прав доступа через board.IsEditable, однако изначальный вариант работает, а времени на исправление возможных багов уже нет.
+	coauthorsIDs, err := b.repoShr.GetCoauthorsIDs(ctx, boardID)
+	if err != nil {
+		return domain.PinData{}, err
+	}
+
+	board, _, err := b.repo.GetBoard(ctx, boardID, userID, 0, 0)
+	if err != nil {
+		return domain.PinData{}, err
+	}
+
+	if board.IsPrivate {
+		if !authorized {
+			return domain.PinData{}, ErrForbidden
+		}
+		// if !board.IsEditable {
+		if data.IsPrivate && !(authorID == userID || slices.Contains(coauthorsIDs, userID)) {
+			return domain.PinData{}, ErrForbidden
+		}
+	}
+
+	return data, nil
+}
+
 func (b *BoardService) DeleteFromBoard(ctx context.Context, boardID, userID, flowID int) error {
 	if err := b.repo.DeleteFromBoard(ctx, boardID, userID, flowID); err != nil {
 		return err
@@ -104,13 +147,17 @@ func (b *BoardService) GetBoard(ctx context.Context, boardID, userID int, author
 		return domain.Board{}, err
 	}
 
+	coauthorsIDs, err := b.repoShr.GetCoauthorsIDs(ctx, boardID)
+	if err != nil {
+		return domain.Board{}, err
+	}
+
 	if board.IsPrivate {
 		if !authorized {
 			return domain.Board{}, ErrForbidden
-		} else {
-			if board.AuthorID != userID {
-				return domain.Board{}, ErrForbidden
-			}
+		}
+		if board.AuthorID != userID && !slices.Contains(coauthorsIDs, userID) {
+			return domain.Board{}, ErrForbidden
 		}
 	}
 
