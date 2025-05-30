@@ -380,6 +380,11 @@ func (b *BoardHandler) UpdateBoard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !v.Check(len([]rune(updateData.Name)) < 64, "name", "cannot be longer 64") {
+		HttpErrorToJson(w, v.GetError("name").Error(), http.StatusBadRequest)
+		return
+	}
+
 	err = b.BoardService.UpdateBoard(
 		ctx,
 		boardID,
