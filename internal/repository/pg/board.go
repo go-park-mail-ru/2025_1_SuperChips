@@ -455,29 +455,34 @@ func (p *pgBoardStorage) GetBoardFlow(ctx context.Context, boardID, userID, page
 
 func (p *pgBoardStorage) fetchFirstNFlowsForBoard(ctx context.Context, boardID, userID, pageSize, offset int) ([]domain.PinData, error) {
 	rows, err := p.db.QueryContext(ctx, `
-        SELECT DISTINCT 
-			f.id, 
-			f.title, 
-			f.description, 
-			f.author_id, 
-			f.created_at, 
-            f.updated_at, 
-			f.is_private, 
-			f.media_url, 
-			f.like_count, 
-			f.width, 
-			f.height,
-			f.is_nsfw,
-			bp.saved_at
-        FROM flow f
-        JOIN board_post bp 
-			ON f.id = bp.flow_id
-		LEFT JOIN board_coauthor bc 
-			ON bp.board_id = bc.board_id
-        WHERE bp.board_id = $1
-        	AND (f.is_private = false OR f.author_id = $2 OR bc.coauthor_id = $2)
-        ORDER BY bp.saved_at DESC
-        LIMIT $3 OFFSET $4
+	SELECT DISTINCT 
+		f.id, 
+		f.title, 
+		f.description, 
+		f.author_id, 
+		f.created_at, 
+		f.updated_at, 
+		f.is_private, 
+		f.media_url, 
+		f.like_count, 
+		f.width, 
+		f.height,
+		f.is_nsfw,
+		bp.saved_at
+	FROM flow f
+	JOIN board_post bp ON f.id = bp.flow_id
+	WHERE bp.board_id = $1
+		AND (
+			f.is_private = false 
+			OR f.author_id = $2 
+			OR EXISTS (
+				SELECT 1 FROM board_coauthor 
+				WHERE board_id = bp.board_id 
+				AND coauthor_id = $2
+			)
+		)
+	ORDER BY bp.saved_at DESC
+	LIMIT $3 OFFSET $4
     `, boardID, userID, pageSize, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch flows: %w", err)
