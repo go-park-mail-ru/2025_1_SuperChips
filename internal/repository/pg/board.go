@@ -279,20 +279,28 @@ func (p *pgBoardStorage) GetBoard(ctx context.Context, boardID, userID, previewN
 		SELECT 
 			board.id, 
 			board.author_id, 
-			board.board_name, 
+			board.board_name,
 			board.created_at, 
 			board.is_private, 
 			board.flow_count,
-			flow_user.username
+			flow_user.username,
+			CASE
+				WHEN board_coauthor.coauthor_id IS NOT NULL AND board_coauthor.coauthor_id = $2 THEN true
+				ELSE false
+			END AS is_editable
 		FROM
 			board
 		INNER JOIN 
 			flow_user
 		ON 
 			board.author_id = flow_user.id
+		LEFT JOIN
+			board_coauthor
+		ON
+			board.id = board_coauthor.board_id AND board_coauthor.coauthor_id = $2
 		WHERE 
     		board.id = $1
-	`, boardID).Scan(
+	`, boardID, userID).Scan(
 		&board.ID,
 		&board.AuthorID,
 		&board.Name,
@@ -300,6 +308,7 @@ func (p *pgBoardStorage) GetBoard(ctx context.Context, boardID, userID, previewN
 		&board.IsPrivate,
 		&board.FlowCount,
 		&board.AuthorUsername,
+		&board.IsEditable,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Board{}, nil, ErrNotFound
@@ -320,7 +329,13 @@ func (p *pgBoardStorage) GetBoard(ctx context.Context, boardID, userID, previewN
 func (p *pgBoardStorage) GetUserPublicBoards(ctx context.Context, username string, previewNum, previewStart int) ([]domain.Board, error) {
 	var userID int
 	rows, err := p.db.QueryContext(ctx, `
-		SELECT DISTINCT b.id, b.author_id, b.board_name, b.created_at, b.is_private, b.flow_count
+		SELECT DISTINCT
+			b.id,
+			b.author_id,
+			b.board_name,
+			b.created_at,
+			b.is_private,
+			b.flow_count
     	FROM board AS b
 		LEFT JOIN board_coauthor AS bc
 			ON b.id = bc.board_id
@@ -364,7 +379,14 @@ func (p *pgBoardStorage) GetUserPublicBoards(ctx context.Context, username strin
 
 func (p *pgBoardStorage) GetUserAllBoards(ctx context.Context, userID, previewNum, previewStart int) ([]domain.Board, error) {
 	rows, err := p.db.QueryContext(ctx, `
-        SELECT DISTINCT b.id, b.author_id, b.board_name, b.created_at, b.is_private, b.flow_count 
+        SELECT DISTINCT
+			b.id,
+			b.author_id,
+			b.board_name,
+			b.created_at,
+			b.is_private,
+			b.flow_count,
+			true as is_editable
 		FROM board AS b
 		WHERE b.author_id = $1 
 			OR EXISTS (
@@ -387,6 +409,7 @@ func (p *pgBoardStorage) GetUserAllBoards(ctx context.Context, userID, previewNu
 			&board.CreatedAt,
 			&board.IsPrivate,
 			&board.FlowCount,
+			&board.IsEditable,
 		)
 		if err != nil {
 			return nil, err
