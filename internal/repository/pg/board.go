@@ -286,6 +286,7 @@ func (p *pgBoardStorage) GetBoard(ctx context.Context, boardID, userID, previewN
 			flow_user.username,
 			CASE
 				WHEN board_coauthor.coauthor_id IS NOT NULL AND board_coauthor.coauthor_id = $2 THEN true
+				WHEN board.author_id = $2 THEN true
 				ELSE false
 			END AS is_editable
 		FROM
