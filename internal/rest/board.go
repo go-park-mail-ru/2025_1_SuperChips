@@ -21,7 +21,7 @@ type BoardService interface {
 	DeleteBoard(ctx context.Context, boardID, userID int) error                                                       // удаление доски
 	UpdateBoard(ctx context.Context, boardID, userID int, newName string, isPrivate bool) error                       // обновление доски
 	AddToBoard(ctx context.Context, boardID, userID, flowID int) error                                                // добавить пин в доску
-	GetFromBoard(ctx context.Context, boardID, userID, flowID int) (domain.PinData, error)                                              // получить пин из доски
+	GetFromBoard(ctx context.Context, boardID, userID, flowID int, authorized bool) (domain.PinData, error)                                              // получить пин из доски
 	DeleteFromBoard(ctx context.Context, boardID, userID, flowID int) error                                           // удалить пин из доски
 	GetBoard(ctx context.Context, boardID, userID int, authorized bool) (domain.Board, error)                         // получить доску
 	GetUserPublicBoards(ctx context.Context, username string) ([]domain.Board, error)                                 // получить публичные доски пользователя
@@ -212,7 +212,7 @@ func (b *BoardHandler) AddToBoard(w http.ResponseWriter, r *http.Request) {
 // GetFromBoard godoc
 //
 //	@Summary		Get flow from board
-//	@Description	Get flow from a board for authenticated user
+//	@Description	Get flow from a board (if permissions allow)
 //	@Tags			boards
 //	@Produce		json
 //	@Security		jwt_auth
@@ -221,7 +221,7 @@ func (b *BoardHandler) AddToBoard(w http.ResponseWriter, r *http.Request) {
 //	@Success		200			{object}	ServerResponse	"Flow has been obtained successfully"
 //	@Failure		400			{object}	ServerResponse	"Invalid request data"
 //	@Failure		401			{object}	ServerResponse	"Unauthorized"
-//	@Failure		403			{object}	ServerResponse	"Forbidden - not board owner"
+//	@Failure		403			{object}	ServerResponse	"Forbidden - not editor of private board"
 //	@Failure		404			{object}	ServerResponse	"Board or flow not found"
 //	@Failure		500			{object}	ServerResponse	"Internal server error"
 //	@Router			/api/v1/boards/{board_id}/flows/{id} [get]
@@ -240,7 +240,15 @@ func (b *BoardHandler) GetFromBoard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
+	userID := 0
+	authorized := true
+
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
+	if !ok || claims == nil {
+		authorized = false
+	} else {
+		userID = claims.UserID
+	}
 
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, b.ContextDeadline)
@@ -248,12 +256,12 @@ func (b *BoardHandler) GetFromBoard(w http.ResponseWriter, r *http.Request) {
 
 	v := validator.New()
 
-	if !v.Check(flowID > 0 && boardID > 0 && claims.UserID > 0, "id", "cannot be less or equal to zero") {
+	if !v.Check(flowID > 0 && boardID > 0, "id", "cannot be less or equal to zero") {
 		HttpErrorToJson(w, v.GetError("id").Error(), http.StatusBadRequest)
 		return
 	}
 
-	data, err := b.BoardService.GetFromBoard(ctx, boardID, claims.UserID, flowID)
+	data, err := b.BoardService.GetFromBoard(ctx, boardID, userID, flowID, authorized)
 	if errors.Is(err, pincrud.ErrForbidden) {
 		HttpErrorToJson(w, "access to private pin is forbidden", http.StatusForbidden)
 		return

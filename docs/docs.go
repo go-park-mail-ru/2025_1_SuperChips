@@ -694,7 +694,7 @@ const docTemplate = `{
                         "jwt_auth": []
                     }
                 ],
-                "description": "Get flow from a board for authenticated user",
+                "description": "Get flow from a board (if permissions allow)",
                 "produces": [
                     "application/json"
                 ],
@@ -738,7 +738,7 @@ const docTemplate = `{
                         }
                     },
                     "403": {
-                        "description": "Forbidden - not board owner",
+                        "description": "Forbidden - not editor of private board",
                         "schema": {
                             "$ref": "#/definitions/rest.ServerResponse"
                         }
@@ -2205,6 +2205,9 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "integer"
+                },
+                "is_editable": {
+                    "type": "boolean"
                 },
                 "is_private": {
                     "type": "boolean"

@@ -386,7 +386,7 @@ func main() {
 	
 	mux.HandleFunc("GET /api/v1/boards/{board_id}/flows/{id}",
 		middleware.ChainMiddleware(boardHandler.GetFromBoard,
-			middleware.AuthMiddleware(jwtManager, true),
+			middleware.AuthMiddleware(jwtManager, false),
 			middleware.CorsMiddleware(config, allowedGetOptions),
 			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))

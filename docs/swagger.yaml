@@ -13,6 +13,8 @@ definitions:
         type: array
       id:
         type: integer
+      is_editable:
+        type: boolean
       is_private:
         type: boolean
       name:
@@ -554,7 +556,7 @@ paths:
       tags:
       - boards
     get:
-      description: Get flow from a board for authenticated user
+      description: Get flow from a board (if permissions allow)
       parameters:
       - description: Board ID
         in: path
@@ -582,7 +584,7 @@ paths:
           schema:
             $ref: '#/definitions/rest.ServerResponse'
         "403":
-          description: Forbidden - not board owner
+          description: Forbidden - not editor of private board
           schema:
             $ref: '#/definitions/rest.ServerResponse'
         "404":

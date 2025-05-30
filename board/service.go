@@ -103,19 +103,31 @@ func (b *BoardService) UpdateBoard(ctx context.Context, boardID, userID int, new
 	return nil
 }
 
-func (b *BoardService) GetFromBoard(ctx context.Context, boardID, userID, flowID int) (domain.PinData, error) {
+func (b *BoardService) GetFromBoard(ctx context.Context, boardID, userID, flowID int, authorized bool) (domain.PinData, error) {
 	data, authorID, err := b.repoPin.GetFromBoard(ctx, boardID, userID, flowID)
 	if err != nil {
 		return domain.PinData{}, err
 	}
 
+	// Это обращение можно упразднить и делать проверку прав доступа через board.IsEditable, однако изначальный вариант работает, а времени на исправление возможных багов уже нет.
 	coauthorsIDs, err := b.repoShr.GetCoauthorsIDs(ctx, boardID)
 	if err != nil {
 		return domain.PinData{}, err
 	}
 
-	if data.IsPrivate && !(authorID == userID || slices.Contains(coauthorsIDs, userID)) {
-		return domain.PinData{}, domain.ErrForbidden
+	board, _, err := b.repo.GetBoard(ctx, boardID, userID, 0, 0)
+	if err != nil {
+		return domain.PinData{}, err
+	}
+
+	if board.IsPrivate {
+		if !authorized {
+			return domain.PinData{}, ErrForbidden
+		}
+		// if !board.IsEditable {
+		if data.IsPrivate && !(authorID == userID || slices.Contains(coauthorsIDs, userID)) {
+			return domain.PinData{}, ErrForbidden
+		}
 	}
 
 	return data, nil

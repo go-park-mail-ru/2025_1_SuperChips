@@ -113,7 +113,6 @@ func (p *pgPinStorage) GetFromBoard(ctx context.Context, boardID, userID, flowID
 		WHERE 
 			f.id = $3
 			AND bp.board_id = $1
-        	AND (f.is_private = false OR f.author_id = $2 OR bc.coauthor_id = $2)
     `, boardID, userID, flowID)
 	
 	var isLiked bool
