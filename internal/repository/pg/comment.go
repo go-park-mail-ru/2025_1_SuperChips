@@ -18,9 +18,51 @@ func NewCommentRepository(db *sql.DB) *CommentRepository {
 	}
 }
 
+func (p *CommentRepository) CheckPinAccess(ctx context.Context, pinID, userID uint64) error {
+	query := `
+	SELECT EXISTS (
+		SELECT 1 FROM flow f
+		WHERE f.id = $1
+		AND (
+			f.is_private = false
+			OR f.author_id = $2
+			OR EXISTS (
+				SELECT 1 FROM board_post bp
+				JOIN board b ON bp.board_id = b.id
+				WHERE bp.flow_id = f.id
+				AND (b.author_id = $2 OR EXISTS (
+					SELECT 1 FROM board_coauthor bc
+					WHERE bc.board_id = b.id AND bc.coauthor_id = $2
+				))
+			)
+		)
+	) AS has_access,
+	EXISTS (SELECT 1 FROM flow WHERE id = $1) AS pin_exists
+	`
+
+	var hasAccess, pinExists bool
+	err := p.db.QueryRowContext(ctx, query, pinID, userID).Scan(&hasAccess, &pinExists)
+	if err != nil {
+		return err
+	}
+
+	if !pinExists {
+		return domain.ErrNotFound
+	}
+	if !hasAccess {
+		return domain.ErrForbidden
+	}
+
+	return nil
+}
+
 func (r *CommentRepository) GetComments(ctx context.Context, flowID, userID, page, size int) ([]domain.Comment, error) {
 	var isExternalAvatar sql.NullBool
 	offset := (page - 1) * size
+
+	if err := r.CheckPinAccess(ctx, uint64(flowID), uint64(userID)); err != nil {
+		return nil, err
+	}
 
 	rows, err := r.db.QueryContext(ctx, `
     SELECT 
@@ -41,7 +83,6 @@ func (r *CommentRepository) GetComments(ctx context.Context, flowID, userID, pag
     JOIN flow_user fu ON fu.id = c.author_id
     LEFT JOIN flow f ON f.id = c.flow_id
     WHERE c.flow_id = $1
-    AND (f.is_private = false OR f.author_id = $2)
     ORDER BY c.created_at DESC
     OFFSET $3
     LIMIT $4
@@ -120,6 +161,10 @@ func (r *CommentRepository) LikeComment(ctx context.Context, commentID, userID i
 func (r *CommentRepository) AddComment(ctx context.Context, flowID, userID int, content string) error {
 	var id int
 	
+	if err := r.CheckPinAccess(ctx, uint64(flowID), uint64(userID)); err != nil {
+		return err
+	}
+
 	err := r.db.QueryRowContext(ctx, `
 	INSERT INTO comment (author_id, flow_id, contents)
 	SELECT $1, $2, $3
@@ -136,19 +181,34 @@ func (r *CommentRepository) AddComment(ctx context.Context, flowID, userID int, 
 }
 
 func (r *CommentRepository) DeleteComment(ctx context.Context, commentID, userID int) error {
-	var id int
+    var pinID int
+    err := r.db.QueryRowContext(ctx, `
+        SELECT flow_id FROM comment WHERE id = $1
+    `, commentID).Scan(&pinID)
+    if errors.Is(err, sql.ErrNoRows) {
+        return domain.ErrNotFound
+    }
+    if err != nil {
+        return err
+    }
 
-	err := r.db.QueryRowContext(ctx, `
-	DELETE FROM comment
-	WHERE id = $1 AND author_id = $2
-	RETURNING id
-	`, commentID, userID).Scan(&id)
-	if errors.Is(err, sql.ErrNoRows) {
-		return domain.ErrForbidden
-	}
-	if err != nil {
-		return err
-	}
+    err = r.CheckPinAccess(ctx, uint64(pinID), uint64(userID))
+    if err != nil {
+        return err
+    }
 
-	return nil
+    var deletedID int
+    err = r.db.QueryRowContext(ctx, `
+        DELETE FROM comment
+        WHERE id = $1 AND author_id = $2
+        RETURNING id
+    `, commentID, userID).Scan(&deletedID)
+    if errors.Is(err, sql.ErrNoRows) {
+        return domain.ErrForbidden
+    }
+    if err != nil {
+        return err
+    }
+
+    return nil
 }
