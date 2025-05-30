@@ -633,28 +633,22 @@ func (b *BoardHandler) GetBoardFlows(w http.ResponseWriter, r *http.Request) {
 func handleBoardError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, domain.ErrNoBoardName):
-		// HttpErrorToJson(w, "board name cannot be empty", http.StatusBadRequest)
-		HttpErrorToJson(w, err.Error(), http.StatusBadRequest)
+		HttpErrorToJson(w, "board name cannot be empty", http.StatusBadRequest)
 		return
 	case errors.Is(err, domain.ErrBoardAlreadyExists):
-		// HttpErrorToJson(w, "board already exists", http.StatusConflict)
-		HttpErrorToJson(w, err.Error(), http.StatusConflict)
+		HttpErrorToJson(w, "board already exists", http.StatusConflict)
 		return
 	case errors.Is(err, domain.ErrConflict):
-		// HttpErrorToJson(w, http.StatusText(http.StatusConflict), http.StatusConflict)
-		HttpErrorToJson(w, err.Error(), http.StatusConflict)
+		HttpErrorToJson(w, http.StatusText(http.StatusConflict), http.StatusConflict)
 		return
 	case errors.Is(err, board.ErrForbidden):
-		// HttpErrorToJson(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
-		HttpErrorToJson(w, err.Error(), http.StatusForbidden)
+		HttpErrorToJson(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 		return
 	case errors.Is(err, repository.ErrNotFound):
-		// HttpErrorToJson(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-		HttpErrorToJson(w, err.Error(),http.StatusNotFound)
+		HttpErrorToJson(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		return
 	default:
-		// HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		HttpErrorToJson(w, err.Error(), http.StatusInternalServerError)
+		HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 }
