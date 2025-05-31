@@ -162,8 +162,7 @@ func (p *pgUserStorage) FindExternalServiceUser(ctx context.Context, email strin
 	err := p.db.QueryRowContext(ctx, `
 	SELECT id, email, username
 	FROM flow_user
-	WHERE external_id = $1
-	AND email = $2`, externalID, email).Scan(&id, &gotEmail, &username)
+	WHERE external_id = $1`, externalID).Scan(&id, &gotEmail, &username)
 	if errors.Is(err, sql.ErrNoRows) {
 		return 0, "", "", domain.ErrNotFound
 	}
