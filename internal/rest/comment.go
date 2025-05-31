@@ -51,6 +51,10 @@ func (h *CommentHandler) GetComments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	for i := range comments {
+		comments[i].Escape()
+	}
+
 	status := http.StatusOK
 
 	resp := ServerResponse{
