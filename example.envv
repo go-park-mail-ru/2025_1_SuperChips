@@ -1,0 +1,15 @@
+PORT=8080
+ENVIRONMENT=test
+JWT_SECRET=
+IP=localhost
+ALLOWED_ORIGINS=https://yourflow.ru,https://www.yourflow.ru,
+POSTGRES_USER=admin
+POSTGRES_PASSWORD=admin
+POSTGRES_DB=postgres_db
+POSTGRES_HOST=postgres_db
+COOKIE_SECURE=true
+GRAFANA_DIR=
+UID=1000
+BASE_URL=https://yourflow.ru
+EXPIRATION_TIME=30m
+INPUT_FOLDER=/app/static/img
