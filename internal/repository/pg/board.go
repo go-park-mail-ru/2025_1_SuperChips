@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
 	boardService "github.com/go-park-mail-ru/2025_1_SuperChips/board"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 )
@@ -88,11 +89,30 @@ func (p *pgBoardStorage) AddToBoard(ctx context.Context, boardID, userID, flowID
 	}
 	defer tx.Rollback()
 
+	row := tx.QueryRowContext(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM board
+				WHERE id = $1 AND author_id = $2
+			UNION
+			SELECT 1 FROM board_coauthor
+				WHERE board_id = $1 AND coauthor_id = $2
+		) AS is_editor
+	`, boardID, userID)
+
+	var isEditor bool
+	err = row.Scan(&isEditor)
+	if err != nil {
+		return err
+	}
+	if !isEditor {
+		return boardService.ErrForbidden
+	}
+
 	result, err := tx.ExecContext(ctx, `
         UPDATE board
         SET flow_count = flow_count + 1
-        WHERE id = $1 AND author_id = $2
-    `, boardID, userID)
+        WHERE id = $1
+    `, boardID)
 	if err != nil {
 		return err
 	}
@@ -190,13 +210,14 @@ func (p *pgBoardStorage) DeleteFromBoard(ctx context.Context, boardID, userID, f
     result, err := tx.ExecContext(ctx, `
         DELETE FROM board_post
         WHERE board_id = $1
-        AND flow_id = $3
-        AND EXISTS (
-            SELECT 1 FROM board
-            WHERE board.id = $1
-            AND board.author_id = $2
-			FOR UPDATE
-        )
+			AND flow_id = $3
+			AND EXISTS (
+				SELECT 1 FROM board
+				WHERE id = $1 AND author_id = $2
+				UNION
+				SELECT 1 FROM board_coauthor
+				WHERE board_id = $1 AND coauthor_id = $2
+			)
     `, boardID, userID, flowID)
     if err != nil {
         return err
@@ -255,22 +276,32 @@ func (p *pgBoardStorage) UpdateBoard(ctx context.Context, boardID, userID int, n
 func (p *pgBoardStorage) GetBoard(ctx context.Context, boardID, userID, previewNum, previewStart int) (domain.Board, []string, error) {
 	var board domain.Board
 	err := p.db.QueryRowContext(ctx, `
-	SELECT 
-		board.id, 
-		board.author_id, 
-		board.board_name, 
-		board.created_at, 
-		board.is_private, 
-		board.flow_count,
-		flow_user.username
-	FROM
-		board
-	INNER JOIN 
-		flow_user
-	ON 
-		board.author_id = flow_user.id
-	WHERE 
-    board.id = $1`, boardID).Scan(
+		SELECT 
+			board.id, 
+			board.author_id, 
+			board.board_name,
+			board.created_at, 
+			board.is_private, 
+			board.flow_count,
+			flow_user.username,
+			CASE
+				WHEN board_coauthor.coauthor_id IS NOT NULL AND board_coauthor.coauthor_id = $2 THEN true
+				WHEN board.author_id = $2 THEN true
+				ELSE false
+			END AS is_editable
+		FROM
+			board
+		INNER JOIN 
+			flow_user
+		ON 
+			board.author_id = flow_user.id
+		LEFT JOIN
+			board_coauthor
+		ON
+			board.id = board_coauthor.board_id AND board_coauthor.coauthor_id = $2
+		WHERE 
+    		board.id = $1
+	`, boardID, userID).Scan(
 		&board.ID,
 		&board.AuthorID,
 		&board.Name,
@@ -278,6 +309,7 @@ func (p *pgBoardStorage) GetBoard(ctx context.Context, boardID, userID, previewN
 		&board.IsPrivate,
 		&board.FlowCount,
 		&board.AuthorUsername,
+		&board.IsEditable,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Board{}, nil, ErrNotFound
@@ -298,11 +330,22 @@ func (p *pgBoardStorage) GetBoard(ctx context.Context, boardID, userID, previewN
 func (p *pgBoardStorage) GetUserPublicBoards(ctx context.Context, username string, previewNum, previewStart int) ([]domain.Board, error) {
 	var userID int
 	rows, err := p.db.QueryContext(ctx, `
-    SELECT b.id, b.author_id, b.board_name, b.created_at, b.is_private, b.flow_count
-    FROM flow_user u
-    JOIN board b ON u.id = b.author_id
-    WHERE u.username = $1 
-    AND b.is_private = false
+		SELECT DISTINCT
+			b.id,
+			b.author_id,
+			b.board_name,
+			b.created_at,
+			b.is_private,
+			b.flow_count
+    	FROM board AS b
+		LEFT JOIN board_coauthor AS bc
+			ON b.id = bc.board_id
+    	LEFT JOIN flow_user AS bu
+			ON bu.id = b.author_id
+		LEFT JOIN flow_user AS bcu
+			ON bcu.id = bc.coauthor_id
+    	WHERE b.is_private = false
+    		AND (bu.username = $1 OR bcu.username = $1)
 	`, username)
 	if err != nil {
 		return nil, err
@@ -337,9 +380,20 @@ func (p *pgBoardStorage) GetUserPublicBoards(ctx context.Context, username strin
 
 func (p *pgBoardStorage) GetUserAllBoards(ctx context.Context, userID, previewNum, previewStart int) ([]domain.Board, error) {
 	rows, err := p.db.QueryContext(ctx, `
-        SELECT id, author_id, board_name, created_at, is_private, flow_count 
-        FROM board 
-        WHERE author_id = $1
+        SELECT DISTINCT
+			b.id,
+			b.author_id,
+			b.board_name,
+			b.created_at,
+			b.is_private,
+			b.flow_count,
+			true as is_editable
+		FROM board AS b
+		WHERE b.author_id = $1 
+			OR EXISTS (
+				SELECT 1 FROM board_coauthor AS bc 
+				WHERE bc.board_id = b.id AND bc.coauthor_id = $1
+			)
     `, userID)
 	if err != nil {
 		return nil, err
@@ -356,6 +410,7 @@ func (p *pgBoardStorage) GetUserAllBoards(ctx context.Context, userID, previewNu
 			&board.CreatedAt,
 			&board.IsPrivate,
 			&board.FlowCount,
+			&board.IsEditable,
 		)
 		if err != nil {
 			return nil, err
@@ -382,10 +437,12 @@ func (p *pgBoardStorage) GetBoardFlow(ctx context.Context, boardID, userID, page
 	var scanID int
 
 	err := p.db.QueryRowContext(ctx, `
-	SELECT id
-	FROM board
-	WHERE id = $1 AND (is_private = false
-	OR author_id = $2)`, boardID, userID).Scan(&scanID)
+		SELECT DISTINCT b.id
+		FROM board AS b
+		LEFT JOIN board_coauthor AS bc
+			ON b.id = bc.board_id
+		WHERE b.id = $1 AND (b.is_private = false OR b.author_id = $2 OR bc.coauthor_id = $2)
+	`, boardID, userID).Scan(&scanID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, boardService.ErrForbidden
 	}
@@ -398,14 +455,37 @@ func (p *pgBoardStorage) GetBoardFlow(ctx context.Context, boardID, userID, page
 
 func (p *pgBoardStorage) fetchFirstNFlowsForBoard(ctx context.Context, boardID, userID, pageSize, offset int) ([]domain.PinData, error) {
 	rows, err := p.db.QueryContext(ctx, `
-        SELECT f.id, f.title, f.description, f.author_id, f.created_at, 
-               f.updated_at, f.is_private, f.media_url, f.like_count, f.width, f.height, f.is_nsfw
-        FROM flow f
-        JOIN board_post bp ON f.id = bp.flow_id
-        WHERE bp.board_id = $1
-          AND (f.is_private = false OR f.author_id = $2)
-        ORDER BY bp.saved_at DESC
-        LIMIT $3 OFFSET $4
+	SELECT DISTINCT 
+		f.id, 
+		f.title, 
+		f.description, 
+		f.author_id, 
+		f.created_at, 
+		f.updated_at, 
+		f.is_private, 
+		f.media_url, 
+		f.like_count, 
+		f.width, 
+		f.height,
+		f.is_nsfw,
+		bp.saved_at
+	FROM flow f
+	JOIN board_post bp ON f.id = bp.flow_id
+	WHERE bp.board_id = $1
+    AND (
+        f.is_private = false 
+        OR f.author_id = $2 
+        OR EXISTS (
+            SELECT 1 FROM board 
+            WHERE id = bp.board_id AND author_id = $2
+        )
+        OR EXISTS (
+            SELECT 1 FROM board_coauthor 
+            WHERE board_id = bp.board_id AND coauthor_id = $2
+        )
+    )
+	ORDER BY bp.saved_at DESC
+	LIMIT $3 OFFSET $4
     `, boardID, userID, pageSize, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch flows: %w", err)
@@ -418,8 +498,9 @@ func (p *pgBoardStorage) fetchFirstNFlowsForBoard(ctx context.Context, boardID, 
 	}
 
 	middlePin := middlePinData{}
-
 	var flows []domain.PinData
+	var savedAt string
+
 	for rows.Next() {
 		var flow domain.PinData
 		err := rows.Scan(
@@ -435,6 +516,7 @@ func (p *pgBoardStorage) fetchFirstNFlowsForBoard(ctx context.Context, boardID, 
 			&flow.Width,
 			&flow.Height,
 			&flow.IsNSFW,
+			&savedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan flow: %w", err)
@@ -457,12 +539,38 @@ func (p *pgBoardStorage) fetchFirstNFlowsForBoard(ctx context.Context, boardID, 
 // also fetches colors of the first 20 flows, if possible.
 func (p *pgBoardStorage) fetchFlowsAndColors(ctx context.Context, boardID, userID, pageSize, offset, pinCount int) ([]domain.PinData, []string, error) {
 	rows, err := p.db.QueryContext(ctx, `
-        SELECT f.id, f.title, f.description, f.author_id, f.created_at, 
-               f.updated_at, f.is_private, f.media_url, f.like_count, f.width, f.height, f.is_nsfw
+        SELECT DISTINCT
+			f.id,
+			f.title,
+			f.description,
+			f.author_id,
+			f.created_at, 
+            f.updated_at,
+			f.is_private,
+			f.media_url,
+			f.like_count,
+			f.width,
+			f.height,
+			f.is_nsfw,
+			bp.saved_at
         FROM flow f
-        JOIN board_post bp ON f.id = bp.flow_id
-        WHERE bp.board_id = $1
-          AND (f.is_private = false OR f.author_id = $2)
+        JOIN board_post bp
+			ON f.id = bp.flow_id
+		LEFT JOIN board_coauthor bc
+			ON bp.board_id = bc.board_id
+		WHERE bp.board_id = $1
+			AND (
+				f.is_private = false 
+				OR f.author_id = $2 
+				OR EXISTS (
+					SELECT 1 FROM board 
+					WHERE id = bp.board_id AND author_id = $2
+				)
+				OR EXISTS (
+					SELECT 1 FROM board_coauthor 
+					WHERE board_id = bp.board_id AND coauthor_id = $2
+				)
+			)
         ORDER BY bp.saved_at DESC
         LIMIT $3 OFFSET $4
     `, boardID, userID, pageSize, offset)
@@ -477,8 +585,9 @@ func (p *pgBoardStorage) fetchFlowsAndColors(ctx context.Context, boardID, userI
 	}
 
 	middlePin := middlePinData{}
-
 	var flows []domain.PinData
+	var savedAt string
+
 	for rows.Next() {
 		var flow domain.PinData
 		err := rows.Scan(
@@ -494,6 +603,7 @@ func (p *pgBoardStorage) fetchFlowsAndColors(ctx context.Context, boardID, userI
 			&flow.Width,
 			&flow.Height,
 			&flow.IsNSFW,
+			&savedAt,
 		)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to scan flow: %w", err)
@@ -525,14 +635,30 @@ func (p *pgBoardStorage) fetchFlowsAndColors(ctx context.Context, boardID, userI
 
 func (p *pgBoardStorage) fetchColors(ctx context.Context, boardID, userID int) ([]string, error) {
     query := `
-    SELECT c.color_hex
-    FROM color c
-    JOIN flow f ON c.flow_id = f.id
-    JOIN board_post bp ON f.id = bp.flow_id
-    WHERE bp.board_id = $1
-        AND (f.is_private = false OR f.author_id = $2)
-    ORDER BY bp.saved_at DESC
-    LIMIT $3
+		SELECT DISTINCT 
+			c.color_hex,
+			bp.saved_at
+		FROM color c
+		JOIN flow f 
+			ON c.flow_id = f.id
+		JOIN board_post bp 
+			ON f.id = bp.flow_id
+		LEFT JOIN board_coauthor bc 
+			ON bc.board_id = bp.board_id
+		WHERE bp.board_id = $1
+			AND (f.is_private = false 
+				OR f.author_id = $2 
+				OR EXISTS (
+					SELECT 1 FROM board 
+					WHERE id = bp.board_id AND author_id = $2
+				)
+				OR EXISTS (
+					SELECT 1 FROM board_coauthor 
+					WHERE board_id = bp.board_id AND coauthor_id = $2
+				)
+			)
+		ORDER BY bp.saved_at DESC
+		LIMIT $3
     `
 
     rows, err := p.db.QueryContext(ctx, query, boardID, userID, countColorLimit)
@@ -542,9 +668,11 @@ func (p *pgBoardStorage) fetchColors(ctx context.Context, boardID, userID int) (
     defer rows.Close()
 
     var colors []string
+	var savedAt string
+
     for rows.Next() {
         var color sql.NullString
-        if err := rows.Scan(&color); err != nil {
+        if err := rows.Scan(&color, &savedAt); err != nil {
             return nil, fmt.Errorf("failed to scan color: %w", err)
         }
 		if color.String != "" {

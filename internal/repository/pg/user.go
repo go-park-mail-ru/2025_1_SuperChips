@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	_ "github.com/jmoiron/sqlx"
@@ -119,24 +120,38 @@ func (p *pgUserStorage) GetUserId(ctx context.Context, email string) (uint64, er
 }
 
 func (p *pgUserStorage) CheckImgPermission(ctx context.Context, imageName string, userID int) (bool, error) {
-	var exists bool
-
-
-    err := p.db.QueryRowContext(ctx, `
+    query := `
     SELECT EXISTS (
-        SELECT 1
-        FROM flow
-        WHERE media_url = $1
+        SELECT 1 FROM flow f
+        WHERE f.media_url = $1
         AND (
-            is_private = false
-            OR (is_private = true AND author_id = $2)
+            f.is_private = false
+            OR f.author_id = $2
+            OR EXISTS (
+                SELECT 1 FROM board_post bp
+                JOIN board b ON bp.board_id = b.id
+                WHERE bp.flow_id = f.id
+                AND (b.author_id = $2 OR EXISTS (
+                    SELECT 1 FROM board_coauthor bc
+                    WHERE bc.board_id = b.id AND bc.coauthor_id = $2
+                ))
+            )
         )
-    )`, imageName, userID).Scan(&exists)
-	if err != nil {
-		return false, err
-	}
+    ) AS has_access,
+    EXISTS (SELECT 1 FROM flow WHERE media_url = $1) AS image_exists
+    `
 
-	return exists, nil
+    var hasAccess, imageExists bool
+    err := p.db.QueryRowContext(ctx, query, imageName, userID).Scan(&hasAccess, &imageExists)
+    if err != nil {
+        return false, fmt.Errorf("failed to check image permission: %w", err)
+    }
+
+    if !imageExists {
+        return false, nil
+    }
+
+    return hasAccess, nil
 }
 
 func (p *pgUserStorage) FindExternalServiceUser(ctx context.Context, email string, externalID string) (int, string, string, error) {

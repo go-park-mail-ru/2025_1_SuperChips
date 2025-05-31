@@ -48,21 +48,16 @@ func (s *PinCRUDService) GetPublicPin(ctx context.Context, pinID uint64) (domain
 	if err != nil {
 		return domain.PinData{}, err
 	}
-	if data.IsPrivate {
-		return domain.PinData{}, ErrForbidden
-	}
-
+	
 	return data, nil
 }
 
 func (s *PinCRUDService) GetAnyPin(ctx context.Context, pinID uint64, userID uint64) (domain.PinData, error) {
-	data, authorID, err := s.pinRepo.GetPin(ctx, pinID, userID)
+	data, _, err := s.pinRepo.GetPin(ctx, pinID, userID)
 	if err != nil {
 		return domain.PinData{}, err
 	}
-	if authorID != userID && data.IsPrivate {
-		return domain.PinData{}, ErrForbidden
-	}
+
 	return data, nil
 }
 

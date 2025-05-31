@@ -13,17 +13,19 @@ import (
 	repository "github.com/go-park-mail-ru/2025_1_SuperChips/internal/repository/pg"
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/validator"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/pincrud"
 )
 
 type BoardService interface {
-	CreateBoard(ctx context.Context, board domain.Board, username string, userID int) (int, error)          // создание доски
-	DeleteBoard(ctx context.Context, boardID, userID int) error                                             // удаление доски
-	UpdateBoard(ctx context.Context, boardID, userID int, newName string, isPrivate bool) error             // обновление доски
-	AddToBoard(ctx context.Context, boardID, userID, flowID int) error                                      // добавить пин в доску
-	DeleteFromBoard(ctx context.Context, boardID, userID, flowID int) error                                 // удалить пин из доски
-	GetBoard(ctx context.Context, boardID, userID int, authorized bool) (domain.Board, error)               // получить доску
-	GetUserPublicBoards(ctx context.Context, username string) ([]domain.Board, error)                       // получить публичные доски пользователя
-	GetUserAllBoards(ctx context.Context, userID int) ([]domain.Board, error)                               // получить все доски пользователя
+	CreateBoard(ctx context.Context, board domain.Board, username string, userID int) (int, error)                    // создание доски
+	DeleteBoard(ctx context.Context, boardID, userID int) error                                                       // удаление доски
+	UpdateBoard(ctx context.Context, boardID, userID int, newName string, isPrivate bool) error                       // обновление доски
+	AddToBoard(ctx context.Context, boardID, userID, flowID int) error                                                // добавить пин в доску
+	GetFromBoard(ctx context.Context, boardID, userID, flowID int, authorized bool) (domain.PinData, error)                                              // получить пин из доски
+	DeleteFromBoard(ctx context.Context, boardID, userID, flowID int) error                                           // удалить пин из доски
+	GetBoard(ctx context.Context, boardID, userID int, authorized bool) (domain.Board, error)                         // получить доску
+	GetUserPublicBoards(ctx context.Context, username string) ([]domain.Board, error)                                 // получить публичные доски пользователя
+	GetUserAllBoards(ctx context.Context, userID int) ([]domain.Board, error)                                         // получить все доски пользователя
 	GetBoardFlow(ctx context.Context, boardID, userID, page, pageSize int, authorized bool) ([]domain.PinData, error) // получить пины доски
 }
 
@@ -33,20 +35,21 @@ type BoardHandler struct {
 }
 
 // CreateBoard godoc
-// @Summary      Create a new board
-// @Description  Creates a new board for the specified user
-// @Tags         boards
-// @Accept       json
-// @Produce      json
-// @Security     jwt_auth
-// @Param        username  path     string    true  "Username of the board owner"
-// @Param        board     body     domain.Board  true  "Board details"
-// @Success      200  {object}  ServerResponse  "Board created successfully"
-// @Failure      400  {object}  ServerResponse  "Invalid request data"
-// @Failure      401  {object}  ServerResponse  "Unauthorized"
-// @Failure      409  {object}  ServerResponse  "Board already exists"
-// @Failure      500  {object}  ServerResponse  "Internal server error"
-// @Router       /api/v1/boards/{username} [post]
+//
+//	@Summary		Create a new board
+//	@Description	Creates a new board for the specified user
+//	@Tags			boards
+//	@Accept			json
+//	@Produce		json
+//	@Security		jwt_auth
+//	@Param			username	path		string			true	"Username of the board owner"
+//	@Param			board		body		domain.Board	true	"Board details"
+//	@Success		200			{object}	ServerResponse	"Board created successfully"
+//	@Failure		400			{object}	ServerResponse	"Invalid request data"
+//	@Failure		401			{object}	ServerResponse	"Unauthorized"
+//	@Failure		409			{object}	ServerResponse	"Board already exists"
+//	@Failure		500			{object}	ServerResponse	"Internal server error"
+//	@Router			/api/v1/boards/{username} [post]
 func (b *BoardHandler) CreateBoard(w http.ResponseWriter, r *http.Request) {
 	username := r.PathValue("username")
 	if len(username) == 0 {
@@ -74,11 +77,10 @@ func (b *BoardHandler) CreateBoard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !v.Check(len(board.Name) < 64, "name", "cannot be longer 64") {
+	if !v.Check(len([]rune(board.Name)) < 64, "name", "cannot be longer 64") {
 		HttpErrorToJson(w, v.GetError("name").Error(), http.StatusBadRequest)
 		return
 	}
-
 
 	id, err := b.BoardService.CreateBoard(ctx, board, username, claims.UserID)
 	if err != nil {
@@ -101,19 +103,20 @@ func (b *BoardHandler) CreateBoard(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteBoard godoc
-// @Summary      Delete a board
-// @Description  Deletes a board by ID for authenticated user
-// @Tags         boards
-// @Produce      json
-// @Security     jwt_auth
-// @Param        board_id  path     int  true  "ID of the board to delete"
-// @Success      200  {object}  ServerResponse  "Board deleted successfully"
-// @Failure      400  {object}  ServerResponse  "Invalid board ID"
-// @Failure      401  {object}  ServerResponse  "Unauthorized"
-// @Failure      403  {object}  ServerResponse  "Forbidden - not board owner"
-// @Failure      404  {object}  ServerResponse  "Board not found"
-// @Failure      500  {object}  ServerResponse  "Internal server error"
-// @Router       /api/v1/boards/{board_id} [delete]
+//
+//	@Summary		Delete a board
+//	@Description	Deletes a board by ID for authenticated user
+//	@Tags			boards
+//	@Produce		json
+//	@Security		jwt_auth
+//	@Param			board_id	path		int				true	"ID of the board to delete"
+//	@Success		200			{object}	ServerResponse	"Board deleted successfully"
+//	@Failure		400			{object}	ServerResponse	"Invalid board ID"
+//	@Failure		401			{object}	ServerResponse	"Unauthorized"
+//	@Failure		403			{object}	ServerResponse	"Forbidden - not board owner"
+//	@Failure		404			{object}	ServerResponse	"Board not found"
+//	@Failure		500			{object}	ServerResponse	"Internal server error"
+//	@Router			/api/v1/boards/{board_id} [delete]
 func (b *BoardHandler) DeleteBoard(w http.ResponseWriter, r *http.Request) {
 	idString := r.PathValue("board_id")
 	boardID, err := strconv.Atoi(idString)
@@ -149,21 +152,24 @@ func (b *BoardHandler) DeleteBoard(w http.ResponseWriter, r *http.Request) {
 }
 
 // AddToBoard godoc
-// @Summary      Add flow to board
-// @Description  Adds a flow to a board for authenticated user
-// @Tags         boards
-// @Accept       json
-// @Produce      json
-// @Security     jwt_auth
-// @Param        id    path     int            true  "Board ID"
-// @Param        flow  body     BoardRequest   true  "Flow ID to add"
-// @Success      200  {object}  ServerResponse  "Flow added successfully"
-// @Failure      400  {object}  ServerResponse  "Invalid request data"
-// @Failure      401  {object}  ServerResponse  "Unauthorized"
-// @Failure      403  {object}  ServerResponse  "Forbidden - not board owner"
-// @Failure      404  {object}  ServerResponse  "Board or flow not found"
-// @Failure      500  {object}  ServerResponse  "Internal server error"
-// @Router       /api/v1/boards/{id}/flows [post]
+//
+//	@Summary		Add flow to board
+//	@Description	Adds a flow to a board for authenticated user
+//	@Tags			boards
+//	@Accept			json
+//	@Produce		json
+//	@Security		jwt_auth
+//	@Param			id	path		int				true	"Board ID"
+//
+// //	@Param			flow	body		BoardRequest	true	"Flow ID to add"
+//
+//	@Success		200	{object}	ServerResponse	"Flow added successfully"
+//	@Failure		400	{object}	ServerResponse	"Invalid request data"
+//	@Failure		401	{object}	ServerResponse	"Unauthorized"
+//	@Failure		403	{object}	ServerResponse	"Forbidden - not board owner"
+//	@Failure		404	{object}	ServerResponse	"Board or flow not found"
+//	@Failure		500	{object}	ServerResponse	"Internal server error"
+//	@Router			/api/v1/boards/{id}/flows [post]
 func (b *BoardHandler) AddToBoard(w http.ResponseWriter, r *http.Request) {
 	boardIDStr := r.PathValue("id")
 	boardID, err := strconv.Atoi(boardIDStr)
@@ -203,21 +209,96 @@ func (b *BoardHandler) AddToBoard(w http.ResponseWriter, r *http.Request) {
 	ServerGenerateJSONResponse(w, resp, http.StatusOK)
 }
 
+// GetFromBoard godoc
+//
+//	@Summary		Get flow from board
+//	@Description	Get flow from a board (if permissions allow)
+//	@Tags			boards
+//	@Produce		json
+//	@Security		jwt_auth
+//	@Param			board_id	path		int				true	"Board ID"
+//	@Param			id			path		int				true	"Flow ID"
+//	@Success		200			{object}	ServerResponse	"Flow has been obtained successfully"
+//	@Failure		400			{object}	ServerResponse	"Invalid request data"
+//	@Failure		401			{object}	ServerResponse	"Unauthorized"
+//	@Failure		403			{object}	ServerResponse	"Forbidden - not editor of private board"
+//	@Failure		404			{object}	ServerResponse	"Board or flow not found"
+//	@Failure		500			{object}	ServerResponse	"Internal server error"
+//	@Router			/api/v1/boards/{board_id}/flows/{id} [get]
+func (b *BoardHandler) GetFromBoard(w http.ResponseWriter, r *http.Request) {
+	boardIDStr := r.PathValue("board_id")
+	boardID, err := strconv.Atoi(boardIDStr)
+	if err != nil {
+		HttpErrorToJson(w, "Invalid board ID", http.StatusBadRequest)
+		return
+	}
+
+	flowIDStr := r.PathValue("id")
+	flowID, err := strconv.Atoi(flowIDStr)
+	if err != nil {
+		HttpErrorToJson(w, "Invalid flow ID", http.StatusBadRequest)
+		return
+	}
+
+	userID := 0
+	authorized := true
+
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
+	if !ok || claims == nil {
+		authorized = false
+	} else {
+		userID = claims.UserID
+	}
+
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, b.ContextDeadline)
+	defer cancel()
+
+	v := validator.New()
+
+	if !v.Check(flowID > 0 && boardID > 0, "id", "cannot be less or equal to zero") {
+		HttpErrorToJson(w, v.GetError("id").Error(), http.StatusBadRequest)
+		return
+	}
+
+	data, err := b.BoardService.GetFromBoard(ctx, boardID, userID, flowID, authorized)
+	if errors.Is(err, pincrud.ErrForbidden) {
+		HttpErrorToJson(w, "access to private pin is forbidden", http.StatusForbidden)
+		return
+	}
+	if errors.Is(err, pincrud.ErrPinNotFound) {
+		HttpErrorToJson(w, "no pin with given id", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		handleBoardError(w, err)
+		return
+	}
+
+	response := ServerResponse{
+		Description: "OK",
+		Data:        data,
+	}
+	
+	ServerGenerateJSONResponse(w, response, http.StatusOK)
+}
+
 // DeleteFromBoard godoc
-// @Summary      Remove flow from board
-// @Description  Removes a flow from a board for authenticated user
-// @Tags         boards
-// @Produce      json
-// @Security     jwt_auth
-// @Param        board_id  path     int  true  "Board ID"
-// @Param        id        path     int  true  "Flow ID to remove"
-// @Success      200  {object}  ServerResponse  "Flow removed successfully"
-// @Failure      400  {object}  ServerResponse  "Invalid request data"
-// @Failure      401  {object}  ServerResponse  "Unauthorized"
-// @Failure      403  {object}  ServerResponse  "Forbidden - not board owner"
-// @Failure      404  {object}  ServerResponse  "Board or flow not found"
-// @Failure      500  {object}  ServerResponse  "Internal server error"
-// @Router       /api/v1/boards/{board_id}/flows/{id} [delete]
+//
+//	@Summary		Remove flow from board
+//	@Description	Removes a flow from a board for authenticated user
+//	@Tags			boards
+//	@Produce		json
+//	@Security		jwt_auth
+//	@Param			board_id	path		int				true	"Board ID"
+//	@Param			id			path		int				true	"Flow ID to remove"
+//	@Success		200			{object}	ServerResponse	"Flow removed successfully"
+//	@Failure		400			{object}	ServerResponse	"Invalid request data"
+//	@Failure		401			{object}	ServerResponse	"Unauthorized"
+//	@Failure		403			{object}	ServerResponse	"Forbidden - not board owner"
+//	@Failure		404			{object}	ServerResponse	"Board or flow not found"
+//	@Failure		500			{object}	ServerResponse	"Internal server error"
+//	@Router			/api/v1/boards/{board_id}/flows/{id} [delete]
 func (b *BoardHandler) DeleteFromBoard(w http.ResponseWriter, r *http.Request) {
 	boardIDStr := r.PathValue("board_id")
 	boardID, err := strconv.Atoi(boardIDStr)
@@ -259,21 +340,22 @@ func (b *BoardHandler) DeleteFromBoard(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateBoard godoc
-// @Summary      Update board details
-// @Description  Updates board name and privacy settings
-// @Tags         boards
-// @Accept       json
-// @Produce      json
-// @Security     jwt_auth
-// @Param        board_id   path     int     true  "Board ID to update"
-// @Param        updateData body     object true "update data: new name and is_private"
-// @Success      200  {object}  ServerResponse  "Board updated successfully"
-// @Failure      400  {object}  ServerResponse  "Invalid request data"
-// @Failure      401  {object}  ServerResponse  "Unauthorized"
-// @Failure      403  {object}  ServerResponse  "Forbidden - not board owner"
-// @Failure      404  {object}  ServerResponse  "Board not found"
-// @Failure      500  {object}  ServerResponse  "Internal server error"
-// @Router       /api/v1/boards/{board_id} [put]
+//
+//	@Summary		Update board details
+//	@Description	Updates board name and privacy settings
+//	@Tags			boards
+//	@Accept			json
+//	@Produce		json
+//	@Security		jwt_auth
+//	@Param			board_id	path		int				true	"Board ID to update"
+//	@Param			updateData	body		object			true	"update data: new name and is_private"
+//	@Success		200			{object}	ServerResponse	"Board updated successfully"
+//	@Failure		400			{object}	ServerResponse	"Invalid request data"
+//	@Failure		401			{object}	ServerResponse	"Unauthorized"
+//	@Failure		403			{object}	ServerResponse	"Forbidden - not board owner"
+//	@Failure		404			{object}	ServerResponse	"Board not found"
+//	@Failure		500			{object}	ServerResponse	"Internal server error"
+//	@Router			/api/v1/boards/{board_id} [put]
 func (b *BoardHandler) UpdateBoard(w http.ResponseWriter, r *http.Request) {
 	boardIDStr := r.PathValue("board_id")
 	boardID, err := strconv.Atoi(boardIDStr)
@@ -306,6 +388,11 @@ func (b *BoardHandler) UpdateBoard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !v.Check(len([]rune(updateData.Name)) < 64, "name", "cannot be longer 64") {
+		HttpErrorToJson(w, v.GetError("name").Error(), http.StatusBadRequest)
+		return
+	}
+
 	err = b.BoardService.UpdateBoard(
 		ctx,
 		boardID,
@@ -326,19 +413,20 @@ func (b *BoardHandler) UpdateBoard(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetBoard godoc
-// @Summary      Get board details
-// @Description  Retrieves board information with access control
-// @Tags         boards
-// @Produce      json
-// @Security     jwt_auth
-// @Param        board_id  path     int  true  "Board ID to retrieve"
-// @Success      200  {object}  ServerResponse{data=domain.Board}  "Board details"
-// @Failure      400  {object}  ServerResponse  "Invalid board ID"
-// @Failure      401  {object}  ServerResponse  "Unauthorized"
-// @Failure      403  {object}  ServerResponse  "Forbidden - private board"
-// @Failure      404  {object}  ServerResponse  "Board not found"
-// @Failure      500  {object}  ServerResponse  "Internal server error"
-// @Router       /api/v1/boards/{board_id} [get]
+//
+//	@Summary		Get board details
+//	@Description	Retrieves board information with access control
+//	@Tags			boards
+//	@Produce		json
+//	@Security		jwt_auth
+//	@Param			board_id	path		int									true	"Board ID to retrieve"
+//	@Success		200			{object}	ServerResponse{data=domain.Board}	"Board details"
+//	@Failure		400			{object}	ServerResponse						"Invalid board ID"
+//	@Failure		401			{object}	ServerResponse						"Unauthorized"
+//	@Failure		403			{object}	ServerResponse						"Forbidden - private board"
+//	@Failure		404			{object}	ServerResponse						"Board not found"
+//	@Failure		500			{object}	ServerResponse						"Internal server error"
+//	@Router			/api/v1/boards/{board_id} [get]
 func (b *BoardHandler) GetBoard(w http.ResponseWriter, r *http.Request) {
 	boardIDStr := r.PathValue("board_id")
 	boardID, err := strconv.Atoi(boardIDStr)
@@ -386,16 +474,17 @@ func (b *BoardHandler) GetBoard(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetUserPublic godoc
-// @Summary      Get user's public boards
-// @Description  Retrieves public boards for a specific user
-// @Tags         boards
-// @Produce      json
-// @Param        username  path     string  true  "Username to retrieve public boards for"
-// @Success      200  {object}  ServerResponse{data=[]domain.Board}  "Public boards list"
-// @Failure      400  {object}  ServerResponse  "Invalid username"
-// @Failure      404  {object}  ServerResponse  "User not found"
-// @Failure      500  {object}  ServerResponse  "Internal server error"
-// @Router       /api/v1/user/{username}/boards [get]
+//
+//	@Summary		Get user's public boards
+//	@Description	Retrieves public boards for a specific user
+//	@Tags			boards
+//	@Produce		json
+//	@Param			username	path		string								true	"Username to retrieve public boards for"
+//	@Success		200			{object}	ServerResponse{data=[]domain.Board}	"Public boards list"
+//	@Failure		400			{object}	ServerResponse						"Invalid username"
+//	@Failure		404			{object}	ServerResponse						"User not found"
+//	@Failure		500			{object}	ServerResponse						"Internal server error"
+//	@Router			/api/v1/user/{username}/boards [get]
 func (b *BoardHandler) GetUserPublic(w http.ResponseWriter, r *http.Request) {
 	username := r.PathValue("username")
 	if username == "" {
@@ -424,15 +513,16 @@ func (b *BoardHandler) GetUserPublic(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetUserAllBoards godoc
-// @Summary      Get all user boards
-// @Description  Retrieves all boards (public and private) for authenticated user
-// @Tags         boards
-// @Produce      json
-// @Security     jwt_auth
-// @Success      200  {object}  ServerResponse{data=[]domain.Board}  "User's boards list"
-// @Failure      401  {object}  ServerResponse  "Unauthorized"
-// @Failure      500  {object}  ServerResponse  "Internal server error"
-// @Router       /api/v1/profile/boards [get]
+//
+//	@Summary		Get all user boards
+//	@Description	Retrieves all boards (public and private) for authenticated user
+//	@Tags			boards
+//	@Produce		json
+//	@Security		jwt_auth
+//	@Success		200	{object}	ServerResponse{data=[]domain.Board}	"User's boards list"
+//	@Failure		401	{object}	ServerResponse						"Unauthorized"
+//	@Failure		500	{object}	ServerResponse						"Internal server error"
+//	@Router			/api/v1/profile/boards [get]
 func (b *BoardHandler) GetUserAllBoards(w http.ResponseWriter, r *http.Request) {
 	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
 	if !ok || claims == nil {
@@ -461,21 +551,22 @@ func (b *BoardHandler) GetUserAllBoards(w http.ResponseWriter, r *http.Request) 
 }
 
 // GetBoardFlows godoc
-// @Summary      Get board flows with pagination
-// @Description  Retrieves flows in a board with pagination for authenticated users
-// @Tags         boards
-// @Produce      json
-// @Security     jwt_auth
-// @Param        board_id  path     int     true  "ID of the board to retrieve flows from"
-// @Param        page      query    int     true  "Page number (0-based index)"
-// @Param        size      query    int     true  "Number of items per page"
-// @Success      200  {object}  ServerResponse{data=[]domain.PinData}  "List of flows in the board"
-// @Failure      400  {object}  ServerResponse  "Invalid request parameters"
-// @Failure      401  {object}  ServerResponse  "Unauthorized"
-// @Failure      403  {object}  ServerResponse  "Forbidden - access denied"
-// @Failure      404  {object}  ServerResponse  "Board not found"
-// @Failure      500  {object}  ServerResponse  "Internal server error"
-// @Router       /api/v1/boards/{board_id}/flows [get]
+//
+//	@Summary		Get board flows with pagination
+//	@Description	Retrieves flows in a board with pagination for authenticated users
+//	@Tags			boards
+//	@Produce		json
+//	@Security		jwt_auth
+//	@Param			board_id	path		int										true	"ID of the board to retrieve flows from"
+//	@Param			page		query		int										true	"Page number (0-based index)"
+//	@Param			size		query		int										true	"Number of items per page"
+//	@Success		200			{object}	ServerResponse{data=[]domain.PinData}	"List of flows in the board"
+//	@Failure		400			{object}	ServerResponse							"Invalid request parameters"
+//	@Failure		401			{object}	ServerResponse							"Unauthorized"
+//	@Failure		403			{object}	ServerResponse							"Forbidden - access denied"
+//	@Failure		404			{object}	ServerResponse							"Board not found"
+//	@Failure		500			{object}	ServerResponse							"Internal server error"
+//	@Router			/api/v1/boards/{board_id}/flows [get]
 func (b *BoardHandler) GetBoardFlows(w http.ResponseWriter, r *http.Request) {
 	boardIDStr := r.PathValue("board_id")
 	boardID, err := strconv.Atoi(boardIDStr)
@@ -549,6 +640,7 @@ func handleBoardError(w http.ResponseWriter, err error) {
 		return
 	case errors.Is(err, domain.ErrConflict):
 		HttpErrorToJson(w, http.StatusText(http.StatusConflict), http.StatusConflict)
+		return
 	case errors.Is(err, board.ErrForbidden):
 		HttpErrorToJson(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 		return

@@ -18,9 +18,51 @@ func NewPgLikeStorage(db *sql.DB) *pgLikeStorage {
 	}
 }
 
+func (p *pgLikeStorage) CheckPinAccess(ctx context.Context, pinID, userID uint64) error {
+	query := `
+	SELECT EXISTS (
+		SELECT 1 FROM flow f
+		WHERE f.id = $1
+		AND (
+			f.is_private = false
+			OR f.author_id = $2
+			OR EXISTS (
+				SELECT 1 FROM board_post bp
+				JOIN board b ON bp.board_id = b.id
+				WHERE bp.flow_id = f.id
+				AND (b.author_id = $2 OR EXISTS (
+					SELECT 1 FROM board_coauthor bc
+					WHERE bc.board_id = b.id AND bc.coauthor_id = $2
+				))
+			)
+		)
+	) AS has_access,
+	EXISTS (SELECT 1 FROM flow WHERE id = $1) AS pin_exists
+	`
+
+	var hasAccess, pinExists bool
+	err := p.db.QueryRowContext(ctx, query, pinID, userID).Scan(&hasAccess, &pinExists)
+	if err != nil {
+		return err
+	}
+
+	if !pinExists {
+		return domain.ErrNotFound
+	}
+	if !hasAccess {
+		return domain.ErrForbidden
+	}
+
+	return nil
+}
+
 func (pg *pgLikeStorage) LikeFlow(ctx context.Context, pinID, userID int) (string, string, error) {
     var action string
 	var author string
+
+	if err := pg.CheckPinAccess(ctx, uint64(pinID), uint64(userID)); err != nil {
+		return "", "", err
+	}
 
     err := pg.db.QueryRowContext(ctx, `
 	WITH deleted AS (

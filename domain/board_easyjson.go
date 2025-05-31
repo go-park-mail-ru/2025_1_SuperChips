@@ -184,6 +184,8 @@ func easyjson202377feDecodeGithubComGoParkMailRu20251SuperChipsDomain2(in *jlexe
 			out.AuthorUsername = string(in.String())
 		case "name":
 			out.Name = string(in.String())
+		case "is_editable":
+			out.IsEditable = bool(in.Bool())
 		case "is_private":
 			out.IsPrivate = bool(in.Bool())
 		case "flow_count":
@@ -267,6 +269,11 @@ func easyjson202377feEncodeGithubComGoParkMailRu20251SuperChipsDomain2(out *jwri
 		const prefix string = ",\"name\":"
 		out.RawString(prefix)
 		out.String(string(in.Name))
+	}
+	{
+		const prefix string = ",\"is_editable\":"
+		out.RawString(prefix)
+		out.Bool(bool(in.IsEditable))
 	}
 	{
 		const prefix string = ",\"is_private\":"

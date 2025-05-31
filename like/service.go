@@ -34,15 +34,6 @@ func (service *LikeService) LikeFlow(ctx context.Context, pinID, userID int) (st
 		return "", "", v.GetError("id")
 	}
 
-	pin, authorID, err := service.pinRepo.GetPin(ctx, uint64(pinID), uint64(userID))
-	if err != nil {
-		return "", "", err
-	}
-
-	if pin.IsPrivate && authorID != uint64(userID) {
-		return "", "", domain.ErrForbidden
-	}
-
 	action, username, err := service.likeRepository.LikeFlow(ctx, pinID, userID)
 	if err != nil {
 		return "", "", err

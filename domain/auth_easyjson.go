@@ -339,6 +339,8 @@ func easyjson4a0f95aaDecodeGithubComGoParkMailRu20251SuperChipsDomain4(in *jlexe
 			out.AccessToken = string(in.String())
 		case "username":
 			out.Username = string(in.String())
+		case "email":
+			out.Email = string(in.String())
 		default:
 			in.SkipRecursive()
 		}
@@ -368,6 +370,16 @@ func easyjson4a0f95aaEncodeGithubComGoParkMailRu20251SuperChipsDomain4(out *jwri
 			out.RawString(prefix)
 		}
 		out.String(string(in.Username))
+	}
+	if in.Email != "" {
+		const prefix string = ",\"email\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.Email))
 	}
 	out.RawByte('}')
 }

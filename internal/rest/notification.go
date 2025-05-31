@@ -46,9 +46,11 @@ func (h *NotificationHandler) GetNotifications(w http.ResponseWriter, r *http.Re
 func handleNotificationError(w http.ResponseWriter, err error) {
 	switch err {
 	case domain.ErrNotFound:
-		http.Error(w, "not found", http.StatusNotFound)
+		HttpErrorToJson(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
 	default:
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		HttpErrorToJson(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return		
 	}
 }
 

@@ -10,6 +10,7 @@ type LoginData struct {
 type ExternalData struct {
 	AccessToken string `json:"access_token,omitempty"`
 	Username    string `json:"username,omitempty"`
+	Email       string `json:"email,omitempty"`
 }
 
 //easyjson:json
