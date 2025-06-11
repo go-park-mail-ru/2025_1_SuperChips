@@ -1,0 +1,2 @@
+ALTER TABLE flow 
+ADD is_nsfw BOOL DEFAULT false NOT NULL;
