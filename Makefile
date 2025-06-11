@@ -7,7 +7,7 @@ DOMAIN_FLDR := domain
 REST_FLDR := internal/rest
 TESTED_DIRS := ./$(REST_FLDR)/... ./$(DOMAIN_FLDR)/... ./internal/repository/...
 
-.PHONY : test mocks easyjson
+.PHONY : test mocks easyjson docs
 
 mocks:
 	@mkdir -p $(MOCK_DST)/pin $(MOCK_DST)/user
@@ -55,6 +55,7 @@ easyjson:
 	$(DOMAIN_FLDR)/like.go \
 	$(DOMAIN_FLDR)/user.go \
 	$(DOMAIN_FLDR)/pincrud.go \
+	$(DOMAIN_FLDR)/star.go \
 	$(DOMAIN_FLDR)/comment.go \
 	$(REST_FLDR)/helper.go \
 	$(REST_FLDR)/board.go \
@@ -71,8 +72,13 @@ easyjson_stub:
 	$(DOMAIN_FLDR)/like.go \
 	$(DOMAIN_FLDR)/user.go \
 	$(DOMAIN_FLDR)/pincrud.go \
+	$(DOMAIN_FLDR)/star.go \
 	$(REST_FLDR)/helper.go \
 	$(REST_FLDR)/board.go \
 	$(REST_FLDR)/chat.go \
 	$(REST_FLDR)/profile.go \
 	$(REST_FLDR)/subscription.go
+
+docs:
+	swag fmt; swag -d ./app/main,./domain,./internal/rest
+
