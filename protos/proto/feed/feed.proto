@@ -20,9 +20,11 @@ message Pin {
 	string created_at = 8;
     string updated_at = 9;
 	bool is_liked = 10;
-	int64 like_count = 11;
-	int64 width = 12;
-    int64 height = 13;
+	bool is_nsfw = 11;
+	bool is_star = 12;
+	int64 like_count = 13;
+	int64 width = 14;
+    int64 height = 15;
 }
 
 message GetPinsResponse {

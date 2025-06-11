@@ -91,6 +91,8 @@ func grpcToNormal(grpcPins []*gen.Pin) []domain.PinData {
 			CreatedAt: grpcPin.CreatedAt,
 			UpdatedAt: grpcPin.UpdatedAt,
 			IsLiked: grpcPin.IsLiked,
+			IsNSFW: grpcPin.IsNsfw,
+			IsStar: grpcPin.IsStar,
 			LikeCount: int(grpcPin.LikeCount),
 			Width: int(grpcPin.Width),
 			Height: int(grpcPin.Height),

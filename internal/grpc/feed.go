@@ -51,6 +51,8 @@ func pinsToGrpc(pins []domain.PinData) []*gen.Pin {
 			CreatedAt:      pin.CreatedAt,
 			UpdatedAt:      pin.UpdatedAt,
 			IsLiked:        pin.IsLiked,
+			IsNsfw:         pin.IsNSFW,
+			IsStar:         pin.IsStar,
 			LikeCount:      int64(pin.LikeCount),
 			Width:          int64(pin.Width),
 			Height:         int64(pin.Height),

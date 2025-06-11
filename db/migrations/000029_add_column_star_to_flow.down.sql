@@ -1,0 +1,2 @@
+ALTER TABLE flow 
+DROP COLUMN is_star;

@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_SuperChips/board"
-	"github.com/go-park-mail-ru/2025_1_SuperChips/comment"
 	boardshrService "github.com/go-park-mail-ru/2025_1_SuperChips/boardshr"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/comment"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
 	_ "github.com/go-park-mail-ru/2025_1_SuperChips/docs"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
@@ -27,6 +27,7 @@ import (
 	boardshrDelivery "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/boardshr"
 	middleware "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/middleware"
 	pincrudDelivery "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/pincrud"
+	starDelivery "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/star"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/like"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/metrics"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/notification"
@@ -37,6 +38,7 @@ import (
 	genFeed "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/feed"
 	genWebsocket "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/websocket"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/search"
+	starService "github.com/go-park-mail-ru/2025_1_SuperChips/star"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/subscription"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -84,9 +86,9 @@ func ToProtoWebMessage(msg domain.WebMessage) (*genWebsocket.WebMessage, error) 
     }, nil
 }
 
-// @title flow API
-// @version 1.0
-// @description API for Flow.
+//	@title			flow API
+//	@version		1.0
+//	@description	API for Flow.
 func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
@@ -144,6 +146,7 @@ func main() {
 
 	subscriptionService := subscription.NewSubscriptionUsecase(subscriptionStorage, chatStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
 	pinCRUDService := pincrudService.NewPinCRUDService(pinStorage, boardStorage, imageStorage)
+	starService := starService.NewStarPinService(pinStorage)
 	profileService := profile.NewProfileService(profileStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
 	boardService := board.NewBoardService(boardStorage, pinStorage, boardShrStorage, config.BaseUrl, config.ImageBaseDir)
 	boardShrService := boardshrService.NewBoardShrService(boardShrStorage, config.BaseUrl, config.StaticBaseDir, config.AvatarDir)
@@ -255,6 +258,12 @@ func main() {
 		PinService: pinCRUDService,
 	}
 
+	starsHandler := starDelivery.StarHandler{
+		Config: config,
+		ContextDeadline: config.ContextExpiration,
+		StarService: starService,
+	}
+
 	likeHandler := rest.LikeHandler{
 		LikeService: likeService,
 		ContextTimeout: config.ContextExpiration,
@@ -320,6 +329,26 @@ func main() {
 		middleware.Fileserver(fsContext, authClient),
 		middleware.CorsMiddleware(config, allowedGetOptionsHead),
 	)))
+
+	// Шаблон для ручки.
+	// 
+	// // Обязательно вешать OPTIONS на каждый URL, иначе не заработает.
+	// mux.HandleFunc("OPTIONS /api/v1/..",
+	// 	middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
+	// 			w.WriteHeader(http.StatusNoContent)
+	// 		},
+	// 		middleware.CorsMiddleware(config, allowedOptions),
+	// 		middleware.MetricsMiddleware(metricsService),
+	// 		middleware.Log()))
+	// 
+	// // Непосредственно ручка.
+	// mux.HandleFunc("МЕТОД /api/v1/..",
+	// 	middleware.ChainMiddleware(/*Ручка*/,
+	// 		middleware.AuthMiddleware(jwtManager, true), // true/false - блокировать/не блокировать
+	// 		middleware.CSRFMiddleware(), // Удалить для GET. Обязательно для методов POST, DELETE, PATCH.
+	// 		middleware.CorsMiddleware(config, /*allowed[МЕТОД]Options*/),
+	// 		middleware.MetricsMiddleware(metricsService),
+	// 		middleware.Log()))
 
 	// health
 	mux.HandleFunc("/health",
@@ -414,7 +443,49 @@ func main() {
 			middleware.CorsMiddleware(config, allowedPostOptions),
 			middleware.MetricsMiddleware(metricsService),
 			middleware.Log()))
-
+	
+	
+	// Звёздные посты.
+	mux.HandleFunc("OPTIONS /api/v1/stars",
+		middleware.ChainMiddleware(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusNoContent)
+			},
+			middleware.CorsMiddleware(config, allowedOptions),
+			middleware.MetricsMiddleware(metricsService),
+			middleware.Log()))
+	
+	mux.HandleFunc("GET /api/v1/stars",
+		middleware.ChainMiddleware(starsHandler.GetStarPins,
+			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CorsMiddleware(config, allowedGetOptions),
+			middleware.MetricsMiddleware(metricsService),
+			middleware.Log()))
+	
+	mux.HandleFunc("POST /api/v1/stars/{flow_id}",
+		middleware.ChainMiddleware(starsHandler.SetStarProperty,
+			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CSRFMiddleware(),
+			middleware.CorsMiddleware(config, allowedPostOptions),
+			middleware.MetricsMiddleware(metricsService),
+			middleware.Log()))
+	
+	mux.HandleFunc("DELETE /api/v1/stars/{flow_id}",
+		middleware.ChainMiddleware(starsHandler.UnSetStarProperty,
+			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CSRFMiddleware(),
+			middleware.CorsMiddleware(config, allowedDeleteOptions),
+			middleware.MetricsMiddleware(metricsService),
+			middleware.Log()))
+	
+	mux.HandleFunc("PUT /api/v1/stars/{flow_id}",
+		middleware.ChainMiddleware(starsHandler.ReassignStarProperty,
+			middleware.AuthMiddleware(jwtManager, true),
+			middleware.CSRFMiddleware(),
+			middleware.CorsMiddleware(config, allowedPutOptions),
+			middleware.MetricsMiddleware(metricsService),
+			middleware.Log()))
+	
+	
 	// likes
 	mux.HandleFunc("POST /api/v1/like",
 		middleware.ChainMiddleware(likeHandler.LikeFlow, 
