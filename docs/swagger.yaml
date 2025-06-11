@@ -57,7 +57,11 @@ definitions:
         type: integer
       is_liked:
         type: boolean
+      is_nsfw:
+        type: boolean
       is_private:
+        type: boolean
+      is_star:
         type: boolean
       like_count:
         type: integer
@@ -1359,6 +1363,184 @@ paths:
           schema:
             type: string
       summary: Searches for users
+  /api/v1/stars:
+    get:
+      description: Get star pins of user. Authorization is required.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Star pins have been successfully fetched
+          schema:
+            allOf:
+            - $ref: '#/definitions/rest.ServerResponse'
+            - properties:
+                data:
+                  properties:
+                    pins:
+                      items:
+                        $ref: '#/definitions/domain.PinData'
+                      type: array
+                    total_slots_count:
+                      type: integer
+                  type: object
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "403":
+          description: Forbidden - access denied
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Get stars
+      tags:
+      - Star
+  /api/v1/stars/{flow_id}:
+    delete:
+      description: Unset star property for pin with given ID. Authorization is required.
+        Pin must belong to user.
+      parameters:
+      - description: pin ID
+        in: path
+        name: flow_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Star property has been unset successfully
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "403":
+          description: Forbidden - access denied
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "404":
+          description: User doesn't have pin with that ID
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Unset star
+      tags:
+      - Star
+    post:
+      description: Set star property for pin with given ID. Authorization is required.
+        Pin must belong to user.
+      parameters:
+      - description: pin ID
+        in: path
+        name: flow_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Star property has been set successfully
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "403":
+          description: Forbidden - access denied / No free star slots
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "404":
+          description: User doesn't have pin with that ID
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "409":
+          description: Star property was already set
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Set star
+      tags:
+      - Star
+    put:
+      description: Reassign star property from pin A with given ID to pin B. Authorization
+        is required. Pins must belong to user.
+      parameters:
+      - description: initial star pin ID
+        in: path
+        name: flow_id
+        required: true
+        type: integer
+      - description: new star pin ID
+        in: body
+        name: flow_id
+        required: true
+        schema:
+          type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Star property has been unset successfully
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "403":
+          description: Forbidden - access denied / No free star slots
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "404":
+          description: User doesn't have one of the pins with that ID
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "409":
+          description: New pin already have star property / Old pin doesn't have star
+            property
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Reassign star
+      tags:
+      - Star
   /api/v1/subscription:
     delete:
       consumes:

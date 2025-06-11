@@ -2006,6 +2006,281 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/stars": {
+            "get": {
+                "security": [
+                    {
+                        "jwt_auth": []
+                    }
+                ],
+                "description": "Get star pins of user. Authorization is required.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Star"
+                ],
+                "summary": "Get stars",
+                "responses": {
+                    "200": {
+                        "description": "Star pins have been successfully fetched",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/rest.ServerResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "pins": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/definitions/domain.PinData"
+                                                    }
+                                                },
+                                                "total_slots_count": {
+                                                    "type": "integer"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - access denied",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/stars/{flow_id}": {
+            "put": {
+                "security": [
+                    {
+                        "jwt_auth": []
+                    }
+                ],
+                "description": "Reassign star property from pin A with given ID to pin B. Authorization is required. Pins must belong to user.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Star"
+                ],
+                "summary": "Reassign star",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "initial star pin ID",
+                        "name": "flow_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "new star pin ID",
+                        "name": "flow_id",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Star property has been unset successfully",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameters",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - access denied / No free star slots",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "User doesn't have one of the pins with that ID",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "New pin already have star property / Old pin doesn't have star property",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "jwt_auth": []
+                    }
+                ],
+                "description": "Set star property for pin with given ID. Authorization is required. Pin must belong to user.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Star"
+                ],
+                "summary": "Set star",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "pin ID",
+                        "name": "flow_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Star property has been set successfully",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameters",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - access denied / No free star slots",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "User doesn't have pin with that ID",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Star property was already set",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "jwt_auth": []
+                    }
+                ],
+                "description": "Unset star property for pin with given ID. Authorization is required. Pin must belong to user.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Star"
+                ],
+                "summary": "Unset star",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "pin ID",
+                        "name": "flow_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Star property has been unset successfully",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameters",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - access denied",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "User doesn't have pin with that ID",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/subscription": {
             "post": {
                 "description": "Tries to subscribe the user to the target user",
@@ -2273,7 +2548,13 @@ const docTemplate = `{
                 "is_liked": {
                     "type": "boolean"
                 },
+                "is_nsfw": {
+                    "type": "boolean"
+                },
                 "is_private": {
+                    "type": "boolean"
+                },
+                "is_star": {
                     "type": "boolean"
                 },
                 "like_count": {
