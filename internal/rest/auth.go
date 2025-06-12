@@ -97,7 +97,7 @@ func (app AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 //	@Failure		400			string	serverResponse.Description	"Bad Request"
 //	@Failure		409			string	serverResponse.Description	"Conflict"
 //	@Failure		500			string	serverResponse.Description	"Internal server error"
-//	@Router			/api/v1/auth/register [post]
+//	@Router			/api/v1/auth/registration [post]
 func (app AuthHandler) RegistrationHandler(w http.ResponseWriter, r *http.Request) {
 
 
