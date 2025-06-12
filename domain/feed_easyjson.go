@@ -40,8 +40,6 @@ func easyjsonD77e0694DecodeGithubComGoParkMailRu20251SuperChipsDomain(in *jlexer
 			out.FlowID = uint64(in.Uint64())
 		case "header":
 			out.Header = string(in.String())
-		case "author_id":
-			out.AuthorID = uint64(in.Uint64())
 		case "author_username":
 			out.AuthorUsername = string(in.String())
 		case "description":
@@ -95,16 +93,6 @@ func easyjsonD77e0694EncodeGithubComGoParkMailRu20251SuperChipsDomain(out *jwrit
 			out.RawString(prefix)
 		}
 		out.String(string(in.Header))
-	}
-	if in.AuthorID != 0 {
-		const prefix string = ",\"author_id\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
-		out.Uint64(uint64(in.AuthorID))
 	}
 	{
 		const prefix string = ",\"author_username\":"
