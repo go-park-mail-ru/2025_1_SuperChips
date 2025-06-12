@@ -80,5 +80,5 @@ easyjson_stub:
 	$(REST_FLDR)/subscription.go
 
 docs:
-	swag fmt; swag -d ./app/main,./domain,./internal/rest
+	swag fmt; swag init -d ./app/main,./domain,./internal/rest
 
