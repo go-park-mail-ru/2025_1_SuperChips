@@ -8,8 +8,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/configs"
+	"github.com/go-park-mail-ru/2025_1_SuperChips/domain"
 	"github.com/go-park-mail-ru/2025_1_SuperChips/internal/csrf"
 	auth "github.com/go-park-mail-ru/2025_1_SuperChips/internal/rest/auth"
 	gen "github.com/go-park-mail-ru/2025_1_SuperChips/protos/gen/auth"
@@ -31,6 +31,7 @@ var (
 // LoginHandler godoc
 //	@Summary		Log in user
 //	@Description	Tries to log the user in
+//	@Tags			Auth
 //	@Accept			json
 //	@Produce		json
 //	@Param			email		body	string		true	"user email"	example("user@mail.ru")
@@ -85,6 +86,7 @@ func (app AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 // RegistrationHandler godoc
 //	@Summary		Register user
 //	@Description	Tries to register the user
+//	@Tags			Auth
 //	@Accept			json
 //	@Produce		json
 //	@Param			email		body	string						true	"user email"				example("admin@mail.ru")
@@ -155,6 +157,7 @@ func (app AuthHandler) RegistrationHandler(w http.ResponseWriter, r *http.Reques
 // LogoutHandler godoc
 //	@Summary		Logout user
 //	@Description	Logouts user
+//	@Tags			Auth
 //	@Produce		json
 //	@Success		200	string	serverResponse.Description	"logged out"
 //	@Router			/api/v1/auth/logout [post]

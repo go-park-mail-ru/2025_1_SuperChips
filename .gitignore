@@ -9,5 +9,6 @@ static/
 mocks/
 pyenv
 /grafana/*
+/docs/bruno
 !/grafana/provisioning
 !/grafana/dashboards

@@ -25,6 +25,7 @@ type SearchHandler struct {
 // SearchPins godoc
 //	@Summary		Searches for pins
 //	@Description	Returns a pageSized number of pins searched for
+//	@Tags			Search
 //	@Produce		json
 //	@Param			page	path	int							true	"requested page"		example("?page=3")
 //	@Param			size	path	int							true	"requested page size"	example("?size=15")
@@ -89,6 +90,7 @@ func (s *SearchHandler) SearchPins(w http.ResponseWriter, r *http.Request) {
 // SearchBoards godoc
 //	@Summary		Searches for boards
 //	@Description	Returns a pageSized number of boards searched for
+//	@Tags			Search
 //	@Produce		json
 //	@Param			page	path	int							true	"requested page"		example("?page=3")
 //	@Param			size	path	int							true	"requested page size"	example("?size=15")
@@ -152,6 +154,7 @@ func (s *SearchHandler) SearchBoards(w http.ResponseWriter, r *http.Request) {
 // SearchUsers godoc
 //	@Summary		Searches for users
 //	@Description	Returns a pageSized number of users searched for
+//	@Tags			Search
 //	@Produce		json
 //	@Param			page	path	int							true	"requested page"		example("?page=3")
 //	@Param			size	path	int							true	"requested page size"	example("?size=15")

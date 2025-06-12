@@ -86,7 +86,7 @@ func ToProtoWebMessage(msg domain.WebMessage) (*genWebsocket.WebMessage, error) 
     }, nil
 }
 
-//	@title			flow API
+//	@title			Flow API
 //	@version		1.0
 //	@description	API for Flow.
 func main() {

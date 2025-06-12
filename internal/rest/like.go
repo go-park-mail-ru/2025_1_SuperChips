@@ -22,15 +22,22 @@ type LikeHandler struct {
 }
 
 // LikeFlow godoc
-//	@Summary		Leave a like on a flow
-//	@Description	Leaves a like on a flow or deletes the like 
+//
+//	@Summary		Like flow
+//	@Description	If not liked: set like on flow.
+//	@Description	If liked: unset like on flow.
+//	@Description	Authorization is required.
+//	@Tags			Feed & Like
 //	@Accept			json
 //	@Produce		json
+//
 //	@Param			pin_id	body	integer		true	"flow id"	example(456)
+//
 //	@Success		200		string	Description	"OK"
 //	@Failure		400		string	Description	"Bad Request"
 //	@Failure		404		string	Description	"Not Found"
 //	@Failure		500		string	Description	"Internal server error"
+//
 //	@Router			/api/v1/like [post]
 func (h *LikeHandler) LikeFlow(w http.ResponseWriter, r *http.Request) {
 	claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)

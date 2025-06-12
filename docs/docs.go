@@ -24,6 +24,9 @@ const docTemplate = `{
                 "produces": [
                     "application/json"
                 ],
+                "tags": [
+                    "Auth"
+                ],
                 "summary": "Log in user",
                 "parameters": [
                     {
@@ -81,6 +84,9 @@ const docTemplate = `{
                 "produces": [
                     "application/json"
                 ],
+                "tags": [
+                    "Auth"
+                ],
                 "summary": "Logout user",
                 "responses": {
                     "200": {
@@ -100,6 +106,9 @@ const docTemplate = `{
                 ],
                 "produces": [
                     "application/json"
+                ],
+                "tags": [
+                    "Auth"
                 ],
                 "summary": "Register user",
                 "parameters": [
@@ -179,12 +188,12 @@ const docTemplate = `{
                         "jwt_auth": []
                     }
                 ],
-                "description": "Retrieves board information with access control",
+                "description": "Get board details. Authorization is required. User must be author or coauthor of board.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "boards"
+                    "Board Management"
                 ],
                 "summary": "Get board details",
                 "parameters": [
@@ -253,7 +262,7 @@ const docTemplate = `{
                         "jwt_auth": []
                     }
                 ],
-                "description": "Updates board name and privacy settings",
+                "description": "Updates board details: name, privacy settings. Authorization is required. User must be author or coauthor of board.",
                 "consumes": [
                     "application/json"
                 ],
@@ -261,7 +270,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "boards"
+                    "Board Management"
                 ],
                 "summary": "Update board details",
                 "parameters": [
@@ -327,14 +336,14 @@ const docTemplate = `{
                         "jwt_auth": []
                     }
                 ],
-                "description": "Deletes a board by ID for authenticated user",
+                "description": "Delete board by ID. Authorization is required. Board must belong to user.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "boards"
+                    "Board Management"
                 ],
-                "summary": "Delete a board",
+                "summary": "Delete board",
                 "parameters": [
                     {
                         "type": "integer",
@@ -601,14 +610,14 @@ const docTemplate = `{
                         "jwt_auth": []
                     }
                 ],
-                "description": "Retrieves flows in a board with pagination for authenticated users",
+                "description": "Retrieves flows in a board with pagination. Authorization is required. User must be author or coauthor of board.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "boards"
+                    "Board Flows"
                 ],
-                "summary": "Get board flows with pagination",
+                "summary": "Get flows with pagination",
                 "parameters": [
                     {
                         "type": "integer",
@@ -685,6 +694,80 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "post": {
+                "security": [
+                    {
+                        "jwt_auth": []
+                    }
+                ],
+                "description": "Add a flow to a board. Authorization is required. User must be author or coauthor of board.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Board Flows"
+                ],
+                "summary": "Add flow",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Board ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Flow ID to add",
+                        "name": "flow",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.BoardRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Flow added successfully",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request data",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - not board owner",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Board or flow not found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ServerResponse"
+                        }
+                    }
+                }
             }
         },
         "/api/v1/boards/{board_id}/flows/{id}": {
@@ -694,14 +777,14 @@ const docTemplate = `{
                         "jwt_auth": []
                     }
                 ],
-                "description": "Get flow from a board (if permissions allow)",
+                "description": "Authorized user can get flow: (1) from public board; (2) from private board if he is author or coauthor of board.\nUnauthorized user can get flow from public board only.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "boards"
+                    "Board Flows"
                 ],
-                "summary": "Get flow from board",
+                "summary": "Get flow",
                 "parameters": [
                     {
                         "type": "integer",
@@ -763,14 +846,14 @@ const docTemplate = `{
                         "jwt_auth": []
                     }
                 ],
-                "description": "Removes a flow from a board for authenticated user",
+                "description": "Remove a flow from a board. Authorization is required. User must be author or coauthor of board.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "boards"
+                    "Board Flows"
                 ],
-                "summary": "Remove flow from board",
+                "summary": "Remove flow",
                 "parameters": [
                     {
                         "type": "integer",
@@ -933,30 +1016,11 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Usernames for personal invitation",
-                        "name": "names",
+                        "description": "Link parameters: usernames for personal invitation; time limit for link activity; usage limit",
+                        "name": "_",
                         "in": "body",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    {
-                        "description": "Time limit for link activity",
-                        "name": "time_limit",
-                        "in": "body",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "description": "Usage limit",
-                        "name": "usage_limit",
-                        "in": "body",
-                        "schema": {
-                            "type": "integer"
+                            "$ref": "#/definitions/domain.Invitaion"
                         }
                     }
                 ],
@@ -1111,73 +1175,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/boards/{id}/flows": {
-            "post": {
-                "security": [
-                    {
-                        "jwt_auth": []
-                    }
-                ],
-                "description": "Adds a flow to a board for authenticated user",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "boards"
-                ],
-                "summary": "Add flow to board",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Board ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Flow added successfully",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ServerResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request data",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ServerResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ServerResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden - not board owner",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ServerResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Board or flow not found",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ServerResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ServerResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/boards/{username}": {
             "post": {
                 "security": [
@@ -1185,7 +1182,7 @@ const docTemplate = `{
                         "jwt_auth": []
                     }
                 ],
-                "description": "Creates a new board for the specified user",
+                "description": "Create a new board for the specified user. Authorization is required.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1193,9 +1190,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "boards"
+                    "Board Management"
                 ],
-                "summary": "Create a new board",
+                "summary": "Create board",
                 "parameters": [
                     {
                         "type": "string",
@@ -1250,14 +1247,17 @@ const docTemplate = `{
         },
         "/api/v1/feed": {
             "get": {
-                "description": "Returns a pageSized number of pins",
+                "description": "Get pageSized number of flows.",
                 "consumes": [
                     "application/json"
                 ],
                 "produces": [
                     "application/json"
                 ],
-                "summary": "Get Pins",
+                "tags": [
+                    "Feed \u0026 Like"
+                ],
+                "summary": "Get flows for feed",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1291,11 +1291,14 @@ const docTemplate = `{
         },
         "/api/v1/flows": {
             "get": {
-                "description": "Returns Pin Data",
+                "description": "Get public pin by ID or private pin if user its author.",
                 "produces": [
                     "application/json"
                 ],
-                "summary": "Get public pin by ID or private pin if user its author",
+                "tags": [
+                    "Pin CRUD"
+                ],
+                "summary": "Get pin",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1339,11 +1342,14 @@ const docTemplate = `{
                 }
             },
             "put": {
-                "description": "Returns JSON with result description",
+                "description": "Update certain pin's fields. Authorization is required. Pin must belong to user.",
                 "produces": [
                     "application/json"
                 ],
-                "summary": "Update certain pin's fields by ID if user is its author",
+                "tags": [
+                    "Pin CRUD"
+                ],
+                "summary": "Update pin",
                 "parameters": [
                     {
                         "description": "pin ID",
@@ -1419,11 +1425,14 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Returns JSON with result description",
+                "description": "Create pin with given header, description and private setting. Authorization is required.",
                 "produces": [
                     "application/json"
                 ],
-                "summary": "Create pin if user if user is authorized",
+                "tags": [
+                    "Pin CRUD"
+                ],
+                "summary": "Create pin",
                 "parameters": [
                     {
                         "type": "file",
@@ -1479,11 +1488,14 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Returns JSON with result description",
+                "description": "Delete pin by ID. Authorization is required. Pin must belong to user.",
                 "produces": [
                     "application/json"
                 ],
-                "summary": "Delete pin by ID if user is its author",
+                "tags": [
+                    "Pin CRUD"
+                ],
+                "summary": "Delete pin",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1639,14 +1651,17 @@ const docTemplate = `{
         },
         "/api/v1/like": {
             "post": {
-                "description": "Leaves a like on a flow or deletes the like",
+                "description": "If not liked: set like on flow.\nIf liked: unset like on flow.\nAuthorization is required.",
                 "consumes": [
                     "application/json"
                 ],
                 "produces": [
                     "application/json"
                 ],
-                "summary": "Leave a like on a flow",
+                "tags": [
+                    "Feed \u0026 Like"
+                ],
+                "summary": "Like flow",
                 "parameters": [
                     {
                         "example": 456,
@@ -1694,14 +1709,14 @@ const docTemplate = `{
                         "jwt_auth": []
                     }
                 ],
-                "description": "Retrieves all boards (public and private) for authenticated user",
+                "description": "Get all user's boards. Authorization is required.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "boards"
+                    "Board Management"
                 ],
-                "summary": "Get all user boards",
+                "summary": "Get personal boards",
                 "responses": {
                     "200": {
                         "description": "User's boards list",
@@ -1745,7 +1760,10 @@ const docTemplate = `{
                 "produces": [
                     "application/json"
                 ],
-                "summary": "Get user's followers",
+                "tags": [
+                    "Subscription"
+                ],
+                "summary": "Get personal followers",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1790,7 +1808,10 @@ const docTemplate = `{
                 "produces": [
                     "application/json"
                 ],
-                "summary": "Get user's subscriptions (or who they follow, in other words)",
+                "tags": [
+                    "Subscription"
+                ],
+                "summary": "Get personal subscriptions (or who they follow, in other words)",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1834,6 +1855,9 @@ const docTemplate = `{
                 "description": "Returns a pageSized number of boards searched for",
                 "produces": [
                     "application/json"
+                ],
+                "tags": [
+                    "Search"
                 ],
                 "summary": "Searches for boards",
                 "parameters": [
@@ -1894,6 +1918,9 @@ const docTemplate = `{
                 "produces": [
                     "application/json"
                 ],
+                "tags": [
+                    "Search"
+                ],
                 "summary": "Searches for pins",
                 "parameters": [
                     {
@@ -1952,6 +1979,9 @@ const docTemplate = `{
                 "description": "Returns a pageSized number of users searched for",
                 "produces": [
                     "application/json"
+                ],
+                "tags": [
+                    "Search"
                 ],
                 "summary": "Searches for users",
                 "parameters": [
@@ -2101,7 +2131,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "integer"
+                            "$ref": "#/definitions/domain.RequestBodyFlowID"
                         }
                     }
                 ],
@@ -2290,7 +2320,10 @@ const docTemplate = `{
                 "produces": [
                     "application/json"
                 ],
-                "summary": "Subscribe to target user",
+                "tags": [
+                    "Subscription"
+                ],
+                "summary": "Subscribe to",
                 "parameters": [
                     {
                         "example": "\"cool_guy\"",
@@ -2338,7 +2371,10 @@ const docTemplate = `{
                 "produces": [
                     "application/json"
                 ],
-                "summary": "Unsubscribe from target user",
+                "tags": [
+                    "Subscription"
+                ],
+                "summary": "Unsubscribe from",
                 "parameters": [
                     {
                         "example": "\"cool_guy\"",
@@ -2381,12 +2417,12 @@ const docTemplate = `{
         },
         "/api/v1/user/{username}/boards": {
             "get": {
-                "description": "Retrieves public boards for a specific user",
+                "description": "Retrieves public boards for a specific user.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "boards"
+                    "Board Management"
                 ],
                 "summary": "Get user's public boards",
                 "parameters": [
@@ -2447,6 +2483,9 @@ const docTemplate = `{
                 "produces": [
                     "application/json"
                 ],
+                "tags": [
+                    "System"
+                ],
                 "summary": "Check server status",
                 "responses": {
                     "200": {
@@ -2495,6 +2534,31 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/domain.PinData"
                     }
+                }
+            }
+        },
+        "domain.BoardRequest": {
+            "type": "object",
+            "properties": {
+                "flow_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.Invitaion": {
+            "type": "object",
+            "properties": {
+                "names": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "time_limit": {
+                    "type": "string"
+                },
+                "usage_limit": {
+                    "type": "integer"
                 }
             }
         },
@@ -2571,6 +2635,14 @@ const docTemplate = `{
                 }
             }
         },
+        "domain.RequestBodyFlowID": {
+            "type": "object",
+            "properties": {
+                "flow_id": {
+                    "type": "integer"
+                }
+            }
+        },
         "rest.ServerResponse": {
             "type": "object",
             "properties": {
@@ -2589,7 +2661,7 @@ var SwaggerInfo = &swag.Spec{
 	Host:             "",
 	BasePath:         "",
 	Schemes:          []string{},
-	Title:            "flow API",
+	Title:            "Flow API",
 	Description:      "API for Flow.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,

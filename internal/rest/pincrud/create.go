@@ -31,13 +31,17 @@ const (
 )
 
 // CreateHandler godoc
-//	@Summary		Create pin if user if user is authorized
-//	@Description	Returns JSON with result description
+//
+//	@Summary		Create pin
+//	@Description	Create pin with given header, description and private setting. Authorization is required.
+//	@Tags			Pin CRUD
 //	@Produce		json
+//
 //	@Param			image		formData	file						true	"pin image"
 //	@Param			header		formData	string						false	"text header"
 //	@Param			description	formData	string						false	"text description"
 //	@Param			is_private	formData	bool						false	"privacy setting"
+//
 //	@Success		201			string		serverResponse.Data			"OK"
 //	@Failure		400			string		serverResponse.Description	"failed to parse the request body"
 //	@Failure		400			string		serverResponse.Description	"image not present in the request body"

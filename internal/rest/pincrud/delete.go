@@ -10,15 +10,20 @@ import (
 )
 
 // DeleteHandler godoc
-//	@Summary		Delete pin by ID if user is its author
-//	@Description	Returns JSON with result description
+//
+//	@Summary		Delete pin
+//	@Description	Delete pin by ID. Authorization is required. Pin must belong to user.
+//	@Tags			Pin CRUD
 //	@Produce		json
+//
 //	@Param			id	query	int							true	"pin to delete"
+//
 //	@Success		200	string	serverResponse.Data			"OK"
 //	@Failure		400	string	serverResponse.Description	"invalid query parameter [id]"
 //	@Failure		403	string	serverResponse.Description	"access to private pin is forbidden"
 //	@Failure		404	string	serverResponse.Description	"no pin with given id"
 //	@Failure		500	string	serverResponse.Description	"untracked error: ${error}"
+//
 //	@Router			/api/v1/flows [delete]
 func (app PinCRUDHandler) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)

@@ -34,14 +34,19 @@ type SubscriptionHandler struct {
 }
 
 // GetUserFollowers godoc
-//	@Summary		Get user's followers
+//
+//	@Summary		Get personal followers
 //	@Description	Returns a pageSized number of user's followers
+//	@Tags			Subscription
 //	@Produce		json
+//
 //	@Param			page	path	int							true	"requested page"	example("?page=3")
 //	@Param			page	path	int							true	"requested size"	example("?size=15")
+//
 //	@Success		200		string	serverResponse.Data			"OK"
 //	@Failure		404		string	serverResponse.Description	"page not found"
 //	@Failure		400		string	serverResponse.Description	"bad request"
+//
 //	@Router			/api/v1/profile/followers [get]
 func (h *SubscriptionHandler) GetUserFollowers(w http.ResponseWriter, r *http.Request) {
 	claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
@@ -69,14 +74,19 @@ func (h *SubscriptionHandler) GetUserFollowers(w http.ResponseWriter, r *http.Re
 }
 
 // GetUserFollowers godoc
-//	@Summary		Get user's subscriptions (or who they follow, in other words)
+//
+//	@Summary		Get personal subscriptions (or who they follow, in other words)
 //	@Description	Returns a pageSized number of user's subscriptions
+//	@Tags			Subscription
 //	@Produce		json
+//
 //	@Param			page	path	int							true	"requested page"	example("?page=3")
 //	@Param			page	path	int							true	"requested size"	example("?size=15")
+// 
 //	@Success		200		string	serverResponse.Data			"OK"
 //	@Failure		404		string	serverResponse.Description	"page not found"
 //	@Failure		400		string	serverResponse.Description	"bad request"
+//
 //	@Router			/api/v1/profile/following [get]
 func (h *SubscriptionHandler) GetUserFollowing(w http.ResponseWriter, r *http.Request) {
 	claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
@@ -104,15 +114,20 @@ func (h *SubscriptionHandler) GetUserFollowing(w http.ResponseWriter, r *http.Re
 }
 
 // AddSubscription godoc
-//	@Summary		Subscribe to target user
+//
+//	@Summary		Subscribe to
 //	@Description	Tries to subscribe the user to the target user
+//	@Tags			Subscription
 //	@Accept			json
 //	@Produce		json
+//
 //	@Param			target_user	body	string		true	"target user's username"	example("cool_guy")
+//
 //	@Success		200			string	Description	"OK"
 //	@Failure		400			string	Description	"Bad Request"
 //	@Failure		403			string	Description	"Unauthorized"
 //	@Failure		500			string	Description	"Internal server error"
+//
 //	@Router			/api/v1/subscription [post]
 func (h *SubscriptionHandler) CreateSubscription(w http.ResponseWriter, r *http.Request) {
 	claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)
@@ -159,15 +174,20 @@ func (h *SubscriptionHandler) CreateSubscription(w http.ResponseWriter, r *http.
 }
 
 // DeleteSubscription godoc
-//	@Summary		Unsubscribe from target user
+//
+//	@Summary		Unsubscribe from
 //	@Description	Tries to unsubscribe the user from the target user
+//	@Tags			Subscription
 //	@Accept			json
 //	@Produce		json
+//
 //	@Param			target_user	body	string		true	"target user's username"	example("cool_guy")
+//
 //	@Success		200			string	Description	"OK"
 //	@Failure		400			string	Description	"Bad Request"
 //	@Failure		403			string	Description	"Unauthorized"
 //	@Failure		500			string	Description	"Internal server error"
+//
 //	@Router			/api/v1/subscription [delete]
 func (h *SubscriptionHandler) DeleteSubscription(w http.ResponseWriter, r *http.Request) {
 	claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.Claims)

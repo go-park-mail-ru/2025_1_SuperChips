@@ -19,16 +19,16 @@ import (
 //	@Produce		json
 //	@Security		jwt_auth
 //
-//	@Param			flow_id	path		int				true	"initial star pin ID"
-//	@Param			flow_id	body		int				true	"new star pin ID"
+//	@Param			flow_id	path		int							true	"initial star pin ID"
+//	@Param			flow_id	body		domain.RequestBodyFlowID	true	"new star pin ID"
 //
-//	@Success		200		{object}	ServerResponse	"Star property has been unset successfully"
-//	@Failure		400		{object}	ServerResponse	"Invalid request parameters"
-//	@Failure		401		{object}	ServerResponse	"Unauthorized"
-//	@Failure		403		{object}	ServerResponse	"Forbidden - access denied / No free star slots"
-//	@Failure		404		{object}	ServerResponse	"User doesn't have one of the pins with that ID"
-//	@Failure		409		{object}	ServerResponse	"New pin already have star property / Old pin doesn't have star property"
-//	@Failure		500		{object}	ServerResponse	"Internal server error"
+//	@Success		200		{object}	ServerResponse				"Star property has been unset successfully"
+//	@Failure		400		{object}	ServerResponse				"Invalid request parameters"
+//	@Failure		401		{object}	ServerResponse				"Unauthorized"
+//	@Failure		403		{object}	ServerResponse				"Forbidden - access denied / No free star slots"
+//	@Failure		404		{object}	ServerResponse				"User doesn't have one of the pins with that ID"
+//	@Failure		409		{object}	ServerResponse				"New pin already have star property / Old pin doesn't have star property"
+//	@Failure		500		{object}	ServerResponse				"Internal server error"
 //
 //	@Router			/api/v1/stars/{flow_id} [put]
 func (h *StarHandler) ReassignStarProperty(w http.ResponseWriter, r *http.Request) {

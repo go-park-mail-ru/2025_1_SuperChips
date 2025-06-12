@@ -24,6 +24,22 @@ definitions:
           $ref: '#/definitions/domain.PinData'
         type: array
     type: object
+  domain.BoardRequest:
+    properties:
+      flow_id:
+        type: integer
+    type: object
+  domain.Invitaion:
+    properties:
+      names:
+        items:
+          type: string
+        type: array
+      time_limit:
+        type: string
+      usage_limit:
+        type: integer
+    type: object
   domain.LinkParams:
     properties:
       link:
@@ -72,6 +88,11 @@ definitions:
       width:
         type: integer
     type: object
+  domain.RequestBodyFlowID:
+    properties:
+      flow_id:
+        type: integer
+    type: object
   rest.ServerResponse:
     properties:
       data: {}
@@ -81,7 +102,7 @@ definitions:
 info:
   contact: {}
   description: API for Flow.
-  title: flow API
+  title: Flow API
   version: "1.0"
 paths:
   /api/v1/auth/login:
@@ -124,6 +145,8 @@ paths:
           schema:
             type: string
       summary: Log in user
+      tags:
+      - Auth
   /api/v1/auth/logout:
     post:
       description: Logouts user
@@ -135,6 +158,8 @@ paths:
           schema:
             type: string
       summary: Logout user
+      tags:
+      - Auth
   /api/v1/auth/register:
     post:
       consumes:
@@ -189,9 +214,12 @@ paths:
           schema:
             type: string
       summary: Register user
+      tags:
+      - Auth
   /api/v1/boards/{board_id}:
     delete:
-      description: Deletes a board by ID for authenticated user
+      description: Delete board by ID. Authorization is required. Board must belong
+        to user.
       parameters:
       - description: ID of the board to delete
         in: path
@@ -227,11 +255,12 @@ paths:
             $ref: '#/definitions/rest.ServerResponse'
       security:
       - jwt_auth: []
-      summary: Delete a board
+      summary: Delete board
       tags:
-      - boards
+      - Board Management
     get:
-      description: Retrieves board information with access control
+      description: Get board details. Authorization is required. User must be author
+        or coauthor of board.
       parameters:
       - description: Board ID to retrieve
         in: path
@@ -274,11 +303,12 @@ paths:
       - jwt_auth: []
       summary: Get board details
       tags:
-      - boards
+      - Board Management
     put:
       consumes:
       - application/json
-      description: Updates board name and privacy settings
+      description: 'Updates board details: name, privacy settings. Authorization is
+        required. User must be author or coauthor of board.'
       parameters:
       - description: Board ID to update
         in: path
@@ -322,7 +352,7 @@ paths:
       - jwt_auth: []
       summary: Update board details
       tags:
-      - boards
+      - Board Management
   /api/v1/boards/{board_id}/coauthoring:
     delete:
       description: Refuse coauthoring of the board (user must be coauthor of the board)
@@ -457,7 +487,8 @@ paths:
       - Board sharing [author]
   /api/v1/boards/{board_id}/flows:
     get:
-      description: Retrieves flows in a board with pagination for authenticated users
+      description: Retrieves flows in a board with pagination. Authorization is required.
+        User must be author or coauthor of board.
       parameters:
       - description: ID of the board to retrieve flows from
         in: path
@@ -510,12 +541,62 @@ paths:
             $ref: '#/definitions/rest.ServerResponse'
       security:
       - jwt_auth: []
-      summary: Get board flows with pagination
+      summary: Get flows with pagination
       tags:
-      - boards
+      - Board Flows
+    post:
+      consumes:
+      - application/json
+      description: Add a flow to a board. Authorization is required. User must be
+        author or coauthor of board.
+      parameters:
+      - description: Board ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Flow ID to add
+        in: body
+        name: flow
+        required: true
+        schema:
+          $ref: '#/definitions/domain.BoardRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Flow added successfully
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "400":
+          description: Invalid request data
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "403":
+          description: Forbidden - not board owner
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "404":
+          description: Board or flow not found
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/rest.ServerResponse'
+      security:
+      - jwt_auth: []
+      summary: Add flow
+      tags:
+      - Board Flows
   /api/v1/boards/{board_id}/flows/{id}:
     delete:
-      description: Removes a flow from a board for authenticated user
+      description: Remove a flow from a board. Authorization is required. User must
+        be author or coauthor of board.
       parameters:
       - description: Board ID
         in: path
@@ -556,11 +637,13 @@ paths:
             $ref: '#/definitions/rest.ServerResponse'
       security:
       - jwt_auth: []
-      summary: Remove flow from board
+      summary: Remove flow
       tags:
-      - boards
+      - Board Flows
     get:
-      description: Get flow from a board (if permissions allow)
+      description: |-
+        Authorized user can get flow: (1) from public board; (2) from private board if he is author or coauthor of board.
+        Unauthorized user can get flow from public board only.
       parameters:
       - description: Board ID
         in: path
@@ -601,9 +684,9 @@ paths:
             $ref: '#/definitions/rest.ServerResponse'
       security:
       - jwt_auth: []
-      summary: Get flow from board
+      summary: Get flow
       tags:
-      - boards
+      - Board Flows
   /api/v1/boards/{board_id}/invites:
     get:
       description: Get invitation links to the board with ID with parameters (user
@@ -665,23 +748,12 @@ paths:
         name: board_id
         required: true
         type: integer
-      - description: Usernames for personal invitation
+      - description: 'Link parameters: usernames for personal invitation; time limit
+          for link activity; usage limit'
         in: body
-        name: names
+        name: _
         schema:
-          items:
-            type: string
-          type: array
-      - description: Time limit for link activity
-        in: body
-        name: time_limit
-        schema:
-          type: string
-      - description: Usage limit
-        in: body
-        name: usage_limit
-        schema:
-          type: integer
+          $ref: '#/definitions/domain.Invitaion'
       produces:
       - application/json
       responses:
@@ -782,54 +854,11 @@ paths:
       summary: Delete link
       tags:
       - Board sharing [author]
-  /api/v1/boards/{id}/flows:
-    post:
-      consumes:
-      - application/json
-      description: Adds a flow to a board for authenticated user
-      parameters:
-      - description: Board ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Flow added successfully
-          schema:
-            $ref: '#/definitions/rest.ServerResponse'
-        "400":
-          description: Invalid request data
-          schema:
-            $ref: '#/definitions/rest.ServerResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/rest.ServerResponse'
-        "403":
-          description: Forbidden - not board owner
-          schema:
-            $ref: '#/definitions/rest.ServerResponse'
-        "404":
-          description: Board or flow not found
-          schema:
-            $ref: '#/definitions/rest.ServerResponse'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/rest.ServerResponse'
-      security:
-      - jwt_auth: []
-      summary: Add flow to board
-      tags:
-      - boards
   /api/v1/boards/{username}:
     post:
       consumes:
       - application/json
-      description: Creates a new board for the specified user
+      description: Create a new board for the specified user. Authorization is required.
       parameters:
       - description: Username of the board owner
         in: path
@@ -867,14 +896,14 @@ paths:
             $ref: '#/definitions/rest.ServerResponse'
       security:
       - jwt_auth: []
-      summary: Create a new board
+      summary: Create board
       tags:
-      - boards
+      - Board Management
   /api/v1/feed:
     get:
       consumes:
       - application/json
-      description: Returns a pageSized number of pins
+      description: Get pageSized number of flows.
       parameters:
       - description: requested page
         in: path
@@ -896,10 +925,13 @@ paths:
           description: page not found
           schema:
             type: string
-      summary: Get Pins
+      summary: Get flows for feed
+      tags:
+      - Feed & Like
   /api/v1/flows:
     delete:
-      description: Returns JSON with result description
+      description: Delete pin by ID. Authorization is required. Pin must belong to
+        user.
       parameters:
       - description: pin to delete
         in: query
@@ -929,9 +961,11 @@ paths:
           description: 'untracked error: ${error}'
           schema:
             type: string
-      summary: Delete pin by ID if user is its author
+      summary: Delete pin
+      tags:
+      - Pin CRUD
     get:
-      description: Returns Pin Data
+      description: Get public pin by ID or private pin if user its author.
       parameters:
       - description: requested pin
         in: query
@@ -961,9 +995,12 @@ paths:
           description: 'untracked error: ${error}'
           schema:
             type: string
-      summary: Get public pin by ID or private pin if user its author
+      summary: Get pin
+      tags:
+      - Pin CRUD
     post:
-      description: Returns JSON with result description
+      description: Create pin with given header, description and private setting.
+        Authorization is required.
       parameters:
       - description: pin image
         in: formData
@@ -1001,9 +1038,12 @@ paths:
           description: 'untracked error: ${error}'
           schema:
             type: string
-      summary: Create pin if user if user is authorized
+      summary: Create pin
+      tags:
+      - Pin CRUD
     put:
-      description: Returns JSON with result description
+      description: Update certain pin's fields. Authorization is required. Pin must
+        belong to user.
       parameters:
       - description: pin ID
         in: body
@@ -1053,7 +1093,9 @@ paths:
           description: 'untracked error: ${error}'
           schema:
             type: string
-      summary: Update certain pin's fields by ID if user is its author
+      summary: Update pin
+      tags:
+      - Pin CRUD
   /api/v1/join/{link}:
     post:
       description: Join the board via invitation link as co-author; link mustn't be
@@ -1124,7 +1166,10 @@ paths:
     post:
       consumes:
       - application/json
-      description: Leaves a like on a flow or deletes the like
+      description: |-
+        If not liked: set like on flow.
+        If liked: unset like on flow.
+        Authorization is required.
       parameters:
       - description: flow id
         example: 456
@@ -1152,10 +1197,12 @@ paths:
           description: Internal server error
           schema:
             type: string
-      summary: Leave a like on a flow
+      summary: Like flow
+      tags:
+      - Feed & Like
   /api/v1/profile/boards:
     get:
-      description: Retrieves all boards (public and private) for authenticated user
+      description: Get all user's boards. Authorization is required.
       produces:
       - application/json
       responses:
@@ -1180,9 +1227,9 @@ paths:
             $ref: '#/definitions/rest.ServerResponse'
       security:
       - jwt_auth: []
-      summary: Get all user boards
+      summary: Get personal boards
       tags:
-      - boards
+      - Board Management
   /api/v1/profile/followers:
     get:
       description: Returns a pageSized number of user's followers
@@ -1212,7 +1259,9 @@ paths:
           description: page not found
           schema:
             type: string
-      summary: Get user's followers
+      summary: Get personal followers
+      tags:
+      - Subscription
   /api/v1/profile/following:
     get:
       description: Returns a pageSized number of user's subscriptions
@@ -1242,7 +1291,9 @@ paths:
           description: page not found
           schema:
             type: string
-      summary: Get user's subscriptions (or who they follow, in other words)
+      summary: Get personal subscriptions (or who they follow, in other words)
+      tags:
+      - Subscription
   /api/v1/search/boards:
     get:
       description: Returns a pageSized number of boards searched for
@@ -1283,6 +1334,8 @@ paths:
           schema:
             type: string
       summary: Searches for boards
+      tags:
+      - Search
   /api/v1/search/pins:
     get:
       description: Returns a pageSized number of pins searched for
@@ -1323,6 +1376,8 @@ paths:
           schema:
             type: string
       summary: Searches for pins
+      tags:
+      - Search
   /api/v1/search/users:
     get:
       description: Returns a pageSized number of users searched for
@@ -1363,6 +1418,8 @@ paths:
           schema:
             type: string
       summary: Searches for users
+      tags:
+      - Search
   /api/v1/stars:
     get:
       description: Get star pins of user. Authorization is required.
@@ -1503,7 +1560,7 @@ paths:
         name: flow_id
         required: true
         schema:
-          type: integer
+          $ref: '#/definitions/domain.RequestBodyFlowID'
       produces:
       - application/json
       responses:
@@ -1573,7 +1630,9 @@ paths:
           description: Internal server error
           schema:
             type: string
-      summary: Unsubscribe from target user
+      summary: Unsubscribe from
+      tags:
+      - Subscription
     post:
       consumes:
       - application/json
@@ -1605,10 +1664,12 @@ paths:
           description: Internal server error
           schema:
             type: string
-      summary: Subscribe to target user
+      summary: Subscribe to
+      tags:
+      - Subscription
   /api/v1/user/{username}/boards:
     get:
-      description: Retrieves public boards for a specific user
+      description: Retrieves public boards for a specific user.
       parameters:
       - description: Username to retrieve public boards for
         in: path
@@ -1643,7 +1704,7 @@ paths:
             $ref: '#/definitions/rest.ServerResponse'
       summary: Get user's public boards
       tags:
-      - boards
+      - Board Management
   /health:
     get:
       description: Returns server status
@@ -1655,4 +1716,6 @@ paths:
           schema:
             type: string
       summary: Check server status
+      tags:
+      - System
 swagger: "2.0"

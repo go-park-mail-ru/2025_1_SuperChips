@@ -22,14 +22,19 @@ type PinsHandler struct {
 }
 
 // FeedHandler godoc
-//	@Summary		Get Pins
-//	@Description	Returns a pageSized number of pins
+//
+//	@Summary		Get flows for feed
+//	@Description	Get pageSized number of flows.
+//	@Tags			Feed & Like
 //	@Accept			json
 //	@Produce		json
+//
 //	@Param			page	path	int							true	"requested page"	example("?page=3")
+//
 //	@Success		200		string	serverResponse.Data			"OK"
 //	@Failure		404		string	serverResponse.Description	"page not found"
 //	@Failure		400		string	serverResponse.Description	"bad request"
+//
 //	@Router			/api/v1/feed [get]
 func (app PinsHandler) FeedHandler(w http.ResponseWriter, r *http.Request) {
 	pageSize := app.Config.PageSize
@@ -44,7 +49,7 @@ func (app PinsHandler) FeedHandler(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	grpcResp, err := app.FeedClient.GetPins(ctx, &gen.GetPinsRequest{
-		Page: int64(page),
+		Page:     int64(page),
 		PageSize: int64(pageSize),
 	})
 	if err != nil {
@@ -81,21 +86,21 @@ func grpcToNormal(grpcPins []*gen.Pin) []domain.PinData {
 	for i := range grpcPins {
 		grpcPin := grpcPins[i]
 		pins = append(pins, domain.PinData{
-			FlowID: grpcPin.FlowId,
-			Header: grpcPin.Header,
-			AuthorID: grpcPin.AuthorId,
+			FlowID:         grpcPin.FlowId,
+			Header:         grpcPin.Header,
+			AuthorID:       grpcPin.AuthorId,
 			AuthorUsername: grpcPin.AuthorUsername,
-			Description: grpcPin.Description,
-			MediaURL: grpcPin.MediaUrl,
-			IsPrivate: grpcPin.IsPrivate,
-			CreatedAt: grpcPin.CreatedAt,
-			UpdatedAt: grpcPin.UpdatedAt,
-			IsLiked: grpcPin.IsLiked,
-			IsNSFW: grpcPin.IsNsfw,
-			IsStar: grpcPin.IsStar,
-			LikeCount: int(grpcPin.LikeCount),
-			Width: int(grpcPin.Width),
-			Height: int(grpcPin.Height),
+			Description:    grpcPin.Description,
+			MediaURL:       grpcPin.MediaUrl,
+			IsPrivate:      grpcPin.IsPrivate,
+			CreatedAt:      grpcPin.CreatedAt,
+			UpdatedAt:      grpcPin.UpdatedAt,
+			IsLiked:        grpcPin.IsLiked,
+			IsNSFW:         grpcPin.IsNsfw,
+			IsStar:         grpcPin.IsStar,
+			LikeCount:  int(grpcPin.LikeCount),
+			Width:      int(grpcPin.Width),
+			Height:     int(grpcPin.Height),
 		})
 	}
 

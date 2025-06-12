@@ -21,9 +21,7 @@ import (
 //	@Security		jwt_auth
 //
 //	@Param			board_id	path		int															true	"ID of the board"
-//	@Param			names		body		[]string													false	"Usernames for personal invitation"
-//	@Param			time_limit	body		time.Time													false	"Time limit for link activity"
-//	@Param			usage_limit	body		int															false	"Usage limit"
+//	@Param			_			body		domain.Invitaion											false	"Link parameters: usernames for personal invitation; time limit for link activity; usage limit"
 //
 //	@Success		200			{object}	ServerResponse{data=object{link=string}}					"Link has been successfully created"
 //	@Success		207			{object}	ServerResponse{data=object{link=string,invalid=[]string}}	"Link has been successfully created for valid names; Invalid usernames are returned"
