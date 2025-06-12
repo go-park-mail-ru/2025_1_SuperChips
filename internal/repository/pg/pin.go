@@ -103,6 +103,7 @@ func (p *pgPinStorage) GetPins(page int, pageSize int) ([]pin.PinData, error) {
 			FlowID:         flowDBRow.ID,
 			Description:    flowDBRow.Description.String,
 			Header:         flowDBRow.Title.String,
+			AuthorID:       flowDBRow.AuthorId,
 			MediaURL:       p.assembleMediaURL(flowDBRow.MediaURL),
 			Width:          int(flowDBRow.Width.Int64),
 			Height:         int(flowDBRow.Height.Int64),
@@ -169,6 +170,7 @@ func (p *pgPinStorage) GetStarPins(ctx context.Context, userID int) ([]pin.PinDa
 			FlowID:         flowDBRow.ID,
 			Description:    flowDBRow.Description.String,
 			Header:         flowDBRow.Title.String,
+			AuthorID:       flowDBRow.AuthorId,
 			MediaURL:       p.assembleMediaURL(flowDBRow.MediaURL),
 			Width:          int(flowDBRow.Width.Int64),
 			Height:         int(flowDBRow.Height.Int64),
@@ -190,7 +192,7 @@ func (p *pgPinStorage) GetPinsCount(ctx context.Context, userID int) (int, error
 	`, userID)
 
 	var flowCount int
-	
+
 	err := row.Scan(&flowCount)
 	if err != nil {
 		return 0, err
