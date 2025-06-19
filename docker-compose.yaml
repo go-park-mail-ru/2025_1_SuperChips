@@ -19,6 +19,7 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
       - ./db/postgresql.conf:/etc/postgresql/postgresql.conf
+      - ./db/pg_hba.conf:/etc/postgresql/pg_hba.conf
   
 
   db_after_init_script:
